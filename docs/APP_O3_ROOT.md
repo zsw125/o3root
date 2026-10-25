@@ -502,3 +502,29 @@ features=0x3ffff`（成功）；App 域历史实测 `io_uring_setup` 被 seccomp
   「工作中 [越狱模式]」；boot_id 未变、Permissive、ping 4.6 ms、nc443=0。
 - 三 fork LKM 冷启验证：tiann v3.3.1（found=225，offset 0x144）、KernelSU-Next
   v3.4.2（227，0x144）、SukiSU v4.2.1-r2（245，0x178）；relink 回退用 tiann 复验。
+
+## v2.0 (dev log, 2026-10-25): multi-LKM blob + adaptive manager selection
+
+- Artifacts: payload `payload/o3p.c` 51,517 B -> `build/o3p.bin` 69,568 B;
+  `build/libo3p.so` 1,488,284 B
+  (`sha256 98936d14b5f50b1fc4a9b35741404088a33e1a1fe68042b61e8e948c31f87dfa`);
+  APK `app/o3root2.apk` 14,222,864 B
+  (`sha256 7e900dd3ed222fb3864f4172fd0add16627466b93f69996940a94e118dba7099`).
+- Blob v2 layout: payload + KernelSU v3.3.1 (375,328) + KernelSU-Next v3.4.2
+  (473,552) + SukiSU v4.2.1-r2 (569,752) + 24-byte tag table + `O3KSKM02`/count;
+  `--legacy` keeps the single-LKM `O3KSKO01` layout readable.
+- Device evidence (all cold boots, SELinux ended Permissive and Wi-Fi healthy):
+  - SukiSU manager only: `KSU_FORK chosen=sukisu tag=3 src=env`,
+    `KSU_BLOB v2 tag=3 len=569752 matched=1`, `KALLSYMS_PATCH found=245`,
+    `KSU_CODEPATCH mov_w0_zero=1 off=0x3e178`, `KSU_MODULE LIVE`,
+    `/data/local/tmp/o3p_ksu.ko` 569,752 B, foreground
+    `com.sukisu.ultra/.ui.clqyrckkrmoActivity`.
+  - tiann manager only: `chosen=tiann tag=1 src=scan`, len 375,328,
+    `found=225`, patch `0x22144`, `LIVE`, foreground
+    `me.weishu.kernelsu/.ui.MainActivity`.
+  - KernelSU-Next manager only: `chosen=next tag=2 src=env`, len 473,552,
+    `found=227`, patch `0x37144`, `LIVE`, foreground
+    `com.rifsxd.ksunext/.ui.MainActivity`.
+- The app probes the manager in `StateProbe` and passes `O3P_KSU_FORK`; it opens
+  the manager via `cmd package resolve-activity --brief` followed by
+  `am start -W -n`, which works for all three manager packages.

@@ -13,10 +13,16 @@
 - 内置文件：
   - `payload/lkm/lkm-aarch64-android17-6.18_kernelsu.ko` —— KernelSU v3.3.1
     release 的官方预编译 LKM（未修改的二进制，375,328 字节）。
+  - `payload/lkm/aarch64-next-android17-6.18_kernelsu.ko` —— KernelSU-Next
+    v3.4.2 的官方 LKM（未修改的二进制，473,552 字节），上游
+    https://github.com/KernelSU-Next/KernelSU-Next（GPL-3.0）。
+  - `payload/lkm/sukisu-aarch64-android17-6.18.ko` —— SukiSU-Ultra v4.2.1-r2
+    的官方 LKM（未修改的二进制，569,752 字节），上游
+    https://github.com/SukiSU-Ultra/SukiSU-Ultra（GPL-3.0）。
   - `app/assets/ksu-manager.apk` —— KernelSU 管理器 APK（v3.3.1、32680、
     13,637,206 字节），在没有管理器时由 App 安装。
 - 修改是**由我们的载荷在运行时施加**的，不是改本仓库里的文件：每个未定义符号被
-  改写为当前内核的绝对地址，`.init.text` 中的一条指令（`+0x144` 的
+  改写为当前内核的绝对地址，`.init.text` 中的一条指令（`+0x144`/下游 `+0x178`）的
   `mov w0,#1`）改为 `mov w0,#0`，使模块不把 SELinux 强制拉回 enforcing。若你
   再分发预打过补丁的 `.ko`，请注意 GPL-3.0 义务。
 

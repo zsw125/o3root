@@ -43,6 +43,8 @@ for f in \
   payload/o3p.c payload/mk_payload.py payload/build-payload.sh \
   payload/ksu/ksu_symtab.h payload/ksu/mksymtab.py payload/ksu/relink_ksu.py \
   payload/lkm/lkm-aarch64-android17-6.18_kernelsu.ko \
+  payload/lkm/aarch64-next-android17-6.18_kernelsu.ko \
+  payload/lkm/sukisu-aarch64-android17-6.18.ko \
   docs/ARCHITECTURE.md docs/SECURITY.md docs/BUILD.md docs/AGENT_HANDOFF.md \
   docs/AGENT_HANDOFF.zh-CN.md \
   docs/ARCHITECTURE.zh-CN.md docs/SECURITY.zh-CN.md docs/BUILD.zh-CN.md \
@@ -66,7 +68,7 @@ echo "== release checksum"
 "$PY" - <<'PY'
 import hashlib, sys
 want = open('release/SHA256SUMS.txt', encoding='utf-8').read().split()[0]
-got = hashlib.sha256(open('release/o3root2-v1.9.apk', 'rb').read()).hexdigest()
+got = hashlib.sha256(open('release/o3root2-v2.0.apk', 'rb').read()).hexdigest()
 print('  ok    release apk sha256 matches SHA256SUMS' if got == want else
       '  FAIL  release apk sha256 %s != %s' % (got, want))
 sys.exit(0 if got == want else 1)
@@ -99,7 +101,7 @@ if [ -n "${NDK_CC:-}" ]; then
   log=$(mktemp)
   if bash payload/build-payload.sh >"$log" 2>&1; then
     got=$("$PY" -c "import hashlib;print(hashlib.sha256(open('payload/build/libo3p.so','rb').read()).hexdigest())")
-    want=372518ecbacd9ee1878be74a947fce1d4ea68663c459e6de16c84e7a75e298bb
+    want=98936d14b5f50b1fc4a9b35741404088a33e1a1fe68042b61e8e948c31f87dfa
     if [ "$got" = "$want" ]; then ok "libo3p.so sha256 matches reference"; else bad "libo3p.so sha256 $got != $want"; fi
   else
     bad "payload build failed"; tail -20 "$log" | sed 's/^/        /'
@@ -116,7 +118,7 @@ if [ -n "${ANDROID_JAR:-}" ] && [ -n "${BUILD_TOOLS:-}" ] && [ -n "${SHIZUKU_JAR
     if [ -x "$BUILD_TOOLS/aapt2" ] || [ -x "$BUILD_TOOLS/aapt2.exe" ]; then
       AAPT2="$BUILD_TOOLS/aapt2"; [ -x "$AAPT2" ] || AAPT2="$BUILD_TOOLS/aapt2.exe"
       v=$("$AAPT2" dump badging app/o3root2.apk 2>/dev/null | grep -o "versionName='[^']*'" | head -1)
-      case "$v" in *"'1.9'"*) ok "APK rebuilt ($v)";; *) bad "APK version $v (expected 1.9)";; esac
+      case "$v" in *"'2.0'"*) ok "APK rebuilt ($v)";; *) bad "APK version $v (expected 2.0)";; esac
     else
       note "APK rebuilt (aapt2 not found to verify version)"
     fi

@@ -58,6 +58,8 @@ public class Main extends Activity implements PayloadSink {
     private String runBootId;
     private boolean fwOk;
     private boolean mgrOk;
+    private String mgrFork;
+    private String mgrPkg;
     private boolean netRisk;
     private boolean netRiskShown;
 
@@ -82,7 +84,7 @@ public class Main extends Activity implements PayloadSink {
         lastNight = isNight();
         setContentView(buildUi());
         applyWindowTheme();
-        append("O3 Root v1.9 · CVE-2026-98260");
+        append("O3 Root v2.0 · CVE-2026-98260");
         append("payload=" + payloadPath);
         checkFirmware();
         Shizuku.addBinderReceivedListenerSticky(new BindListener(this));
@@ -222,7 +224,7 @@ public class Main extends Activity implements PayloadSink {
         titleView = title;
         root.addView(title);
 
-        TextView sub = text("v1.9 · CVE-2026-98260 · OS4", 12, MUTED, false);
+        TextView sub = text("v2.0 · CVE-2026-98260 · OS4", 12, MUTED, false);
         subView = sub;
         sub.setPadding(0, dp(4), 0, 0);
         root.addView(sub);
@@ -481,6 +483,8 @@ public class Main extends Activity implements PayloadSink {
         append("installer status=" + status + " msg=" + msg);
         if (status == 0) {
             mgrOk = true;
+            mgrFork = "tiann";
+            mgrPkg = "me.weishu.kernelsu";
             btn.setText(ksuOk ? "打开 KernelSU" : "Continue to UID 0");
             append("KernelSU 管理器安装完成");
         } else {
@@ -523,8 +527,28 @@ public class Main extends Activity implements PayloadSink {
             pd.append(parts[i].trim());
         }
         append("probe -> " + pd);
-        String mgr = parts.length > 2 ? parts[2].trim() : "";
-        mgrOk = "1".equals(mgr);
+        mgrFork = null;
+        mgrPkg = null;
+        for (int i = 2; i < parts.length; i++) {
+            String f = parts[i].trim();
+            if (f.equals("tiann")) {
+                mgrFork = f;
+                mgrPkg = "me.weishu.kernelsu";
+            } else if (f.equals("next")) {
+                mgrFork = f;
+                mgrPkg = "com.rifsxd.ksunext";
+            } else if (f.equals("sukisu")) {
+                mgrFork = f;
+                mgrPkg = "com.sukisu.ultra";
+            }
+            if (mgrFork != null) {
+                break;
+            }
+        }
+        mgrOk = mgrFork != null;
+        if (mgrOk) {
+            append("manager -> fork=" + mgrFork + " pkg=" + mgrPkg);
+        }
         if (enf.length() > 0) {
             tvSelinux.setText(enf);
             tvSelinux.setTextColor(enf.indexOf("Permissive") >= 0 ? OK : MUTED);
@@ -677,7 +701,7 @@ public class Main extends Activity implements PayloadSink {
         if (runBootId != null) {
             append("boot_id=" + runBootId);
         }
-        new Thread(new PayloadRunner(payloadPath, this), "payload").start();
+        new Thread(new PayloadRunner(payloadPath, this, mgrFork), "payload").start();
     }
 
     public void onLine(String line) {
@@ -822,16 +846,20 @@ public class Main extends Activity implements PayloadSink {
     }
 
     public void launchManager() {
+        String pkg = mgrPkg != null ? mgrPkg : "me.weishu.kernelsu";
+        String comp = oneLine(PayloadRunner.runShellSync(
+                "cmd package resolve-activity --brief " + pkg + " 2>/dev/null | tail -1"));
+        String target = comp.indexOf('/') > 0 ? comp : (pkg + "/.ui.MainActivity");
         String out = PayloadRunner.runShellSync(
-                "am start -W -n me.weishu.kernelsu/.ui.MainActivity 2>&1 | head -6");
-        append("am start -> " + oneLine(out));
+                "am start -W -n " + target + " 2>&1 | head -6");
+        append("am start -> " + oneLine(out) + " [" + target + "]");
         boolean bad = out == null || out.indexOf("Error") >= 0 || out.indexOf("Exception") >= 0
                 || out.indexOf("Warning") >= 0;
         if (bad) {
             try {
                 Intent i = new Intent(Intent.ACTION_MAIN);
                 i.addCategory(Intent.CATEGORY_LAUNCHER);
-                i.setPackage("me.weishu.kernelsu");
+                i.setPackage(pkg);
                 i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivity(i);
                 append("intent 兜底已发送");

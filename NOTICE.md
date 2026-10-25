@@ -14,7 +14,7 @@ licenses and redistribution terms.
   - `payload/lkm/lkm-aarch64-android17-6.18_kernelsu.ko` — official prebuilt LKM
     for GKI `android17-6.18` (release asset, aarch64).
   - `app/assets/ksu-manager.apk` — KernelSU manager APK from the same release.
-  - `release/o3root2-v1.9.apk` embeds both the manager APK and the unmodified
+  - `release/o3root2-v2.0.apk` embeds both the manager APK and the unmodified
     official LKM; the payload generates a *runtime copy* with rebased symbols
     (via `/proc/kallsyms`) plus one patched init immediate, then loads that
     copy. The offline `payload/ksu/relink_ksu.py` does the same rebasing.
@@ -23,13 +23,32 @@ licenses and redistribution terms.
   vendored here — fetch it from the project if you need the sources, as
   required by GPL-3.0 when redistributing binaries.
 
+## KernelSU-Next (GPL-3.0)
+
+- Project: KernelSU-Next — https://github.com/KernelSU-Next/KernelSU-Next
+- Version used: v3.4.2
+- Files in this repository derived from KernelSU-Next release artifacts:
+  - `payload/lkm/aarch64-next-android17-6.18_kernelsu.ko` — official prebuilt
+    LKM for GKI `android17-6.18` (release asset, aarch64, 473,552 bytes).
+- The same runtime rebasing and the one-instruction init patch described above
+  are applied to a generated copy; the file in this repository is unmodified.
+
+## SukiSU-Ultra (GPL-3.0)
+
+- Project: SukiSU-Ultra — https://github.com/SukiSU-Ultra/SukiSU-Ultra
+- Version used: v4.2.1-r2 (manager 41068)
+- Files in this repository derived from SukiSU-Ultra release artifacts:
+  - `payload/lkm/sukisu-aarch64-android17-6.18.ko` — official prebuilt LKM for
+    GKI `android17-6.18` (release asset, aarch64, 569,752 bytes).
+- Same runtime rebasing / init patch on the generated copy.
+
 ## Shizuku client libraries (Apache-2.0)
 
 - Project: Shizuku — https://github.com/RikkaApps/Shizuku-API
 - Artifacts: `dev.rikka.shizuku:api`, `:provider`, `:aidl`, `:shared` (13.1.5),
   fetched from Maven Central by `scripts/fetch-toolchain.sh`.
 - Not committed to this repository; compiled classes from these jars are
-  embedded in `release/o3root2-v1.9.apk`.
+  embedded in `release/o3root2-v2.0.apk`.
 
 ## Android SDK (Android SDK License)
 

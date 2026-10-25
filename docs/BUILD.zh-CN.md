@@ -69,8 +69,8 @@ bash payload/build-payload.sh
 
 `build-payload.sh` 只需要 `NDK_CC`。KernelSU LKM 位于
 `payload/lkm/lkm-aarch64-android17-6.18_kernelsu.ko`；默认输出与
-`release/o3root2-v1.9.apk` 里的参考构建一致（`libo3p.so` 的
-`sha256 372518ec…`）。
+`release/o3root2-v2.0.apk` 里的参考构建一致（`libo3p.so` 的
+`sha256 98936d14…`）。
 
 你也可以直接在设备上（root/shell）运行载荷：
 
@@ -140,9 +140,9 @@ App 的 LogBox 会显示载荷每个阶段；用 **导出日志** 写到
 
 ## 可复现性
 
-参考构建（v1.9，release/o3root2-v1.9.apk）：
+参考构建（v2.0，release/o3root2-v2.0.apk）：
 
-- APK `13,977,104` 字节
-- `sha256 99c89628567c04dd59c04a57261cad93be809acaa1914befa61c0d4d9fad885e`
-- payload `libo3p.so` `442,848` 字节（配官方 LKM），
-  `sha256 372518ecbacd9ee1878be74a947fce1d4ea68663c459e6de16c84e7a75e298bb`
+- APK `14,222,864` 字节
+- `sha256 7e900dd3ed222fb3864f4172fd0add16627466b93f69996940a94e118dba7099`
+- payload `libo3p.so` `1,488,284` 字节（配官方 LKM），
+  `sha256 98936d14b5f50b1fc4a9b35741404088a33e1a1fe68042b61e8e948c31f87dfa`

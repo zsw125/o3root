@@ -14,12 +14,18 @@ please consult the upstream projects for the full texts.
 - Bundled files:
   - `payload/lkm/lkm-aarch64-android17-6.18_kernelsu.ko` — official prebuilt
     LKM from the KernelSU v3.3.1 release (unmodified binary, 375,328 bytes).
+  - `payload/lkm/aarch64-next-android17-6.18_kernelsu.ko` — official
+    KernelSU-Next v3.4.2 LKM (unmodified binary, 473,552 bytes); upstream
+    https://github.com/KernelSU-Next/KernelSU-Next (GPL-3.0).
+  - `payload/lkm/sukisu-aarch64-android17-6.18.ko` — official SukiSU-Ultra
+    v4.2.1-r2 LKM (unmodified binary, 569,752 bytes); upstream
+    https://github.com/SukiSU-Ultra/SukiSU-Ultra (GPL-3.0).
   - `app/assets/ksu-manager.apk` — the KernelSU manager APK (v3.3.1,
     32680, 13,637,206 bytes), installed by the app when no manager is present.
 - Modifications are applied **at runtime by our payload**, not to the files in
   this repository: every undefined symbol is rewritten to an absolute address
   for the running kernel, and one instruction in `.init.text` (`mov w0,#1` at
-  `+0x144`) is patched to `mov w0,#0` so the module does not force SELinux back
+  `.`init.text`+0x144 or +0x178, depending on the fork) is patched to `mov w0,#0` so the module does not force SELinux back
   to enforcing. If you redistribute a pre-patched `.ko`, keep the GPL-3.0
   obligations in mind.
 

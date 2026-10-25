@@ -21,6 +21,7 @@
 #include <sys/stat.h>
 #include <linux/perf_event.h>
 #include <linux/capability.h>
+#include <glob.h>
 #include "ksu_symtab.h"
 
 #define TR "/sys/kernel/tracing"
@@ -570,22 +571,119 @@ static void stage_note(const char *s){
   fsync(fd); close(fd);
 }
 
-static unsigned char *ksu_blob_load(size_t *plen){
-  int fd=open("/proc/self/exe",O_RDONLY); if(fd<0)return NULL;
-  off_t end=lseek(fd,0,SEEK_END);
-  struct ksu_trailer { char m[8]; unsigned long long off,len; } tr;
-  if(end<(off_t)sizeof tr){close(fd);return NULL;}
-  lseek(fd,(off_t)(end-(off_t)sizeof tr),SEEK_SET);
-  if(read(fd,&tr,sizeof tr)!=(ssize_t)sizeof tr){close(fd);return NULL;}
-  if(memcmp(tr.m,"O3KSKO01",8)||tr.len==0||tr.len>(8u<<20)||tr.off+(unsigned long long)tr.len>(unsigned long long)end){close(fd);return NULL;}
-  unsigned char *b=(unsigned char*)malloc(tr.len);
-  if(!b){close(fd);return NULL;}
-  lseek(fd,(off_t)tr.off,SEEK_SET);
-  size_t got=0;
-  while(got<tr.len){ssize_t r=read(fd,b+got,tr.len-got); if(r<=0)break; got+=r;}
+#define KSU_TAG_TIANN 1
+#define KSU_TAG_NEXT 2
+#define KSU_TAG_SUKISU 3
+static int g_ksu_tag = 0;
+static const char *g_ksu_fork = "?";
+
+static int ksu_have_pkg(const char *pkg) {
+  char pat[256];
+  glob_t g;
+  int has = 0;
+  snprintf(pat, sizeof pat, "/data/app/*/%s-*", pkg);
+  if (glob(pat, 0, NULL, &g) == 0) { has = (g.gl_pathc > 0); globfree(&g); }
+  if (!has) {
+    snprintf(pat, sizeof pat, "/data/app/*/%s", pkg);
+    if (glob(pat, 0, NULL, &g) == 0) { has = (g.gl_pathc > 0); globfree(&g); }
+  }
+  return has;
+}
+
+static void ksu_detect_fork(void) {
+  const char *e = getenv("O3P_KSU_FORK");
+  if (e && *e) {
+    if (!strcmp(e, "tiann")) { g_ksu_tag = KSU_TAG_TIANN; g_ksu_fork = "tiann"; }
+    else if (!strcmp(e, "next")) { g_ksu_tag = KSU_TAG_NEXT; g_ksu_fork = "next"; }
+    else if (!strcmp(e, "sukisu")) { g_ksu_tag = KSU_TAG_SUKISU; g_ksu_fork = "sukisu"; }
+    if (g_ksu_tag) {
+      printf("KSU_FORK chosen=%s tag=%d src=env\n", g_ksu_fork, g_ksu_tag);
+      fflush(stdout);
+      return;
+    }
+  }
+  if (ksu_have_pkg("me.weishu.kernelsu")) { g_ksu_tag = KSU_TAG_TIANN; g_ksu_fork = "tiann"; }
+  else if (ksu_have_pkg("com.rifsxd.ksunext")) { g_ksu_tag = KSU_TAG_NEXT; g_ksu_fork = "next"; }
+  else if (ksu_have_pkg("com.sukisu.ultra")) { g_ksu_tag = KSU_TAG_SUKISU; g_ksu_fork = "sukisu"; }
+  else { g_ksu_tag = KSU_TAG_TIANN; g_ksu_fork = "tiann(default)"; }
+  printf("KSU_FORK chosen=%s tag=%d src=scan\n", g_ksu_fork, g_ksu_tag);
+  fflush(stdout);
+}
+
+static unsigned char *ksu_read_range(int fd, unsigned long long off, unsigned long long len) {
+  if (len == 0 || len > (8u << 20)) return NULL;
+  unsigned char *b = (unsigned char *)malloc((size_t)len);
+  if (!b) return NULL;
+  if (lseek(fd, (off_t)off, SEEK_SET) != (off_t)off) { free(b); return NULL; }
+  unsigned long long got = 0;
+  while (got < len) {
+    ssize_t r = read(fd, b + got, (size_t)(len - got));
+    if (r <= 0) break;
+    got += (unsigned long long)r;
+  }
+  if (got != len) { free(b); return NULL; }
+  return b;
+}
+
+static unsigned char *ksu_blob_load(size_t *plen) {
+  int fd = open("/proc/self/exe", O_RDONLY);
+  if (fd < 0) return NULL;
+  off_t end = lseek(fd, 0, SEEK_END);
+  if (end < 24) { close(fd); return NULL; }
+
+  /* v2: [payload][ko ...][table 24*n][magic "O3KSKM02"][u32 n] */
+  if (end >= 12) {
+    struct { char m[8]; unsigned int n; } t2;
+    if (lseek(fd, (off_t)end - 12, SEEK_SET) == (off_t)end - 12 &&
+        read(fd, &t2, sizeof t2) == (ssize_t)sizeof t2 &&
+        !memcmp(t2.m, "O3KSKM02", 8) && t2.n >= 1 && t2.n <= 8) {
+      unsigned long long tbl = (unsigned long long)end - 12 - (unsigned long long)t2.n * 24;
+      if (tbl > 0) {
+        unsigned char *e = ksu_read_range(fd, tbl, (unsigned long long)t2.n * 24);
+        if (e) {
+          if (!g_ksu_tag) ksu_detect_fork();
+          unsigned long long boff = 0, blen = 0;
+          int btag = 0, cnt = (int)t2.n, chosen = 0;
+          for (unsigned k = 0; k < t2.n; k++) {
+            unsigned int tag = 0;
+            unsigned long long o = 0, l = 0;
+            memcpy(&tag, e + k * 24, 4);
+            memcpy(&o, e + k * 24 + 8, 8);
+            memcpy(&l, e + k * 24 + 16, 8);
+            if (l == 0 || o + l > tbl) continue;
+            if (!btag) { boff = o; blen = l; btag = (int)tag; }
+            if ((int)tag == g_ksu_tag) { boff = o; blen = l; btag = (int)tag; chosen = 1; break; }
+          }
+          free(e);
+          if (btag) {
+            unsigned char *b = ksu_read_range(fd, boff, blen);
+            if (b) {
+              close(fd);
+              printf("KSU_BLOB v2 tag=%d len=%llu count=%d matched=%d\n",
+                     btag, blen, cnt, chosen);
+              fflush(stdout);
+              *plen = (size_t)blen;
+              return b;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /* v1 (legacy): last 24 bytes = magic + payload_len + ko_len */
+  struct ksu_trailer { char m[8]; unsigned long long off, len; } tr;
+  if (lseek(fd, (off_t)(end - (off_t)sizeof tr), SEEK_SET) != (off_t)(end - (off_t)sizeof tr)) { close(fd); return NULL; }
+  if (read(fd, &tr, sizeof tr) != (ssize_t)sizeof tr) { close(fd); return NULL; }
+  if (memcmp(tr.m, "O3KSKO01", 8) || tr.len == 0 || tr.len > (8u << 20) ||
+      tr.off + (unsigned long long)tr.len > (unsigned long long)end) { close(fd); return NULL; }
+  unsigned char *b = ksu_read_range(fd, tr.off, tr.len);
   close(fd);
-  if(got!=tr.len){free(b);return NULL;}
-  *plen=tr.len; return b;
+  if (!b) return NULL;
+  printf("KSU_BLOB v1 len=%llu\n", tr.len);
+  fflush(stdout);
+  *plen = tr.len;
+  return b;
 }
 
 static int ksu_patch(unsigned char *d,size_t len,unsigned long long slide){
@@ -767,6 +865,7 @@ static int kallsyms_patch(unsigned char *d,size_t len,int *pfound,int *pmissing)
 
 static int ksu_load(unsigned long long slide){
   stage_note("KSU_BEGIN");
+  if(!g_ksu_tag)ksu_detect_fork();
   wf("/proc/sys/kernel/panic_on_oops","0\n");
   size_t len=0;
   unsigned char *b=ksu_blob_load(&len);

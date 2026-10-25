@@ -7,19 +7,26 @@ import rikka.shizuku.Shizuku;
 public class PayloadRunner implements Runnable {
     private final String payloadPath;
     private final PayloadSink sink;
+    private final String fork;
 
     public PayloadRunner(String payloadPath, PayloadSink sink) {
+        this(payloadPath, sink, null);
+    }
+
+    public PayloadRunner(String payloadPath, PayloadSink sink, String fork) {
         this.payloadPath = payloadPath;
         this.sink = sink;
+        this.fork = fork;
     }
 
     public void run() {
         try {
-            String cmd = "cp '" + payloadPath + "' /data/local/tmp/o3p.bin"
+            String env = fork == null ? "" : ("export O3P_KSU_FORK=" + fork + "; ");
+            String cmd = env + "cp '" + payloadPath + "' /data/local/tmp/o3p.bin"
                     + " && chmod 755 /data/local/tmp/o3p.bin"
                     + " && cd /data/local/tmp"
                     + " && ./o3p.bin 10000 14000 300 1 6 1 8000 800";
-            sink.onLine("payload=" + payloadPath);
+            sink.onLine("payload=" + payloadPath + " fork=" + (fork == null ? "auto" : fork));
             Process p = newProcess(new String[]{"/system/bin/sh", "-c", cmd},
                     new String[]{}, "/data/local/tmp");
             StreamPump out = new StreamPump(p.getInputStream(), sink, "payload-out");

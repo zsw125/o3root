@@ -12,12 +12,14 @@ Shizuku 拉起的 shell 域进程里运行。
 export NDK_CC=/path/to/ndk/toolchains/llvm/prebuilt/<host>/bin/aarch64-linux-android35-clang
 bash build-payload.sh
 # -> build/o3p.bin      （载荷可执行文件）
-# -> build/libo3p.so    （载荷 + KernelSU LKM + trailer）
+# -> build/libo3p.so    （载荷 + 三种 KernelSU 系 LKM + 条目表/trailer）
 ```
 
-`mk_payload.py` 会追加 LKM 和 24 字节 trailer（`O3KSKO01`、payload_len、
-lkm_len）。载荷从 `/proc/self/exe` 读取该 trailer，因此同一个文件也可以直接执行
-（`./libo3p.so`）。
+`mk_payload.py` 现在写 v2 容器：载荷 + 三种 LKM（KernelSU v3.3.1、
+KernelSU-Next v3.4.2、SukiSU v4.2.1-r2）+ 每项 24 字节的 tag 表 +
+`O3KSKM02`/count trailer。载荷从 `/proc/self/exe` 读 trailer，识别已装管理器
+（或 `O3P_KSU_FORK` 覆盖），切出对应 LKM 再加载；同一个文件仍可直接执行
+（`./libo3p.so`）。旧的单 LKM `O3KSKO01` 布局仍可读。
 
 ## 载荷做什么
 
@@ -38,7 +40,10 @@ lkm_len）。载荷从 `/proc/self/exe` 读取该 trailer，因此同一个文�
 5. **伪造 cred**（`stage 1`）：一个 perf ring 页（内核 VA 经 kretprobe 泄漏）里放
    伪造的 `struct cred`，uid/euid/fsuid=0、full caps、`security` 沿用原来的
    SELinux blob 指针。
-6. **KernelSU LKM**：加载器运行时经 `/proc/kallsyms` 解析内置 LKM 的未定义符号
+6. **KernelSU LKM（自适应）**：加载前扫描 `/data/app` 识别已装管理器——
+   `me.weishu.kernelsu`（KernelSU，tag 1）、`com.rifsxd.ksunext`（KernelSU-Next，tag 2）、
+   `com.sukisu.ultra`（SukiSU-Ultra，tag 3）——从内置 blob 里切出对应 LKM
+   （`O3P_KSU_FORK` 可覆盖）。随后经 `/proc/kallsyms` 解析该 LKM 的未定义符号
    （临时降低 `kptr_restrict`，结束前恢复）；`O3P_RELINK_ONLY=1` 时回退到
    248 符号并集 + address+slide。它还会打补丁使其不把 SELinux 强制拉回
    Enforcing，写 `/data/local/tmp/o3p_ksu.ko`，然后从 fork 出的
@@ -55,8 +60,10 @@ lkm_len）。载荷从 `/proc/self/exe` 读取该 trailer，因此同一个文�
 | `ksu/ksu_symtab.h` | 上游各 fork 的 248 个 KernelSU 符号并集 → vmlinux 地址（供 relink 回退） |
 | `ksu/mksymtab.py` | 从 `vmlinux.elf` 重新生成 `ksu_symtab.h`（env `VMLINUX`） |
 | `ksu/relink_ksu.py` | 离线重链接器，运行时 `ksu_patch` 的参考实现 |
-| `mk_payload.py` | 追加 LKM + trailer → `libo3p.so` |
-| `lkm/…kernelsu.ko` | `android17-6.18` 的官方 KernelSU v3.3.1 LKM（GPL-3.0） |
+| `mk_payload.py` | 打包载荷 + 三种 LKM + tag 表/trailer → `libo3p.so` |
+| `lkm/lkm-aarch64-…kernelsu.ko` | `android17-6.18` 的官方 KernelSU v3.3.1 LKM（GPL-3.0） |
+| `lkm/aarch64-next-…kernelsu.ko` | `android17-6.18` 的官方 KernelSU-Next v3.4.2 LKM（GPL-3.0） |
+| `lkm/sukisu-aarch64-…ko` | `android17-6.18` 的官方 SukiSU-Ultra v4.2.1-r2 LKM（GPL-3.0） |
 | `legacy/t32.c`、`legacy/t34.c`、`legacy/mk_o3p.py` | 早期利用版本；`mk_o3p.py` 展示 `o3p.c` 如何从 `t34.c` 派生 |
 
 ## 注意

@@ -10,7 +10,7 @@
 
 | 项 | 值 |
 |---|---|
-| 发布 | v1.9，`release/o3root2-v1.9.apk`（13,977,104 B，sha256 `99c89628…`） |
+| 发布 | v2.0，`release/o3root2-v2.0.apk`（14,222,864 B，sha256 `7e900dd3…`） |
 | 已验证设备 | 小米 Pad 9 Pro Max `yingtian`，HyperOS `OS4.0.16.0.XBMCNXM`，内核 `6.18.21-android17-5-g805aa6adea19-abogki565292102-4k` |
 | 第二目标 | `lhasa`（Xiaomi 18 Fold）`OS4.0.26.0.XPNCNXM` —— 同内核 sha256 `cde87cd7…`（boot header/ramdisk 不同）；**未实机测试** |
 | 持久化 | 无（仅当前 boot） |
@@ -195,3 +195,15 @@ adb shell 'tail -f /data/data/o3.st.root1/files/run.log'   # 仅 debuggable 构�
 - 不要“修正”写入值为 `0x100`（解引用崩溃）。
 - 利用之后不要在缺少 App 恢复路径的情况下开启 enforcing。
 - 不要在非本人设备上运行；见 `docs/SECURITY.md`。
+
+## v2.0 — 自适应 LKM（2026-10-25）
+
+- blob 改为 v2 容器：内置三个 LKM（KernelSU v3.3.1 375,328 B、KernelSU-Next v3.4.2
+  473,552 B、SukiSU v4.2.1-r2 569,752 B），每项 24 字节 tag 表 +
+  `O3KSKM02`/count trailer；旧的 `O3KSKO01` 仍可读。
+- 载荷识别已装管理器（`me.weishu.kernelsu` → tag 1、`com.rifsxd.ksunext` → 2、
+  `com.sukisu.ultra` → 3；`O3P_KSU_FORK` 可覆盖），切出对应 LKM 再加载；应用
+  做同样探测、把 fork 传给载荷，并用解析出的 activity 打开对应管理器。
+- 已在三种镜像上冷启动验证（仅 KernelSU / 仅 KernelSU-Next / 仅 SukiSU）：
+  `/data/local/tmp/o3p_ksu.ko` 大小与前台管理器每次都与选择一致；SELinux 保持
+  Permissive、Wi-Fi 正常。

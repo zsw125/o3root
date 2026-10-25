@@ -71,8 +71,8 @@ bash payload/build-payload.sh
 
 `build-payload.sh` only needs `NDK_CC`. The KernelSU LKM is in
 `payload/lkm/lkm-aarch64-android17-6.18_kernelsu.ko`; the default output matches
-the reference build in `release/o3root2-v1.9.apk`
-(`sha256 372518ec…` for `libo3p.so`).
+the reference build in `release/o3root2-v2.0.apk`
+(`sha256 98936d14…` for `libo3p.so`).
 
 You can run the payload directly on the device (root/shell):
 
@@ -147,9 +147,9 @@ The app's LogBox shows every payload stage; use **Export log** to write
 
 ## Reproducibility
 
-Reference build (v1.9, release/o3root2-v1.9.apk):
+Reference build (v2.0, release/o3root2-v2.0.apk):
 
-- APK `13,977,104` bytes
-- `sha256 99c89628567c04dd59c04a57261cad93be809acaa1914befa61c0d4d9fad885e`
-- payload `libo3p.so` `442,848` bytes (with the stock LKM),
-  `sha256 372518ecbacd9ee1878be74a947fce1d4ea68663c459e6de16c84e7a75e298bb`
+- APK `14,222,864` bytes
+- `sha256 7e900dd3ed222fb3864f4172fd0add16627466b93f69996940a94e118dba7099`
+- payload `libo3p.so` `1,488,284` bytes (with the stock LKM),
+  `sha256 98936d14b5f50b1fc4a9b35741404088a33e1a1fe68042b61e8e948c31f87dfa`

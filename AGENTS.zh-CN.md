@@ -12,9 +12,10 @@
 
 ## 状态
 
-- 发布 **v1.9**：`release/o3root2-v1.9.apk`
-  （`13,977,104 B`，`sha256 99c89628567c04dd59c04a57261cad93be809acaa1914befa61c0d4d9fad885e`）；
-  载荷默认运行时解析 KernelSU 符号（kallsyms）；v1.8（纯重链接）APK 保留在 git 历史里。
+- 发布 **v2.0**：`release/o3root2-v2.0.apk`
+  （`14,222,864 B`，`sha256 7e900dd3ed222fb3864f4172fd0add16627466b93f69996940a94e118dba7099`）；
+  载荷内置 tiann / KernelSU-Next / SukiSU 三种 LKM，按已安装的管理器自动选择（`O3P_KSU_FORK` 可覆盖），
+并默认运行时解析符号（kallsyms）；v1.8/v1.9 保留在 git 历史里。
 - 已在 `yingtian` / `OS4.0.16.0.XBMCNXM` 实机验证（冷启动，端到端）。
 - `lhasa` / `OS4.0.26.0.XPNCNXM` 携带**逐位相同的内核**
   （`sha256 cde87cd7…`）；未实机测试。
@@ -28,7 +29,7 @@ bash scripts/fetch-toolchain.sh   # android.jar、build-tools r34、Shizuku jars
 
 # payload（需要 NDK clang）
 NDK_CC=/path/to/ndk/.../aarch64-linux-android35-clang bash payload/build-payload.sh
-# 参考结果：payload 67,496 B；配官方 LKM 的 libo3p.so 442,848 B，sha256 372518ec…98bb
+# 参考结果：payload 69,568 B；含三种 LKM 的 libo3p.so 1,488,284 B，sha256 98936d14…87dfa
 
 # app（需要 SDK + Shizuku jars + 你自己的 keystore；见 docs/BUILD.md）
 ANDROID_JAR=... BUILD_TOOLS=... SHIZUKU_JARS=... \
@@ -41,7 +42,7 @@ KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
 |---|---|
 | `payload/o3p.c` | 利用载荷（C）：UAF 触发、页回收、RB 写原语、两阶段、KASLR slide、KernelSU 重链接/补丁/加载、rootd |
 | `payload/ksu/` | `ksu_symtab.h`（上游各 fork 的 248 个 KernelSU 符号并集，供 relink 回退）、`mksymtab.py`（重新生成单 LKM 表）、`relink_ksu.py`（离线重链接参考实现） |
-| `payload/lkm/` | 官方 KernelSU v3.3.1 LKM（`android17-6.18`，GPL-3.0，未修改） |
+| `payload/lkm/` | 官方 `android17-6.18` LKM（GPL-3.0，未修改）：KernelSU v3.3.1、KernelSU-Next v3.4.2、SukiSU-Ultra v4.2.1-r2 |
 | `app/src/o3/st/root1/` | Java：`Main`（UI/状态机）、`PayloadRunner`、`StateProbe`、`RecoverRunner`、`ManagerInstaller`、各监听器 |
 | `app/build.sh`、`payload/build-payload.sh`、`scripts/*` | 构建入口 |
 | `docs/` | ARCHITECTURE（设计+移植）、SECURITY（风险/清理）、BUILD、APP_O3_ROOT（开发日志）、OTA/内核报告、CVE 可行性、证据截图 |
@@ -79,8 +80,9 @@ KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
 ## 已验证 / 未验证
 
 实机已验证：完整冷启动链、`uid=0` + full caps、KernelSU `Live`、管理器自动
-打开、Enforcing 回弹守护与一键恢复、Permissive 期间网络正常；v1.9 发布 APK
-（运行时加载器）已做冷启动端到端验证。
+打开、Enforcing 回弹守护与一键恢复、Permissive 期间网络正常；v2.0 发布 APK
+已在三种管理器镜像上冷启动验证（仅 tiann / 仅 KernelSU-Next / 仅 SukiSU）：
+应用识别管理器、载荷从内置 LKM 中选对应版本、对应管理器被拉到前台。
 
 未验证：`lhasa` 实机；**原版 Shizuku**（我们用的是官方 `dev.rikka.shizuku`
 API，但只实测过 ShizukuX 13.7）；`/system/bin/su` 只在 KernelSU 首次收到
@@ -112,7 +114,7 @@ root 请求后才出现。
 
 1. 确认 Shizuku 以 shell 模式运行：
    `ps -A -o UID,LABEL,ARGS | grep shizuku_plus_server` → `2000 u:r:shell:s0`。
-2. 安装：`adb install -r release/o3root2-v1.9.apk`；MIUI 若报
+2. 安装：`adb install -r release/o3root2-v2.0.apk`；MIUI 若报
    `INSTALL_FAILED_USER_RESTRICTED`，允许“USB 安装”或用 root 执行
    `pm install -r -d`。
 3. 打开 App，授予 Shizuku 权限，点 Continue；等待 20–120 秒。

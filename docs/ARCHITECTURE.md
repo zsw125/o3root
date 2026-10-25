@@ -110,8 +110,14 @@ static addresses, including the embedded KernelSU LKM.
 
 ## KernelSU loading
 
-1. The official prebuilt LKM for `android17-6.18` is embedded after the payload
-   with a 24-byte trailer (`O3KSKO01`, payload_len, lkm_len).
+1. Three prebuilt LKMs ride after the payload in one v2 container (per-entry
+   table + `O3KSKM02`/count trailer; the legacy single-LKM `O3KSKO01` trailer
+   is still read): KernelSU v3.3.1 (375,328 B), KernelSU-Next v3.4.2
+   (473,552 B) and SukiSU v4.2.1-r2 (569,752 B). Before loading, the payload
+   scans `/data/app` for the installed manager (`me.weishu.kernelsu` → 1,
+   `com.rifsxd.ksunext` → 2, `com.sukisu.ultra` → 3; `O3P_KSU_FORK`
+   overrides) and slices out that LKM; the app performs the same probe and
+   passes the fork to the payload.
 2. Primary path — **runtime kallsyms resolution**: `kallsyms_patch()` walks the
    LKM's `.symtab`, collects every undefined symbol name, saves and zeroes
    `/proc/sys/kernel/kptr_restrict`, resolves each name through
@@ -127,9 +133,10 @@ static addresses, including the embedded KernelSU LKM.
    exports, protected symbols and CRCs.
 4. One instruction is patched in either path: the loader parses
    `.rela.init.text`, finds the relocation whose symbol is `setenforce`, and
-   rewrites the 4 bytes at `r_offset - 4` (`mov w0,#1` → `mov w0,#0`; observed
-   offsets `0x144` for tiann/KernelSU-Next and `0x178` for SukiSU inside
-   `.init.text`). A unique-scan fallback covers LKMs whose relocations cannot
+   rewrites the 4 bytes at `r_offset - 4` (`mov w0,#1` → `mov w0,#0`;
+   section-relative `.init.text+0x144` for tiann/KernelSU-Next and `+0x178` for
+   SukiSU — the log prints absolute file offsets 0x22144 / 0x37144 / 0x3e178
+   for these builds). A unique-scan fallback covers LKMs whose relocations cannot
    be resolved. So the module does **not** call `setenforce(1)` during init.
    (Patching the `bl setenforce` call site instead is not possible: the CALL26
    relocation rewrites those 4 bytes at load time, causing an undefined
@@ -138,9 +145,12 @@ static addresses, including the embedded KernelSU LKM.
    `fork()` + `exec("/system/bin/sh","-c","insmod ...")`, wait, and verify
    `/proc/modules` contains `kernelsu`.
 
-Validated with the tiann v3.3.1, KernelSU-Next v3.4.2 and SukiSU v4.2.1-r2
-LKMs on `6.18.21`; all three end up `Live` with SELinux still Permissive and
-Wi-Fi working.
+Validated on `6.18.21` with three manager images (only KernelSU v3.3.1, only
+KernelSU-Next v3.4.2, only SukiSU v4.2.1-r2 installed): in each cold boot the
+app detected the manager, the blob yielded the matching LKM (the file written to
+`/data/local/tmp/o3p_ksu.ko` was 375,328 / 473,552 / 569,752 bytes), the module
+ended `Live` with SELinux still Permissive and Wi-Fi working, and the matching
+manager was brought to the foreground.
 
 ## rootd
 

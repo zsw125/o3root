@@ -9,7 +9,10 @@ public class StateProbe implements Runnable {
 
     public void run() {
         String out = PayloadRunner.runShellSync(
-                "grep -c kernelsu /proc/modules 2>/dev/null; getenforce 2>/dev/null; (pm path me.weishu.kernelsu >/dev/null 2>&1 && echo 1 || echo 0)");
+                "grep -c kernelsu /proc/modules 2>/dev/null; getenforce 2>/dev/null; "
+                        + "pm path me.weishu.kernelsu >/dev/null 2>&1 && echo tiann; "
+                        + "pm path com.rifsxd.ksunext >/dev/null 2>&1 && echo next; "
+                        + "pm path com.sukisu.ultra >/dev/null 2>&1 && echo sukisu; true");
         main.probeNow(out);
     }
 }

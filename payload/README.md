@@ -13,12 +13,16 @@ shell-domain process.
 export NDK_CC=/path/to/ndk/toolchains/llvm/prebuilt/<host>/bin/aarch64-linux-android35-clang
 bash build-payload.sh
 # -> build/o3p.bin      (payload executable)
-# -> build/libo3p.so    (payload + KernelSU LKM + trailer)
+# -> build/libo3p.so    (payload + three KernelSU-family LKMs + table/trailer)
 ```
 
-`mk_payload.py` appends the LKM and a 24-byte trailer (`O3KSKO01`, payload_len,
-lkm_len). The payload reads that trailer from `/proc/self/exe`, so the same
-file can be executed directly (`./libo3p.so`).
+`mk_payload.py` writes a v2 container: the payload, the three LKMs (KernelSU
+v3.3.1, KernelSU-Next v3.4.2, SukiSU v4.2.1-r2), a 24-byte-per-entry tag table
+and a `O3KSKM02` + `u32 count` trailer. The payload reads the trailer from
+`/proc/self/exe`, detects the installed manager (or honours `O3P_KSU_FORK`),
+slices out the matching LKM and loads it; the same file can still be executed
+directly (`./libo3p.so`). The legacy single-LKM `O3KSKO01` layout remains
+readable.
 
 ## What the payload does
 
@@ -41,7 +45,11 @@ file can be executed directly (`./libo3p.so`).
 5. **Fake cred** (`stage 1`): a perf ring page (kernel VA leaked via kretprobe)
    holds a fake `struct cred` with uid/euid/fsuid=0, full caps, and the
    original SELinux blob pointer.
-6. **KernelSU LKM**: the loader resolves the embedded LKM's undefined symbols at
+6. **KernelSU LKM (adaptive)**: before loading, the payload scans `/data/app`
+   for the installed manager — `me.weishu.kernelsu` (KernelSU, tag 1),
+   `com.rifsxd.ksunext` (KernelSU-Next, tag 2) or `com.sukisu.ultra`
+   (SukiSU-Ultra, tag 3) — and picks that LKM from the embedded blob
+   (`O3P_KSU_FORK` overrides). It then resolves the LKM's undefined symbols at
    runtime via `/proc/kallsyms` (temporarily lowering `kptr_restrict`, then
    restoring it); `O3P_RELINK_ONLY=1` falls back to the 248-symbol union +
    address+slide. It also patches the module so it does not force SELinux back
@@ -59,8 +67,10 @@ file can be executed directly (`./libo3p.so`).
 | `ksu/ksu_symtab.h` | union of 248 KernelSU symbols (upstream forks) → vmlinux addresses; used by the relink fallback |
 | `ksu/mksymtab.py` | regenerate `ksu_symtab.h` from `vmlinux.elf` (+ env `VMLINUX`) |
 | `ksu/relink_ksu.py` | offline relinker, reference for the runtime `ksu_patch` |
-| `mk_payload.py` | append LKM + trailer → `libo3p.so` |
-| `lkm/…kernelsu.ko` | official KernelSU v3.3.1 LKM for `android17-6.18` (GPL-3.0) |
+| `mk_payload.py` | pack payload + three LKMs + tag table/trailer → `libo3p.so` |
+| `lkm/lkm-aarch64-…kernelsu.ko` | official KernelSU v3.3.1 LKM for `android17-6.18` (GPL-3.0) |
+| `lkm/aarch64-next-…kernelsu.ko` | official KernelSU-Next v3.4.2 LKM for `android17-6.18` (GPL-3.0) |
+| `lkm/sukisu-aarch64-…ko` | official SukiSU-Ultra v4.2.1-r2 LKM for `android17-6.18` (GPL-3.0) |
 | `legacy/t32.c`, `legacy/t34.c`, `legacy/mk_o3p.py` | earlier exploit revisions; `mk_o3p.py` shows how `o3p.c` was derived from `t34.c` |
 
 ## Notes

@@ -11,7 +11,7 @@ work with rough effort estimates.
 
 | item | value |
 |---|---|
-| release | v1.9, `release/o3root2-v1.9.apk` (13,977,104 B, sha256 `99c89628…`) |
+| release | v2.0, `release/o3root2-v2.0.apk` (14,222,864 B, sha256 `7e900dd3…`) |
 | verified device | Xiaomi Pad 9 Pro Max `yingtian`, HyperOS `OS4.0.16.0.XBMCNXM`, kernel `6.18.21-android17-5-g805aa6adea19-abogki565292102-4k` |
 | second target | `lhasa` (Xiaomi 18 Fold) `OS4.0.26.0.XPNCNXM` — same kernel sha256 `cde87cd7…` (boot header/ramdisk differ); **not device-tested** |
 | persistence | none (current boot only) |
@@ -207,3 +207,17 @@ The payload can be tested standalone (root or shell): push `libo3p.so` as
 - Do not "fix" the write value to `0x100` (dereference crash).
 - Do not enable enforcing after the exploit without the app's recovery path.
 - Do not run this on devices you don't own; see `docs/SECURITY.md`.
+
+## v2.0 — adaptive LKM (2026-10-25)
+
+- The blob now carries three LKMs (KernelSU v3.3.1 375,328 B, KernelSU-Next
+  v3.4.2 473,552 B, SukiSU v4.2.1-r2 569,752 B) in a v2 container (per-entry
+  tag table + `O3KSKM02`/count trailer; legacy `O3KSKO01` still readable).
+- The payload detects the installed manager (`me.weishu.kernelsu` → tag 1,
+  `com.rifsxd.ksunext` → 2, `com.sukisu.ultra` → 3; `O3P_KSU_FORK`
+  overrides), slices out that LKM and loads it; the app probes the same manager,
+  passes the fork to the payload and opens the matching manager through a
+  resolved activity.
+- Cold-boot verified on three images (only KernelSU / only KernelSU-Next / only
+  SukiSU installed); `/data/local/tmp/o3p_ksu.ko` sizes and manager foregrounds
+  matched the selection every time; SELinux Permissive and Wi-Fi working.

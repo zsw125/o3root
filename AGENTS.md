@@ -10,9 +10,10 @@ and leaves a root daemon for the current boot. Read this file first, then
 
 ## State
 
-- Release **v1.9**, `release/o3root2-v1.9.apk`
-  (`13,977,104 B`, `sha256 99c89628567c04dd59c04a57261cad93be809acaa1914befa61c0d4d9fad885e`).
-  The v1.8 (relink-only loader) APK remains in the git history.
+- Release **v2.0**, `release/o3root2-v2.0.apk`
+  (`14,222,864 B`, `sha256 7e900dd3ed222fb3864f4172fd0add16627466b93f69996940a94e118dba7099`).
+  v2.0 adds the multi-LKM blob (KernelSU / KernelSU-Next / SukiSU) with
+  manager-based selection; v1.8 (relink-only) and v1.9 remain in the git history.
 - Hardware-verified on `yingtian` / `OS4.0.16.0.XBMCNXM` (cold boot, end-to-end).
 - `lhasa` / `OS4.0.26.0.XPNCNXM` ships the **bit-identical kernel**
   (`sha256 cde87cd7…`); not device-tested.
@@ -26,7 +27,7 @@ bash scripts/fetch-toolchain.sh   # android.jar, build-tools r34, Shizuku jars, 
 
 # payload  (needs an NDK clang)
 NDK_CC=/path/to/ndk/.../aarch64-linux-android35-clang bash payload/build-payload.sh
-# reference result: 67,496 B payload; libo3p.so 442,848 B (stock LKM), sha256 372518ec…98bb
+# reference result: 69,568 B payload; libo3p.so 1,488,284 B (three LKMs), sha256 98936d14…87dfa
 
 # app (needs SDK + Shizuku jars + your keystore; see docs/BUILD.md)
 ANDROID_JAR=... BUILD_TOOLS=... SHIZUKU_JARS=... \
@@ -39,7 +40,7 @@ KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
 |---|---|
 | `payload/o3p.c` | the exploit payload (C): UAF trigger, page reclaim, RB write primitive, two stages, KASLR slide, KernelSU runtime loader (kallsyms first, relink fallback), dynamic init patch, rootd |
 | `payload/ksu/` | `ksu_symtab.h` (union of 248 KernelSU symbols from upstream forks), `mksymtab.py` (regen single-LKM table), `relink_ksu.py` (offline relinker reference) |
-| `payload/lkm/` | official KernelSU v3.3.1 LKM for `android17-6.18` (GPL-3.0, unmodified) |
+| `payload/lkm/` | official `android17-6.18` LKMs (GPL-3.0, unmodified): KernelSU v3.3.1, KernelSU-Next v3.4.2, SukiSU-Ultra v4.2.1-r2 |
 | `app/src/o3/st/root1/` | Java: `Main` (UI/state machine), `PayloadRunner`, `StateProbe`, `RecoverRunner`, `ManagerInstaller`, listeners |
 | `app/build.sh`, `payload/build-payload.sh`, `scripts/*` | build entry points |
 | `docs/` | ARCHITECTURE (design + porting), SECURITY (risks/cleanup), BUILD, APP_O3_ROOT (dev log), OTA/kernel report, CVE feasibility, evidence PNGs |
@@ -94,10 +95,11 @@ KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
 
 Verified on hardware: full cold-boot chain, `uid=0` + full caps, KernelSU
 `Live`, manager auto-open, Enforcing-rebound guard and one-click recovery,
-network health while Permissive. The v1.9 release APK (runtime loader) was
-cold-boot tested end-to-end; the loader itself was validated with tiann v3.3.1,
-KernelSU-Next v3.4.2 and SukiSU v4.2.1-r2 LKMs, and the `O3P_RELINK_ONLY=1`
-fallback was re-validated with tiann.
+network health while Permissive. The v2.0 release APK was cold-boot tested
+end-to-end on three images (only the tiann manager, only KernelSU-Next, only
+SukiSU): each time the app detected the manager, the payload selected the
+matching embedded LKM and the matching manager came to the foreground;
+`O3P_RELINK_ONLY=1` still falls back to the 248-symbol union.
 
 Not verified: `lhasa` hardware; **original Shizuku** (we use the official
 `dev.rikka.shizuku` API, but only ShizukuX 13.7 was exercised); `/system/bin/su`
@@ -131,7 +133,7 @@ Negative results — don't repeat without a new idea (details in
 
 1. Shizuku running in shell mode: `ps -A -o UID,LABEL,ARGS | grep shizuku_plus_server`
    → `2000 u:r:shell:s0`.
-2. Install: `adb install -r release/o3root2-v1.9.apk`; if MIUI says
+2. Install: `adb install -r release/o3root2-v2.0.apk`; if MIUI says
    `INSTALL_FAILED_USER_RESTRICTED`, allow install-via-USB or, with root,
    `pm install -r -d`.
 3. Open the app, grant Shizuku permission, press Continue; wait 20–120 s.

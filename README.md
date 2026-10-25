@@ -6,8 +6,9 @@ Local privilege escalation + KernelSU for the Xiaomi **yingtian** (Pad 9 Pro
 Max) and **lhasa** (Xiaomi 18 Fold) family on HyperOS 4 (Android 17, kernel
 `6.18.21`). The whole chain is delivered as a normal Android app that drives
 [Shizuku](https://github.com/RikkaApps/Shizuku) in shell mode, exploits
-**CVE-2026-98260**, and loads a KernelSU LKM — no PC, no unlocked bootloader,
-no partition changes.
+**CVE-2026-98260**, and loads the KernelSU-family LKM that matches the installed manager
+(KernelSU / KernelSU-Next / SukiSU) — no PC, no unlocked bootloader, no
+partition changes.
 
 > Research / education / device-repair project. Boot-only (a reboot removes
 > it). Only run on devices you own. Read [`docs/SECURITY.md`](docs/SECURITY.md)
@@ -26,8 +27,8 @@ rebuilds the payload/APK when the toolchain environment is set.
 
 | | |
 |---|---|
-| release | **v1.9** (`release/o3root2-v1.9.apk`, sha256 `99c89628…`) |
-| chain | Shizuku shell → CVE-2026-98260 → `uid=0` + full caps → KernelSU LKM → rootd |
+| release | **v2.0** (`release/o3root2-v2.0.apk`, sha256 `7e900dd3…`) |
+| chain | Shizuku shell → CVE-2026-98260 → `uid=0` + full caps → matching KernelSU LKM (KernelSU / KernelSU-Next / SukiSU) → rootd |
 | persistence | none (current boot only) |
 | tested device | Xiaomi Pad 9 Pro Max `yingtian`, HyperOS `OS4.0.16.0.XBMCNXM` |
 | second device | `lhasa` (Xiaomi 18 Fold, `OS4.0.26.0.XPNCNXM`): the boot kernel is **bit-identical** to yingtian's (`sha256 cde87cd7…`), so the same payload applies; not device-tested |
@@ -58,7 +59,7 @@ primitive, the KernelSU patch and the porting guide.
 1. On the device: enable Developer options → Wireless debugging (or ADB).
    Install **Shizuku** / ShizukuX and start it in **shell mode**:
    `shizuku_plus_server` must run as `uid=2000`, `u:r:shell:s0`.
-2. Install `release/o3root2-v1.9.apk` (MIUI may need "Install via USB" allowed).
+2. Install `release/o3root2-v2.0.apk` (MIUI may need "Install via USB" allowed).
 3. Open **O3 Root**, grant the Shizuku permission, press
    **Continue to UID 0**. The log shows `★ UIDNOW uid=0`,
    `★ KSU_MODULE LIVE`, and the KernelSU manager opens automatically.
