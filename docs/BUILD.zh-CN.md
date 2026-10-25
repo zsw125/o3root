@@ -69,8 +69,8 @@ bash payload/build-payload.sh
 
 `build-payload.sh` 只需要 `NDK_CC`。KernelSU LKM 位于
 `payload/lkm/lkm-aarch64-android17-6.18_kernelsu.ko`；默认输出与
-`release/o3root2-v1.8.apk` 里的参考构建一致（`libo3p.so` 的
-`sha256 a7e98338…`）。
+`release/o3root2-v1.9.apk` 里的参考构建一致（`libo3p.so` 的
+`sha256 372518ec…`）。
 
 你也可以直接在设备上（root/shell）运行载荷：
 
@@ -136,13 +136,13 @@ App 的 LogBox 会显示载荷每个阶段；用 **导出日志** 写到
 | 加载 KernelSU 后断网 | SELinux 被切回 Enforcing 且 `policycap` 被污染 —— 点恢复按钮（`su -c setenforce 0`）或重启 |
 | Shizuku 变成 root 模式而非 shell | 在没有 `su` 的设备上以 adb/无线调试模式启动 Shizuku；root 模式会被链路拒绝 |
 | `INSTALL_FAILED_USER_RESTRICTED` | 允许 USB 安装，或用 root `pm install` |
-| `KSU_CODEPATCH … -2` | 内置 KernelSU LKM 与本次构建不匹配；核对 `payload/o3p.c`（`ksu_patch`）里的补丁偏移 |
+| `KSU_CODEPATCH … -2` | 没找到 `setenforce` 重定位（唯一扫描也失败）—— 核对 LKM/构建 |
 
 ## 可复现性
 
-参考构建（v1.8，release/o3root2-v1.8.apk）：
+参考构建（v1.9，release/o3root2-v1.9.apk）：
 
-- APK `13,973,008` 字节
-- `sha256 0d7c5ea8b1a4d4c35d0c7c444d0c022b36ed5af9b28f7d2f9c7b31e04afff05e`
-- payload `libo3p.so` `437,400` 字节，
-  `sha256 a7e9833883189eeb2a893e2ccff063b55601f382b8dd5d15ad7e81af61975ec4`
+- APK `13,977,104` 字节
+- `sha256 99c89628567c04dd59c04a57261cad93be809acaa1914befa61c0d4d9fad885e`
+- payload `libo3p.so` `442,848` 字节（配官方 LKM），
+  `sha256 372518ecbacd9ee1878be74a947fce1d4ea68663c459e6de16c84e7a75e298bb`

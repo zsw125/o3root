@@ -12,8 +12,9 @@
 
 ## 状态
 
-- 发布 **v1.8**：`release/o3root2-v1.8.apk`
-  （`13,973,008 B`，`sha256 0d7c5ea8b1a4d4c35d0c7c444d0c022b36ed5af9b28f7d2f9c7b31e04afff05e`）。
+- 发布 **v1.9**：`release/o3root2-v1.9.apk`
+  （`13,977,104 B`，`sha256 99c89628567c04dd59c04a57261cad93be809acaa1914befa61c0d4d9fad885e`）；
+  载荷默认运行时解析 KernelSU 符号（kallsyms）；v1.8（纯重链接）APK 保留在 git 历史里。
 - 已在 `yingtian` / `OS4.0.16.0.XBMCNXM` 实机验证（冷启动，端到端）。
 - `lhasa` / `OS4.0.26.0.XPNCNXM` 携带**逐位相同的内核**
   （`sha256 cde87cd7…`）；未实机测试。
@@ -27,7 +28,7 @@ bash scripts/fetch-toolchain.sh   # android.jar、build-tools r34、Shizuku jars
 
 # payload（需要 NDK clang）
 NDK_CC=/path/to/ndk/.../aarch64-linux-android35-clang bash payload/build-payload.sh
-# 参考结果：payload 62,048 B；libo3p.so 437,400 B，sha256 a7e9833883…75ec4
+# 参考结果：payload 67,496 B；配官方 LKM 的 libo3p.so 442,848 B，sha256 372518ec…98bb
 
 # app（需要 SDK + Shizuku jars + 你自己的 keystore；见 docs/BUILD.md）
 ANDROID_JAR=... BUILD_TOOLS=... SHIZUKU_JARS=... \
@@ -39,7 +40,7 @@ KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
 | 路径 | 内容 |
 |---|---|
 | `payload/o3p.c` | 利用载荷（C）：UAF 触发、页回收、RB 写原语、两阶段、KASLR slide、KernelSU 重链接/补丁/加载、rootd |
-| `payload/ksu/` | `ksu_symtab.h`（225 个 KernelSU 符号 → 地址）、`mksymtab.py`（重新生成）、`relink_ksu.py`（离线重链接参考实现） |
+| `payload/ksu/` | `ksu_symtab.h`（上游各 fork 的 248 个 KernelSU 符号并集，供 relink 回退）、`mksymtab.py`（重新生成单 LKM 表）、`relink_ksu.py`（离线重链接参考实现） |
 | `payload/lkm/` | 官方 KernelSU v3.3.1 LKM（`android17-6.18`，GPL-3.0，未修改） |
 | `app/src/o3/st/root1/` | Java：`Main`（UI/状态机）、`PayloadRunner`、`StateProbe`、`RecoverRunner`、`ManagerInstaller`、各监听器 |
 | `app/build.sh`、`payload/build-payload.sh`、`scripts/*` | 构建入口 |
@@ -78,7 +79,8 @@ KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
 ## 已验证 / 未验证
 
 实机已验证：完整冷启动链、`uid=0` + full caps、KernelSU `Live`、管理器自动
-打开、v1.8 的 Enforcing 回弹守护与一键恢复、Permissive 期间网络正常。
+打开、Enforcing 回弹守护与一键恢复、Permissive 期间网络正常；v1.9 发布 APK
+（运行时加载器）已做冷启动端到端验证。
 
 未验证：`lhasa` 实机；**原版 Shizuku**（我们用的是官方 `dev.rikka.shizuku`
 API，但只实测过 ShizukuX 13.7）；`/system/bin/su` 只在 KernelSU 首次收到
@@ -110,7 +112,7 @@ root 请求后才出现。
 
 1. 确认 Shizuku 以 shell 模式运行：
    `ps -A -o UID,LABEL,ARGS | grep shizuku_plus_server` → `2000 u:r:shell:s0`。
-2. 安装：`adb install -r release/o3root2-v1.8.apk`；MIUI 若报
+2. 安装：`adb install -r release/o3root2-v1.9.apk`；MIUI 若报
    `INSTALL_FAILED_USER_RESTRICTED`，允许“USB 安装”或用 root 执行
    `pm install -r -d`。
 3. 打开 App，授予 Shizuku 权限，点 Continue；等待 20–120 秒。
@@ -125,7 +127,7 @@ root 请求后才出现。
 | 反复 `VERDICT NO_RECLAIM` | 竞态是概率性的；重试（通常 1–6 次），卡住就重启 |
 | `固件门禁未通过` | 内核/指纹不匹配 —— 需要新的 profile |
 | KernelSU 加载后断网 | SELinux 回到 Enforcing + policycap 被污染 → 点恢复按钮或重启 |
-| `KSU_CODEPATCH … -2` | 内置 LKM 不是预期的构建/偏移 —— 重新核对补丁位置 |
+| `KSU_CODEPATCH … -2` | 没找到 `setenforce` 重定位（唯一扫描也失败）—— 核对 LKM |
 | 管理器打不开 | 检查 App 安装路径/包名，以及 KSU 管理器包是否存在 |
 
 ## 提交前卫生检查

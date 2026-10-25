@@ -112,19 +112,35 @@ static addresses, including the embedded KernelSU LKM.
 
 1. The official prebuilt LKM for `android17-6.18` is embedded after the payload
    with a 24-byte trailer (`O3KSKO01`, payload_len, lkm_len).
-2. `ksu_patch()` walks the LKM's `.symtab` and rewrites every undefined symbol
-   (225 of them) to `SHN_ABS` with `vmlinux_addr + slide`. This bypasses module
-   symbol-namespace checks, `TRIM_UNUSED_KSYMS` exports, protected symbols and
-   CRCs.
-3. `ksu_patch()` also patches one instruction: `.init.text+0x144`
-   `mov w0,#1` → `mov w0,#0` (file offset `0x22144`, bytes `52 80 00 20` →
-   `52 80 00 00`), so the module does **not** call `setenforce(1)` during init.
+2. Primary path — **runtime kallsyms resolution**: `kallsyms_patch()` walks the
+   LKM's `.symtab`, collects every undefined symbol name, saves and zeroes
+   `/proc/sys/kernel/kptr_restrict`, resolves each name through
+   `/proc/kallsyms`, and rewrites the symbol to `SHN_ABS` with the runtime
+   address. The old `kptr_restrict` value is always restored before loading.
+   This removes the build-time dependency on `vmlinux.elf`; the measured runs
+   resolved 225 (tiann), 227 (KernelSU-Next) and 245 (SukiSU) undefined
+   symbols with zero misses.
+3. Fallback path — **offline relink table**: `O3P_RELINK_ONLY=1` (or a
+   kallsyms miss) uses the embedded union of 248 KernelSU symbols from the
+   upstream forks and rewrites each undefined symbol to `vmlinux_addr + slide`.
+   It also bypasses module symbol-namespace checks, `TRIM_UNUSED_KSYMS`
+   exports, protected symbols and CRCs.
+4. One instruction is patched in either path: the loader parses
+   `.rela.init.text`, finds the relocation whose symbol is `setenforce`, and
+   rewrites the 4 bytes at `r_offset - 4` (`mov w0,#1` → `mov w0,#0`; observed
+   offsets `0x144` for tiann/KernelSU-Next and `0x178` for SukiSU inside
+   `.init.text`). A unique-scan fallback covers LKMs whose relocations cannot
+   be resolved. So the module does **not** call `setenforce(1)` during init.
    (Patching the `bl setenforce` call site instead is not possible: the CALL26
    relocation rewrites those 4 bytes at load time, causing an undefined
    instruction / module stuck in `coming`.)
-4. Write the patched LKM to `/data/local/tmp/o3p_ksu.ko`, then
+5. Write the patched LKM to `/data/local/tmp/o3p_ksu.ko`, then
    `fork()` + `exec("/system/bin/sh","-c","insmod ...")`, wait, and verify
    `/proc/modules` contains `kernelsu`.
+
+Validated with the tiann v3.3.1, KernelSU-Next v3.4.2 and SukiSU v4.2.1-r2
+LKMs on `6.18.21`; all three end up `Live` with SELinux still Permissive and
+Wi-Fi working.
 
 ## rootd
 
@@ -185,12 +201,14 @@ alive for the rest of the boot:
 2. Convert the raw `Image` with `vmlinux-to-elf` to recover symbols.
 3. Dump BTF (`tools/kernel_cfg_btf.py` or `bpftool btf dump`) to confirm the
    `task_struct`, `cred`, `k_itimer`, `selinux_state` offsets above.
-4. Regenerate `payload/ksu/ksu_symtab.h` with `mksymtab.py` (`VMLINUX=...`).
+4. Regenerate `payload/ksu/ksu_symtab.h` with `mksymtab.py` (`VMLINUX=...`) for
+   the relink fallback (the default kallsyms path needs no table).
 5. Update the static addresses and constants in `payload/o3p.c`
    (`INIT_USER_NS_STATIC`, `SELINUX_STATE_STATIC`, probe offsets).
-6. Re-check the instruction patched in the KernelSU LKM (search for
-   `mov w0,#1` before the `setenforce` call in `.init.text`) — the offset
-   `0x144` is build-specific.
+6. The KernelSU instruction patch is located at runtime from
+   `.rela.init.text` (the `setenforce` relocation minus 4 bytes), so no
+   per-build constant is required; the unique-scan fallback logs
+   `KSU_CODEPATCH … -2` if it cannot find the sequence.
 7. Update the firmware gate (`Main.checkFirmware`) and rebuild the APK.
 
 KASLR itself needs no per-device work: the slide is derived at runtime.

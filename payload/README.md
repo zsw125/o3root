@@ -41,10 +41,12 @@ file can be executed directly (`./libo3p.so`).
 5. **Fake cred** (`stage 1`): a perf ring page (kernel VA leaked via kretprobe)
    holds a fake `struct cred` with uid/euid/fsuid=0, full caps, and the
    original SELinux blob pointer.
-6. **KernelSU LKM**: relinks the embedded LKM at runtime (`ksu_patch`, all 225
-   undefined symbols → SHN_ABS + address+slide), patches the module so it does
-   not force SELinux back to Enforcing, writes `/data/local/tmp/o3p_ksu.ko`,
-   then `insmod`s it from a forked `/system/bin/sh`.
+6. **KernelSU LKM**: the loader resolves the embedded LKM's undefined symbols at
+   runtime via `/proc/kallsyms` (temporarily lowering `kptr_restrict`, then
+   restoring it); `O3P_RELINK_ONLY=1` falls back to the 248-symbol union +
+   address+slide. It also patches the module so it does not force SELinux back
+   to Enforcing, writes `/data/local/tmp/o3p_ksu.ko`, then `insmod`s it from a
+   forked `/system/bin/sh`.
 7. **rootd**: forks a detached root daemon; the parent execs the payload with
    `--rootd`, which listens on the abstract unix socket `@o3p_rootd` and only
    accepts peers with uid 0 or 2000 (SO_PEERCRED). Clients: `--shell "<cmd>"`.
@@ -54,7 +56,7 @@ file can be executed directly (`./libo3p.so`).
 | file | role |
 |---|---|
 | `o3p.c` | complete payload (25 KB of C; generated from the t32/t34 lineage) |
-| `ksu/ksu_symtab.h` | 225 KernelSU undefined symbols → vmlinux static addresses |
+| `ksu/ksu_symtab.h` | union of 248 KernelSU symbols (upstream forks) → vmlinux addresses; used by the relink fallback |
 | `ksu/mksymtab.py` | regenerate `ksu_symtab.h` from `vmlinux.elf` (+ env `VMLINUX`) |
 | `ksu/relink_ksu.py` | offline relinker, reference for the runtime `ksu_patch` |
 | `mk_payload.py` | append LKM + trailer → `libo3p.so` |

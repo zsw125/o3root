@@ -14,10 +14,12 @@ licenses and redistribution terms.
   - `payload/lkm/lkm-aarch64-android17-6.18_kernelsu.ko` — official prebuilt LKM
     for GKI `android17-6.18` (release asset, aarch64).
   - `app/assets/ksu-manager.apk` — KernelSU manager APK from the same release.
-  - `release/o3root2-v1.8.apk` embeds both the manager APK and a *relinked*
-    copy of the LKM (symbol addresses rebased for the target kernel build).
-- The relink process (`payload/ksu/relink_ksu.py`) only rewrites ELF symbol
-  values; it does not modify KernelSU source code. KernelSU itself is not
+  - `release/o3root2-v1.9.apk` embeds both the manager APK and the unmodified
+    official LKM; the payload generates a *runtime copy* with rebased symbols
+    (via `/proc/kallsyms`) plus one patched init immediate, then loads that
+    copy. The offline `payload/ksu/relink_ksu.py` does the same rebasing.
+- The runtime/offline rebasing only rewrites ELF symbol values (and one
+  `mov` immediate in `.init.text`); it does not modify KernelSU source code. KernelSU itself is not
   vendored here — fetch it from the project if you need the sources, as
   required by GPL-3.0 when redistributing binaries.
 
@@ -27,7 +29,7 @@ licenses and redistribution terms.
 - Artifacts: `dev.rikka.shizuku:api`, `:provider`, `:aidl`, `:shared` (13.1.5),
   fetched from Maven Central by `scripts/fetch-toolchain.sh`.
 - Not committed to this repository; compiled classes from these jars are
-  embedded in `release/o3root2-v1.8.apk`.
+  embedded in `release/o3root2-v1.9.apk`.
 
 ## Android SDK (Android SDK License)
 

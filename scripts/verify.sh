@@ -60,13 +60,13 @@ s = open('payload/ksu/ksu_symtab.h', encoding='utf-8').read()
 print(len(re.findall(r'\{"[^"]+",\s*0x[0-9a-fA-F]+ULL\}', s)))
 PY
 )
-if [ "$cnt" = "225" ]; then ok "ksu_symtab.h has 225 entries"; else bad "ksu_symtab.h entries: ${cnt:-?} (expected 225)"; fi
+if [ "$cnt" = "248" ]; then ok "ksu_symtab.h has 248 entries"; else bad "ksu_symtab.h entries: ${cnt:-?} (expected 248)"; fi
 
 echo "== release checksum"
 "$PY" - <<'PY'
 import hashlib, sys
 want = open('release/SHA256SUMS.txt', encoding='utf-8').read().split()[0]
-got = hashlib.sha256(open('release/o3root2-v1.8.apk', 'rb').read()).hexdigest()
+got = hashlib.sha256(open('release/o3root2-v1.9.apk', 'rb').read()).hexdigest()
 print('  ok    release apk sha256 matches SHA256SUMS' if got == want else
       '  FAIL  release apk sha256 %s != %s' % (got, want))
 sys.exit(0 if got == want else 1)
@@ -99,7 +99,7 @@ if [ -n "${NDK_CC:-}" ]; then
   log=$(mktemp)
   if bash payload/build-payload.sh >"$log" 2>&1; then
     got=$("$PY" -c "import hashlib;print(hashlib.sha256(open('payload/build/libo3p.so','rb').read()).hexdigest())")
-    want=a7e9833883189eeb2a893e2ccff063b55601f382b8dd5d15ad7e81af61975ec4
+    want=372518ecbacd9ee1878be74a947fce1d4ea68663c459e6de16c84e7a75e298bb
     if [ "$got" = "$want" ]; then ok "libo3p.so sha256 matches reference"; else bad "libo3p.so sha256 $got != $want"; fi
   else
     bad "payload build failed"; tail -20 "$log" | sed 's/^/        /'
@@ -116,7 +116,7 @@ if [ -n "${ANDROID_JAR:-}" ] && [ -n "${BUILD_TOOLS:-}" ] && [ -n "${SHIZUKU_JAR
     if [ -x "$BUILD_TOOLS/aapt2" ] || [ -x "$BUILD_TOOLS/aapt2.exe" ]; then
       AAPT2="$BUILD_TOOLS/aapt2"; [ -x "$AAPT2" ] || AAPT2="$BUILD_TOOLS/aapt2.exe"
       v=$("$AAPT2" dump badging app/o3root2.apk 2>/dev/null | grep -o "versionName='[^']*'" | head -1)
-      case "$v" in *"'1.8'"*) ok "APK rebuilt ($v)";; *) bad "APK version $v (expected 1.8)";; esac
+      case "$v" in *"'1.9'"*) ok "APK rebuilt ($v)";; *) bad "APK version $v (expected 1.9)";; esac
     else
       note "APK rebuilt (aapt2 not found to verify version)"
     fi

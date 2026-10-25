@@ -71,8 +71,8 @@ bash payload/build-payload.sh
 
 `build-payload.sh` only needs `NDK_CC`. The KernelSU LKM is in
 `payload/lkm/lkm-aarch64-android17-6.18_kernelsu.ko`; the default output matches
-the reference build in `release/o3root2-v1.8.apk`
-(`sha256 a7e98338…` for `libo3p.so`).
+the reference build in `release/o3root2-v1.9.apk`
+(`sha256 372518ec…` for `libo3p.so`).
 
 You can run the payload directly on the device (root/shell):
 
@@ -143,13 +143,13 @@ The app's LogBox shows every payload stage; use **Export log** to write
 | Network dead after loading KernelSU | SELinux went back to Enforcing and `policycap` is polluted — press the recovery button (`su -c setenforce 0`) or reboot |
 | Shizuku `root mode` instead of shell | start Shizuku in adb/wireless-debug mode on a device without `su`; root mode is rejected by the chain |
 | `INSTALL_FAILED_USER_RESTRICTED` | allow install-via-USB, or root `pm install` |
-| `KSU_CODEPATCH … -2` | the bundled KernelSU LKM does not match this build; re-check the patch offset in `payload/o3p.c` (`ksu_patch`) |
+| `KSU_CODEPATCH … -2` | the `setenforce` relocation was not found (unique-scan fallback failed) — check the LKM/build |
 
 ## Reproducibility
 
-Reference build (v1.8, release/o3root2-v1.8.apk):
+Reference build (v1.9, release/o3root2-v1.9.apk):
 
-- APK `13,973,008` bytes
-- `sha256 0d7c5ea8b1a4d4c35d0c7c444d0c022b36ed5af9b28f7d2f9c7b31e04afff05e`
-- payload `libo3p.so` `437,400` bytes,
-  `sha256 a7e9833883189eeb2a893e2ccff063b55601f382b8dd5d15ad7e81af61975ec4`
+- APK `13,977,104` bytes
+- `sha256 99c89628567c04dd59c04a57261cad93be809acaa1914befa61c0d4d9fad885e`
+- payload `libo3p.so` `442,848` bytes (with the stock LKM),
+  `sha256 372518ecbacd9ee1878be74a947fce1d4ea68663c459e6de16c84e7a75e298bb`

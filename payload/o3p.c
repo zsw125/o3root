@@ -560,6 +560,7 @@ static void root_proof(void){
 
 /* ==== KernelSU LKM: runtime relink + finit_module ==== */
 #define KSU_SHN_ABS 0xfff1
+static int g_relink_skip_syms=0;
 
 static void stage_note(const char *s){
   int fd=open("/data/local/tmp/o3p_stage.txt",O_WRONLY|O_CREAT|O_APPEND,0644);
@@ -597,7 +598,7 @@ static int ksu_patch(unsigned char *d,size_t len,unsigned long long slide){
   for(int i=0;i<shnum;i++){
     unsigned char *sh=d+shoff+(size_t)i*shentsize;
     unsigned int type; memcpy(&type,sh+4,4);
-    if(type!=2)continue;
+    if(type!=2||g_relink_skip_syms)continue;
     unsigned long long soff,ssize,entsize; unsigned int link;
     memcpy(&soff,sh+0x18,8); memcpy(&ssize,sh+0x20,8); memcpy(&link,sh+0x28,4); memcpy(&entsize,sh+0x38,8);
     if(entsize<24||link>=shnum||soff+ssize>len)return -4;
@@ -623,23 +624,63 @@ static int ksu_patch(unsigned char *d,size_t len,unsigned long long slide){
     strs++;
   }
   { unsigned int shstrndx=0; memcpy(&shstrndx,d+0x3e,2);
-    int cd_patch=-1;
+    int cd_patch=-1; unsigned long long cd_off=0;
+    unsigned int init_idx=0xffffffffu; unsigned long long init_off=0,init_size=0;
     if(shstrndx<shnum){ unsigned char *shs=d+shoff+(size_t)shstrndx*shentsize; unsigned long long so=0,ss=0;
       memcpy(&so,shs+0x18,8); memcpy(&ss,shs+0x20,8);
-      for(int i2=0;i2<shnum;i2++){ unsigned char *sh2=d+shoff+(size_t)i2*shentsize; unsigned int no2=0; memcpy(&no2,sh2,4);
+      if(so+ss<=len) for(unsigned i2=0;i2<shnum;i2++){ unsigned char *sh2=d+shoff+(size_t)i2*shentsize; unsigned int no2=0; memcpy(&no2,sh2,4);
         if(no2>=ss)continue; const char *nm2=(const char*)(d+so+no2);
         if(strcmp(nm2,".init.text"))continue;
-        unsigned long long o2=0,z2=0; memcpy(&o2,sh2+0x18,8); memcpy(&z2,sh2+0x20,8);
-        if(o2+0x14c<=len && z2>0x14c){ unsigned char *q2=d+o2+0x144;
-          if(q2[0]==0x20&&q2[1]==0x00&&q2[2]==0x80&&q2[3]==0x52){ q2[0]=0x00; cd_patch=1; }
-          else cd_patch=-2; }
-        break; }
+        memcpy(&init_off,sh2+0x18,8); memcpy(&init_size,sh2+0x20,8); init_idx=i2; break; } }
+    if(init_idx!=0xffffffffu){
+      for(unsigned i2=0;i2<shnum;i2++){
+        unsigned char *sh2=d+shoff+(size_t)i2*shentsize; unsigned int type2=0; memcpy(&type2,sh2+4,4);
+        if(type2!=4)continue;
+        unsigned int info2=0; memcpy(&info2,sh2+0x2c,4);
+        if(info2!=init_idx)continue;
+        unsigned int link2=0; memcpy(&link2,sh2+0x28,4);
+        unsigned long long roff=0,rsize=0,rentsize=24; memcpy(&roff,sh2+0x18,8); memcpy(&rsize,sh2+0x20,8); memcpy(&rentsize,sh2+0x38,8);
+        if(rentsize<24||link2>=shnum||roff+rsize>len)continue;
+        unsigned char *symh=d+shoff+(size_t)link2*shentsize; unsigned long long syoff=0,sysize=0,syentsize=24;
+        memcpy(&syoff,symh+0x18,8); memcpy(&sysize,symh+0x20,8); memcpy(&syentsize,symh+0x38,8);
+        if(syentsize<24||syoff+sysize>len)continue;
+        unsigned int strlink=0; memcpy(&strlink,symh+0x28,4);
+        if(strlink>=shnum)continue;
+        unsigned char *strh=d+shoff+(size_t)strlink*shentsize; unsigned long long stroff=0,strsize=0;
+        memcpy(&stroff,strh+0x18,8); memcpy(&strsize,strh+0x20,8);
+        if(stroff+strsize>len)continue;
+        const char *strtab=(const char*)(d+stroff);
+        size_t nr=(size_t)(rsize/rentsize);
+        for(size_t k=0;k<nr;k++){
+          unsigned char *re=d+roff+k*rentsize; unsigned long long r_off=0,r_info=0;
+          memcpy(&r_off,re,8); memcpy(&r_info,re+8,8);
+          unsigned int symidx=(unsigned int)(r_info>>32);
+          if((unsigned long long)symidx*syentsize+(unsigned long long)syentsize>sysize)continue;
+          unsigned int nmoff=0; memcpy(&nmoff,d+syoff+(unsigned long long)symidx*syentsize,4);
+          if(nmoff==0||nmoff>=strsize)continue;
+          if(strcmp(strtab+nmoff,"setenforce"))continue;
+          if(r_off<4||r_off>init_size)continue;
+          { unsigned long long cand=init_off+(r_off-4);
+            if(cand+4<=len){ unsigned char *q2=d+cand;
+              if(q2[0]==0x20&&q2[1]==0x00&&q2[2]==0x80&&q2[3]==0x52){ q2[0]=0x00; cd_patch=1; cd_off=cand; }
+              else if(cd_patch<0){ cd_patch=-2; cd_off=cand; } } }
+          if(cd_patch==1)break;
+        }
+        if(cd_patch==1)break;
+      }
+      if(cd_patch<0){ int hits=0; unsigned long long hitoff=0;
+        if(init_off+init_size<=len) for(unsigned long long p=0;p+8<=init_size;p++){
+          unsigned char *q=d+init_off+p;
+          if(q[0]==0x20&&q[1]==0x00&&q[2]==0x80&&q[3]==0x52){ unsigned int w=0; memcpy(&w,q+4,4);
+            if((w&0xfc000000u)==0x94000000u){ hits++; hitoff=init_off+p; } } }
+        if(hits==1){ unsigned char *q2=d+hitoff; if(q2[0]==0x20&&q2[1]==0x00&&q2[2]==0x80&&q2[3]==0x52){ q2[0]=0x00; cd_patch=1; cd_off=hitoff; } }
+      }
     }
-    printf("KSU_CODEPATCH mov_w0_zero=%d",cd_patch);putchar(10);fflush(stdout);
-    {char m2[96];snprintf(m2,sizeof m2,"KSU_CODEPATCH r=%d",cd_patch);stage_note(m2);} }
-  printf("KSU_PATCH symtabs=%d found=%d missing=%d\n",strs,found,missing);fflush(stdout);
+    printf("KSU_CODEPATCH mov_w0_zero=%d off=0x%llx",cd_patch,cd_off);putchar(10);fflush(stdout);
+    {char m2[128];snprintf(m2,sizeof m2,"KSU_CODEPATCH r=%d off=0x%llx",cd_patch,cd_off);stage_note(m2);} }
+  printf("KSU_PATCH symtabs=%d found=%d missing=%d skip=%d\n",strs,found,missing,g_relink_skip_syms);fflush(stdout);
   {char m[96];snprintf(m,sizeof m,"KSU_PATCH_OK found=%d missing=%d",found,missing);stage_note(m);}
-  return found>0?0:-6;
+  return g_relink_skip_syms?0:(found>0?0:-6);
 }
 
 static void ksu_modlist(void){
@@ -651,6 +692,79 @@ static void ksu_modlist(void){
   printf("KSU_MODULE %s\n",strstr(b,"kernelsu")?"LIVE":"ABSENT");fflush(stdout);
 }
 
+
+/* ---- dynamic loader: resolve UNDEF via /proc/kallsyms (kptr_restrict cleared temporarily) ---- */
+struct ksym_t { char name[128]; unsigned long long addr; int used; };
+static unsigned ksym_hash(const char *s){ unsigned h=5381u; while(*s){h=h*33u^(unsigned char)*s++;} return h; }
+static int kptr_get(void){ int fd=open("/proc/sys/kernel/kptr_restrict",O_RDONLY); if(fd<0)return -1; char b[16]; int n=(int)read(fd,b,15); close(fd); if(n<=0)return -1; b[n]=0; return atoi(b); }
+static int kptr_set(int v){ int fd=open("/proc/sys/kernel/kptr_restrict",O_WRONLY); if(fd<0)return -1; char b[16]; int n=snprintf(b,sizeof b,"%d\n",v) ; ssize_t w=write(fd,b,(size_t)n); close(fd); return w==n?0:-1; }
+static int kallsyms_patch(unsigned char *d,size_t len,int *pfound,int *pmissing){
+  static struct ksym_t tab[2048];
+  memset(tab,0,sizeof tab);
+  if(len<64||d[0]!=0x7f)return -1;
+  unsigned long long shoff; unsigned short shentsize=0,shnum=0;
+  memcpy(&shoff,d+0x28,8); memcpy(&shentsize,d+0x3a,2); memcpy(&shnum,d+0x3c,2);
+  if(shentsize<64||shnum==0||shnum>64)return -2;
+  if(shoff+(unsigned long long)shentsize*shnum>len)return -3;
+  int tcount=0,found=0,missing=0,i,k;
+  for(i=0;i<shnum;i++){
+    unsigned char *sh=d+shoff+(size_t)i*shentsize; unsigned int type=0; memcpy(&type,sh+4,4);
+    if(type!=2)continue;
+    unsigned long long soff=0,ssize=0,entsize=24; unsigned int link=0;
+    memcpy(&soff,sh+0x18,8); memcpy(&ssize,sh+0x20,8); memcpy(&link,sh+0x28,4); memcpy(&entsize,sh+0x38,8);
+    if(entsize<24||link>=shnum||soff+ssize>len)continue;
+    unsigned char *shr=d+shoff+(size_t)link*shentsize; unsigned long long stoff=0,stsize=0;
+    memcpy(&stoff,shr+0x18,8); memcpy(&stsize,shr+0x20,8);
+    if(stoff+stsize>len)continue;
+    const char *str=(const char*)(d+stoff);
+    size_t n=(size_t)(ssize/entsize);
+    for(size_t kk=0;kk<n;kk++){
+      unsigned char *sy=d+soff+kk*entsize; unsigned int no=0; unsigned short shndx=0;
+      memcpy(&no,sy,4); memcpy(&shndx,sy+6,2);
+      if(shndx!=0||no==0||no>=stsize)continue;
+      const char *nm=str+no; unsigned h=ksym_hash(nm)&2047u; int slot=-1;
+      for(k=0;k<8;k++){ unsigned idx=(h+(unsigned)k)&2047u; if(!tab[idx].used){slot=(int)idx;break;} if(!strcmp(tab[idx].name,nm)){slot=(int)idx;break;} }
+      if(slot<0||tcount>=2000)return -7;
+      if(!tab[slot].used){ tab[slot].used=1; snprintf(tab[slot].name,sizeof tab[slot].name,"%s",nm); tab[slot].addr=0; tcount++; }
+    }
+  }
+  int old=kptr_get(); if(old<0)return -8;
+  if(old!=0 && kptr_set(0))return -8;
+  { FILE *f=fopen("/proc/kallsyms","r"); if(!f){ if(old!=0)kptr_set(old); return -9; }
+    char line[512];
+    while(fgets(line,sizeof line,f)){
+      unsigned long long a=0; char t=0; char nm[130];
+      if(sscanf(line,"%llx %c %129s",&a,&t,nm)!=3)continue;
+      if(!a)continue;
+      unsigned h=ksym_hash(nm)&2047u;
+      for(k=0;k<8;k++){ unsigned idx=(h+(unsigned)k)&2047u; if(!tab[idx].used)break; if(!strcmp(tab[idx].name,nm)){ if(!tab[idx].addr)tab[idx].addr=a; break; } }
+    }
+    fclose(f);
+  }
+  if(old!=0)kptr_set(old);
+  for(i=0;i<2048;i++) if(tab[i].used&&!tab[i].addr) missing++;
+  for(i=0;i<shnum;i++){
+    unsigned char *sh=d+shoff+(size_t)i*shentsize; unsigned int type=0; memcpy(&type,sh+4,4);
+    if(type!=2)continue;
+    unsigned long long soff=0,ssize=0,entsize=24; unsigned int link=0;
+    memcpy(&soff,sh+0x18,8); memcpy(&ssize,sh+0x20,8); memcpy(&link,sh+0x28,4); memcpy(&entsize,sh+0x38,8);
+    unsigned char *shr=d+shoff+(size_t)link*shentsize; unsigned long long stoff=0,stsize=0;
+    memcpy(&stoff,shr+0x18,8); memcpy(&stsize,shr+0x20,8);
+    const char *str=(const char*)(d+stoff);
+    size_t n=(size_t)(ssize/entsize);
+    for(size_t kk=0;kk<n;kk++){
+      unsigned char *sy=d+soff+kk*entsize; unsigned int no=0; unsigned short shndx=0;
+      memcpy(&no,sy,4); memcpy(&shndx,sy+6,2);
+      if(shndx!=0||no==0||no>=stsize)continue;
+      const char *nm=str+no; unsigned h=ksym_hash(nm)&2047u;
+      for(k=0;k<8;k++){ unsigned idx=(h+(unsigned)k)&2047u; if(!tab[idx].used)break; if(!strcmp(tab[idx].name,nm)){ if(tab[idx].addr){ unsigned short abs=KSU_SHN_ABS; memcpy(sy+6,&abs,2); memcpy(sy+8,&tab[idx].addr,8); found++; } break; } }
+    }
+  }
+  *pfound=found; *pmissing=missing;
+  printf("KALLSYMS_PATCH found=%d missing=%d\n",found,missing);fflush(stdout);
+  return 0;
+}
+
 static int ksu_load(unsigned long long slide){
   stage_note("KSU_BEGIN");
   wf("/proc/sys/kernel/panic_on_oops","0\n");
@@ -659,8 +773,16 @@ static int ksu_load(unsigned long long slide){
   if(!b){printf("KSU_BLOB MISSING\n");fflush(stdout);return -1;}
   printf("KSU_BLOB len=%zu slide=0x%llx\n",len,slide);fflush(stdout);
   stage_note("KSU_BLOB_OK");
-  int r=ksu_patch(b,len,slide);
-  if(r){printf("KSU_PATCH_FAIL r=%d\n",r);fflush(stdout);free(b);return -1;}
+  int ksf=0,ksm=0,ksfound=0;
+  int kres=-1;
+  if(!getenv("O3P_RELINK_ONLY")){ kres=kallsyms_patch(b,len,&ksfound,&ksm); }
+  if(kres==0 && ksm==0){ printf("KSU_LOADER kallsyms found=%d missing=0\n",ksfound);fflush(stdout); stage_note("KSU_LOADER_KALLSYMS"); }
+  else {
+    printf("KSU_LOADER relink (kallsyms r=%d missing=%d)\n",kres,ksm);fflush(stdout);
+    int r=ksu_patch(b,len,slide);
+    if(r){printf("KSU_PATCH_FAIL r=%d\n",r);fflush(stdout);free(b);return -1;}
+  }
+  if(kres==0 && ksm==0){ g_relink_skip_syms=1; ksu_patch(b,len,slide); g_relink_skip_syms=0; }
   const char *out="/data/local/tmp/o3p_ksu.ko";
   int fd=open(out,O_WRONLY|O_CREAT|O_TRUNC,0644);
   if(fd<0){printf("KSU_WRITE_FAIL errno=%d\n",errno);fflush(stdout);free(b);return -1;}

@@ -1,4 +1,4 @@
-# O3 Root v1.8 — 一体化 APK（CVE-2026-98260 + KernelSU）
+# O3 Root — 一体化 APK 开发日志（CVE-2026-98260 + KernelSU）
 
 一句话：装一个 APK，点一次按钮，在**没有电脑、没有 root** 的机器上完成
 提权 → SELinux 关闭 → 加载 KernelSU LKM → 自动打开 KernelSU 管理器。
@@ -472,3 +472,33 @@ features=0x3ffff`（成功）；App 域历史实测 `io_uring_setup` 被 seccomp
   02:36 的冷启全链路复测正常（boot_id 未变，payload `== cleanup / done`）。
   若后续再遇重启，可用 rootd（uid0，Permissive 时）读 `/sys/fs/pstore/*`
   或给载荷加 pstore 导出阶段来抓 trace。
+
+## 2026-10-25 晚：运行时加载器（v26，dev）
+
+- 载荷不再依赖内嵌 vmlinux 符号表：默认经 `/proc/kallsyms` 解析 LKM 的未定义
+  符号（临时把 `kptr_restrict` 写 0，加载前恢复原值）；`O3P_RELINK_ONLY=1` 时
+  回退到 248 符号并集 + KASLR slide。
+- `setenforce` 补丁改为动态定位：解析 `.rela.init.text` 中 `setenforce` 的重
+  定位，改 `r_offset-4`（tiann/Next `0x144`、SukiSU `0x178`）；解析失败回退
+  唯一扫描。
+- 三种 LKM 冷启验证：tiann v3.3.1（found=225）、KernelSU-Next v3.4.2（227）、
+  SukiSU v4.2.1-r2（245）；均 `insmod` rc=0、`Live`、Permissive、Wi‑Fi 正常。
+  relink 回退用 tiann 复验。
+- 参考值：payload 67,496 B；配官方 LKM 的 `libo3p.so` 442,848 B，
+  sha256 `372518ec…98bb`。
+
+## v1.9（2026-10-25 17:24）：运行时加载器 + 三 fork LKM 支持
+
+- APK：`release/o3root2-v1.9.apk`，13,977,104 B，
+  sha256 `99c89628567c04dd59c04a57261cad93be809acaa1914befa61c0d4d9fad885e`
+  （versionCode 10 / versionName 1.9；内置 payload `libo3p.so` 442,848 B，
+  sha256 `372518ec…98bb`）。
+- 载荷默认运行时经 `/proc/kallsyms` 解析 KernelSU 符号（临时 `kptr_restrict=0`，
+  加载前恢复）；`O3P_RELINK_ONLY=1` 回退 248 符号并集 + slide；`setenforce`
+  补丁点由 `.rela.init.text` 动态定位。
+- 冷启动实测（boot `a8a188b1-9c68-4932-afab-d8f19ee483e6`，release APK）：
+  `★ UIDNOW uid=0`、`KSU_CODEPATCH mov_w0_zero=1`、`KSU_PATCH found=225
+  missing=0`、`KSU_INSMOD_OUT:[rc=0]`、`★ KSU_MODULE LIVE`、管理器前台
+  「工作中 [越狱模式]」；boot_id 未变、Permissive、ping 4.6 ms、nc443=0。
+- 三 fork LKM 冷启验证：tiann v3.3.1（found=225，offset 0x144）、KernelSU-Next
+  v3.4.2（227，0x144）、SukiSU v4.2.1-r2（245，0x178）；relink 回退用 tiann 复验。

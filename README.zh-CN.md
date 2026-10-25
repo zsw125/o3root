@@ -24,7 +24,7 @@ Max）与 **lhasa**（Xiaomi 18 Fold）系列，做本地提权 + KernelSU。整
 
 | | |
 |---|---|
-| 发布 | **v1.8**（`release/o3root2-v1.8.apk`，sha256 `0d7c5ea8…`） |
+| 发布 | **v1.9**（`release/o3root2-v1.9.apk`，sha256 `99c89628…`） |
 | 链路 | Shizuku shell → CVE-2026-98260 → `uid=0` + full caps → KernelSU LKM → rootd |
 | 持久化 | 无（仅当前 boot） |
 | 已验证设备 | 小米 Pad 9 Pro Max `yingtian`，HyperOS `OS4.0.16.0.XBMCNXM` |
@@ -40,9 +40,11 @@ Max）与 **lhasa**（Xiaomi 18 Fold）系列，做本地提权 + KernelSU。整
    `timerqueue_del → rb_erase` 向任意内核地址写入一个 8 字节值。
 3. stage 0 写 `selinux_state.enforcing = 0`；stage 1 把 `task_struct.cred` 指向
    伪造的 cred 页（uid 0、full caps）。
-4. 载荷按当前 KASLR slide 重链接内置的 KernelSU LKM，给它打补丁使其不再强制把
-   enforcing 拉回，`insmod` 它，并留下一个 `rootd` 守护进程（抽象 socket
-   `@o3p_rootd`，peer-uid 0/2000）。
+4. 载荷加载内置 KernelSU LKM：未定义符号默认运行时经 `/proc/kallsyms` 解析
+   （回退：248 符号并集重链接 + 当前 KASLR slide），在 `setenforce` 重定位处
+   打补丁，然后 `insmod` 并留下一个 `rootd` 守护进程（抽象 socket
+   `@o3p_rootd`，peer-uid 0/2000）。上游 KernelSU、KernelSU-Next、SukiSU
+   三种 LKM 都可加载。
 
 偏移、写原语、KernelSU 补丁与移植指南见
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)（中文版
@@ -53,7 +55,7 @@ Max）与 **lhasa**（Xiaomi 18 Fold）系列，做本地提权 + KernelSU。整
 1. 设备上：开启开发者选项 → 无线调试（或 ADB）。安装 **Shizuku** / ShizukuX，
    并以 **shell 模式** 启动：`shizuku_plus_server` 必须是 `uid=2000`、
    `u:r:shell:s0`。
-2. 安装 `release/o3root2-v1.8.apk`（MIUI 可能需要允许“USB 安装”）。
+2. 安装 `release/o3root2-v1.9.apk`（MIUI 可能需要允许“USB 安装”）。
 3. 打开 **O3 Root**，授予 Shizuku 权限，点 **Continue to UID 0**。日志会显示
    `★ UIDNOW uid=0`、`★ KSU_MODULE LIVE`，随后 KernelSU 管理器自动打开。
 
@@ -65,8 +67,8 @@ Max）与 **lhasa**（Xiaomi 18 Fold）系列，做本地提权 + KernelSU。整
 ```
 AGENTS.md   自动化贡献者入口（不变量、陷阱、检查）
 app/        Android App 源码（Java）、manifest、res、build.sh
-payload/    o3p.c（利用载荷）、KernelSU 符号表 / 重链接器、
-            mk_payload.py、build-payload.sh、legacy/（早期版本）
+payload/    o3p.c（利用载荷 + 运行时 KernelSU 加载器）、248 符号回退表 /
+            重链接器、mk_payload.py、build-payload.sh、legacy/（早期版本）
 tools/      OTA/内核提取 + 校验脚本
 docs/       架构、安全、构建、OTA 分析、可行性报告、证据截图
 scripts/    工具链下载、环境模板、一键构建

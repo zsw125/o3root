@@ -38,10 +38,11 @@ lkm_len）。载荷从 `/proc/self/exe` 读取该 trailer，因此同一个文�
 5. **伪造 cred**（`stage 1`）：一个 perf ring 页（内核 VA 经 kretprobe 泄漏）里放
    伪造的 `struct cred`，uid/euid/fsuid=0、full caps、`security` 沿用原来的
    SELinux blob 指针。
-6. **KernelSU LKM**：运行时重链接内置 LKM（`ksu_patch`，225 个未定义符号全部
-   → SHN_ABS + address+slide），打补丁使其不把 SELinux 强制拉回 Enforcing，写
-   `/data/local/tmp/o3p_ksu.ko`，然后从 fork 出的 `/system/bin/sh` 执行
-   `insmod`。
+6. **KernelSU LKM**：加载器运行时经 `/proc/kallsyms` 解析内置 LKM 的未定义符号
+   （临时降低 `kptr_restrict`，结束前恢复）；`O3P_RELINK_ONLY=1` 时回退到
+   248 符号并集 + address+slide。它还会打补丁使其不把 SELinux 强制拉回
+   Enforcing，写 `/data/local/tmp/o3p_ksu.ko`，然后从 fork 出的
+   `/system/bin/sh` 执行 `insmod`。
 7. **rootd**：fork 一个脱离的 root 守护进程；父进程以 `--rootd` exec 载荷，后者
    监听抽象 unix socket `@o3p_rootd`，只接受 uid 0 或 2000 的对端
    （SO_PEERCRED）。客户端：`--shell "<cmd>"`。
@@ -51,7 +52,7 @@ lkm_len）。载荷从 `/proc/self/exe` 读取该 trailer，因此同一个文�
 | 文件 | 作用 |
 |---|---|
 | `o3p.c` | 完整载荷（约 25 KB C；由 t32/t34 血统生成） |
-| `ksu/ksu_symtab.h` | 225 个 KernelSU 未定义符号 → vmlinux 静态地址 |
+| `ksu/ksu_symtab.h` | 上游各 fork 的 248 个 KernelSU 符号并集 → vmlinux 地址（供 relink 回退） |
 | `ksu/mksymtab.py` | 从 `vmlinux.elf` 重新生成 `ksu_symtab.h`（env `VMLINUX`） |
 | `ksu/relink_ksu.py` | 离线重链接器，运行时 `ksu_patch` 的参考实现 |
 | `mk_payload.py` | 追加 LKM + trailer → `libo3p.so` |

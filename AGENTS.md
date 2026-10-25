@@ -10,8 +10,9 @@ and leaves a root daemon for the current boot. Read this file first, then
 
 ## State
 
-- Release **v1.8**, `release/o3root2-v1.8.apk`
-  (`13,973,008 B`, `sha256 0d7c5ea8b1a4d4c35d0c7c444d0c022b36ed5af9b28f7d2f9c7b31e04afff05e`).
+- Release **v1.9**, `release/o3root2-v1.9.apk`
+  (`13,977,104 B`, `sha256 99c89628567c04dd59c04a57261cad93be809acaa1914befa61c0d4d9fad885e`).
+  The v1.8 (relink-only loader) APK remains in the git history.
 - Hardware-verified on `yingtian` / `OS4.0.16.0.XBMCNXM` (cold boot, end-to-end).
 - `lhasa` / `OS4.0.26.0.XPNCNXM` ships the **bit-identical kernel**
   (`sha256 cde87cd7…`); not device-tested.
@@ -25,7 +26,7 @@ bash scripts/fetch-toolchain.sh   # android.jar, build-tools r34, Shizuku jars, 
 
 # payload  (needs an NDK clang)
 NDK_CC=/path/to/ndk/.../aarch64-linux-android35-clang bash payload/build-payload.sh
-# reference result: 62,048 B payload; libo3p.so 437,400 B sha256 a7e9833883…75ec4
+# reference result: 67,496 B payload; libo3p.so 442,848 B (stock LKM), sha256 372518ec…98bb
 
 # app (needs SDK + Shizuku jars + your keystore; see docs/BUILD.md)
 ANDROID_JAR=... BUILD_TOOLS=... SHIZUKU_JARS=... \
@@ -36,8 +37,8 @@ KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
 
 | path | what lives there |
 |---|---|
-| `payload/o3p.c` | the exploit payload (C): UAF trigger, page reclaim, RB write primitive, two stages, KASLR slide, KernelSU relink/patch/load, rootd |
-| `payload/ksu/` | `ksu_symtab.h` (225 KernelSU symbols → addresses), `mksymtab.py` (regen), `relink_ksu.py` (offline relinker reference) |
+| `payload/o3p.c` | the exploit payload (C): UAF trigger, page reclaim, RB write primitive, two stages, KASLR slide, KernelSU runtime loader (kallsyms first, relink fallback), dynamic init patch, rootd |
+| `payload/ksu/` | `ksu_symtab.h` (union of 248 KernelSU symbols from upstream forks), `mksymtab.py` (regen single-LKM table), `relink_ksu.py` (offline relinker reference) |
 | `payload/lkm/` | official KernelSU v3.3.1 LKM for `android17-6.18` (GPL-3.0, unmodified) |
 | `app/src/o3/st/root1/` | Java: `Main` (UI/state machine), `PayloadRunner`, `StateProbe`, `RecoverRunner`, `ManagerInstaller`, listeners |
 | `app/build.sh`, `payload/build-payload.sh`, `scripts/*` | build entry points |
@@ -51,12 +52,16 @@ KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
    `SELINUX_STATE_STATIC`, probe offsets, BTF offsets and `ksu_symtab.h` are
    tied to this exact kernel build. Don't reformat or "simplify" them; changing
    them without a matching image = kernel oops.
-2. **KernelSU init patch is exactly one immediate**: `.init.text+0x144`
-   (`52 80 00 20` → `52 80 00 00`, i.e. `mov w0,#1` → `mov w0,#0`) at file
-   offset `0x22144`, verified in `ksu_patch()`. Do **not** patch the
-   `bl setenforce` at `+0x148`: that slot carries a `CALL26` relocation, the
-   loader rewrites it, and the result is `Undefined instruction` with the
-   module stuck in `coming` (see `docs/APP_O3_ROOT.md`).
+2. **The KernelSU init patch is dynamic, but still exactly one immediate.**
+   The loader parses `.rela.init.text`, finds the relocation whose symbol is
+   `setenforce`, and rewrites the 4 bytes at `r_offset - 4` (`mov w0,#1` →
+   `mov w0,#0`: `52 80 00 20` → `52 80 00 00`). Observed offsets inside
+   `.init.text`: `0x144` (tiann / KernelSU-Next) and `0x178` (SukiSU). If the
+   relocation cannot be resolved it falls back to scanning for a unique
+   `mov w0,#1` followed by `BL`. Do **not** patch the `bl setenforce` itself:
+   that slot carries a `CALL26` relocation, the loader rewrites it, and the
+   result is `Undefined instruction` with the module stuck in `coming` (see
+   `docs/APP_O3_ROOT.md`).
 3. **The write primitive can only write `0` or a controlled-page pointer.**
    It writes `[forged_node]` and dereferences `parent = value & ~3`, so `0x100`
    would be dereferenced. Don't "just write 0x0100".
@@ -76,12 +81,23 @@ KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
 8. **Release hygiene**: `android:debuggable` stays off; the firmware gate in
    `Main.checkFirmware()` must match the kernel/branch the payload was built
    for (`yingtian`/`lhasa`).
+9. **KernelSU loading is runtime-resolved by default.** `kallsyms_patch()`
+   collects the module's UNDEF names, temporarily writes `0` to
+   `/proc/sys/kernel/kptr_restrict`, resolves addresses through
+   `/proc/kallsyms`, and always restores the old value before `insmod`.
+   `O3P_RELINK_ONLY=1` forces the embedded 248-symbol table + slide path
+   (offline fallback if kallsyms ever stops exposing addresses). Upstream LKMs
+   (tiann, KernelSU-Next, SukiSU) all load; their manager packages and ksud
+   differ, so swapping forks also means swapping the manager APK/ksud.
 
 ## Verified / not verified
 
 Verified on hardware: full cold-boot chain, `uid=0` + full caps, KernelSU
-`Live`, manager auto-open, v1.8 Enforcing-rebound guard and one-click recovery,
-network health while Permissive.
+`Live`, manager auto-open, Enforcing-rebound guard and one-click recovery,
+network health while Permissive. The v1.9 release APK (runtime loader) was
+cold-boot tested end-to-end; the loader itself was validated with tiann v3.3.1,
+KernelSU-Next v3.4.2 and SukiSU v4.2.1-r2 LKMs, and the `O3P_RELINK_ONLY=1`
+fallback was re-validated with tiann.
 
 Not verified: `lhasa` hardware; **original Shizuku** (we use the official
 `dev.rikka.shizuku` API, but only ShizukuX 13.7 was exercised); `/system/bin/su`
@@ -115,7 +131,7 @@ Negative results — don't repeat without a new idea (details in
 
 1. Shizuku running in shell mode: `ps -A -o UID,LABEL,ARGS | grep shizuku_plus_server`
    → `2000 u:r:shell:s0`.
-2. Install: `adb install -r release/o3root2-v1.8.apk`; if MIUI says
+2. Install: `adb install -r release/o3root2-v1.9.apk`; if MIUI says
    `INSTALL_FAILED_USER_RESTRICTED`, allow install-via-USB or, with root,
    `pm install -r -d`.
 3. Open the app, grant Shizuku permission, press Continue; wait 20–120 s.
@@ -130,7 +146,7 @@ Negative results — don't repeat without a new idea (details in
 | `VERDICT NO_RECLAIM` repeated | race is probabilistic; retry (1–6 attempts typical), reboot if stuck |
 | `固件门禁未通过` | kernel/fingerprint mismatch — new profile needed |
 | network dead after KernelSU | SELinux back to Enforcing + polluted policycap → recovery button or reboot |
-| `KSU_CODEPATCH … -2` | bundled LKM not the expected build/offset — re-check patch location |
+| `KSU_CODEPATCH … -2` | the `setenforce` relocation was not found (unique-scan fallback failed) — check the LKM |
 | manager not opening | check the app install path/package, and that KSU manager package exists |
 
 ## Hygiene before commit

@@ -26,7 +26,7 @@ rebuilds the payload/APK when the toolchain environment is set.
 
 | | |
 |---|---|
-| release | **v1.8** (`release/o3root2-v1.8.apk`, sha256 `0d7c5ea8…`) |
+| release | **v1.9** (`release/o3root2-v1.9.apk`, sha256 `99c89628…`) |
 | chain | Shizuku shell → CVE-2026-98260 → `uid=0` + full caps → KernelSU LKM → rootd |
 | persistence | none (current boot only) |
 | tested device | Xiaomi Pad 9 Pro Max `yingtian`, HyperOS `OS4.0.16.0.XBMCNXM` |
@@ -43,9 +43,12 @@ rebuilds the payload/APK when the toolchain environment is set.
    arbitrary kernel address.
 3. Stage 0 writes `selinux_state.enforcing = 0`; stage 1 writes
    `task_struct.cred` to a fake cred page (uid 0, full caps).
-4. The payload relinks the embedded KernelSU LKM for the current KASLR slide,
-   patches its init so it does not force enforcing back on, `insmod`s it, and
-   leaves a `rootd` daemon (abstract socket `@o3p_rootd`, peer-uid 0/2000).
+4. The payload loads the embedded KernelSU LKM: undefined symbols are resolved
+   at runtime through `/proc/kallsyms` (fallback: 248-symbol union relink + the
+   current KASLR slide), its init patch is applied at the `setenforce`
+   relocation, then it is `insmod`ed and a `rootd` daemon is left behind
+   (abstract socket `@o3p_rootd`, peer-uid 0/2000). Upstream KernelSU,
+   KernelSU-Next and SukiSU LKMs all work.
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for offsets, the write
 primitive, the KernelSU patch and the porting guide.
@@ -55,7 +58,7 @@ primitive, the KernelSU patch and the porting guide.
 1. On the device: enable Developer options → Wireless debugging (or ADB).
    Install **Shizuku** / ShizukuX and start it in **shell mode**:
    `shizuku_plus_server` must run as `uid=2000`, `u:r:shell:s0`.
-2. Install `release/o3root2-v1.8.apk` (MIUI may need "Install via USB" allowed).
+2. Install `release/o3root2-v1.9.apk` (MIUI may need "Install via USB" allowed).
 3. Open **O3 Root**, grant the Shizuku permission, press
    **Continue to UID 0**. The log shows `★ UIDNOW uid=0`,
    `★ KSU_MODULE LIVE`, and the KernelSU manager opens automatically.
@@ -68,8 +71,9 @@ installs the bundled APK (accept the system prompts).
 ```
 AGENTS.md   entry point for automated contributors (invariants, traps, checks)
 app/        Android app sources (Java), manifest, res, build.sh
-payload/    o3p.c (exploit payload), KernelSU symbol table / relinker,
-            mk_payload.py, build-payload.sh, legacy/ (earlier revisions)
+payload/    o3p.c (exploit payload + runtime KernelSU loader), 248-symbol
+            fallback table / relinker, mk_payload.py, build-payload.sh,
+            legacy/ (earlier revisions)
 tools/      OTA/kernel extraction + verification scripts
 docs/       architecture, security, build, OTA analysis, feasibility report,
             evidence screenshots

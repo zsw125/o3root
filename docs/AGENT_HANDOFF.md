@@ -11,7 +11,7 @@ work with rough effort estimates.
 
 | item | value |
 |---|---|
-| release | v1.8, `release/o3root2-v1.8.apk` (13,973,008 B, sha256 `0d7c5ea8…`) |
+| release | v1.9, `release/o3root2-v1.9.apk` (13,977,104 B, sha256 `99c89628…`) |
 | verified device | Xiaomi Pad 9 Pro Max `yingtian`, HyperOS `OS4.0.16.0.XBMCNXM`, kernel `6.18.21-android17-5-g805aa6adea19-abogki565292102-4k` |
 | second target | `lhasa` (Xiaomi 18 Fold) `OS4.0.26.0.XPNCNXM` — same kernel sha256 `cde87cd7…` (boot header/ramdisk differ); **not device-tested** |
 | persistence | none (current boot only) |
@@ -28,19 +28,26 @@ Health: `getenforce` = `Permissive`, network works, `boot_id` unchanged.
    UAF → order-1 slab reclaim via kmalloc-8k spray → forged RB node → single
    8-byte write. Stage 0 wrote `selinux_state.enforcing=0`; stage 1 replaced
    `task_struct.cred` with a fake cred (uid 0, full caps) → `uid=0`, rootd.
-2. **KernelSU**: official LKM for `android17-6.18`; runtime relink of all 225
-   undefined symbols to absolute addresses (KASLR slide from leaking
-   `init_user_ns`), then `insmod` from a forked shell.
+2. **KernelSU**: official LKM for `android17-6.18`; the loader resolves all
+   undefined symbols at runtime via `/proc/kallsyms` (no embedded table needed),
+   falling back to the 248-symbol union + KASLR slide from `init_user_ns`, then
+   `insmod` from a forked shell.
 3. **APK**: Shizuku `newProcess` runs the payload in the shell domain; status
    probes (`/proc/modules`, `getenforce`, `pm path`); firmware gate; bundled
    KernelSU manager APK + `PackageInstaller` flow; themed UI; log export.
 4. **v1.7 fix (network)**: KernelSU's init called `getenforce()==0 →
    setenforce(1)`; combined with the polluted `policycap[]` this froze Wi-Fi TX.
-   Patch the immediate at `.init.text+0x144` (`mov w0,#1`→`#0`) so KSU does not
-   re-enable enforcing. Cold-boot verified: KSU Live, manager opens, network OK.
+   The loader patches that immediate (`mov w0,#1`→`#0`) at the `setenforce`
+   relocation in `.init.text` minus 4 (0x144 tiann/Next, 0x178 SukiSU), so KSU
+   does not re-enable enforcing. Cold-boot verified: KSU Live, manager opens,
+   network OK.
 5. **v1.8 guard**: if KSU is loaded and `getenforce` is Enforcing, warn and
    offer one-click `su -c setenforce 0`; verified by deliberately running
    `setenforce 1` (network dies, button restores Permissive + network).
+6. **v1.9 runtime loader**: the payload resolves KernelSU symbols through
+   `/proc/kallsyms` at load time (fallback: 248-symbol union relink + slide),
+   locates the `setenforce` patch point from `.rela.init.text`, and works with
+   tiann, KernelSU-Next and SukiSU LKMs; the v1.9 APK was cold-boot verified.
 
 The full narrative with logs is in `docs/APP_O3_ROOT.md` (Chinese, original dev
 log; directory names there are historical: `work/`→`payload/`, `app5/`→`app/`).

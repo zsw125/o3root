@@ -107,17 +107,28 @@ LKM。
 
 1. 官方预编译的 `android17-6.18` LKM 以 24 字节 trailer（`O3KSKO01`、
    payload_len、lkm_len）追加在载荷之后。
-2. `ksu_patch()` 遍历 LKM 的 `.symtab`，把每个未定义符号（225 个）改写成
-   `SHN_ABS` + `vmlinux_addr + slide`。这绕过了模块符号命名空间检查、
+2. 主路径 —— **运行时 kallsyms 解析**：`kallsyms_patch()` 遍历 LKM 的
+   `.symtab`，收集所有未定义符号名；保存并临时把 `/proc/sys/kernel/kptr_restrict`
+   写成 `0`，经 `/proc/kallsyms` 解析每个名字，并把符号改写成 `SHN_ABS` +
+   运行时地址；加载前必恢复原 `kptr_restrict`。这样就不再依赖构建期的
+   `vmlinux.elf`；实测分别解析 225（tiann）、227（KernelSU-Next）、245
+   （SukiSU）个未定义符号，全部命中、0 缺失。
+3. 回退路径 —— **离线重链接表**：`O3P_RELINK_ONLY=1`（或 kallsyms 缺失）时，
+   使用内置的 248 个 KernelSU 符号并集（来自上游各 fork），把每个未定义符号
+   改写为 `vmlinux_addr + slide`。这同样绕过模块符号命名空间检查、
    `TRIM_UNUSED_KSYMS` 导出限制、受保护符号与 CRC。
-3. `ksu_patch()` 还会改一条指令：`.init.text+0x144` 的 `mov w0,#1` →
-   `mov w0,#0`（文件偏移 `0x22144`，字节 `52 80 00 20` → `52 80 00 00`），使
-   模块 init 期间**不会**调用 `setenforce(1)`。（改 `bl setenforce` 调用点是不
-   可行的：CALL26 重定位会在加载时重写这 4 字节，导致未定义指令 / 模块卡在
-   `coming`。）
-4. 把打好补丁的 LKM 写到 `/data/local/tmp/o3p_ksu.ko`，然后
+4. 两条路径都会改同一条指令：解析 `.rela.init.text`，找符号为 `setenforce`
+   的重定位，改写 `r_offset - 4` 的 4 字节（`mov w0,#1` → `mov w0,#0`；
+   `.init.text` 内实测偏移：tiann/KernelSU-Next `0x144`、SukiSU `0x178`）。
+   重定位无法解析时回退到唯一扫描。这样模块 init 期间**不会**调用
+   `setenforce(1)`。（改 `bl setenforce` 调用点是不可行的：CALL26 重定位会
+   在加载时重写这 4 字节，导致未定义指令 / 模块卡在 `coming`。）
+5. 把打好补丁的 LKM 写到 `/data/local/tmp/o3p_ksu.ko`，然后
    `fork()` + `exec("/system/bin/sh","-c","insmod ...")`，等待并确认
    `/proc/modules` 里有 `kernelsu`。
+
+已在真机用 tiann v3.3.1、KernelSU-Next v3.4.2、SukiSU v4.2.1-r2 三种 LKM
+在 `6.18.21` 上验证；三种都能 `Live`，SELinux 保持 Permissive、Wi‑Fi 正常。
 
 ## rootd
 
@@ -177,11 +188,13 @@ LKM。
 2. 用 `vmlinux-to-elf` 把原始 `Image` 转成 ELF 以恢复符号。
 3. dump BTF（`tools/kernel_cfg_btf.py` 或 `bpftool btf dump`），确认上面的
    `task_struct`、`cred`、`k_itimer`、`selinux_state` 偏移。
-4. 用 `mksymtab.py`（`VMLINUX=...`）重新生成 `payload/ksu/ksu_symtab.h`。
+4. 用 `mksymtab.py`（`VMLINUX=...`）为 relink 回退路径重新生成
+   `payload/ksu/ksu_symtab.h`（默认的 kallsyms 路径不需要该表）。
 5. 更新 `payload/o3p.c` 中的静态地址与常量
    （`INIT_USER_NS_STATIC`、`SELINUX_STATE_STATIC`、各探针偏移）。
-6. 重新确认 KernelSU LKM 里要改的那条指令（在 `.init.text` 中 `setenforce`
-   调用之前搜索 `mov w0,#1`）—— 偏移 `0x144` 是构建相关的。
+6. KernelSU 的指令补丁在运行时由 `.rela.init.text`（`setenforce` 重定位
+   往前 4 字节）定位，不需要按构建写死常量；唯一扫描也找不到时会打印
+   `KSU_CODEPATCH … -2`。
 7. 更新固件门禁（`Main.checkFirmware`）并重编 APK。
 
 KASLR 本身不需要按设备适配：slide 是运行时推导的。

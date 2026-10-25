@@ -1,1 +1,1 @@
-0d7c5ea8b1a4d4c35d0c7c444d0c022b36ed5af9b28f7d2f9c7b31e04afff05e *release/o3root2-v1.8.apk
+99c89628567c04dd59c04a57261cad93be809acaa1914befa61c0d4d9fad885e  o3root2-v1.9.apk

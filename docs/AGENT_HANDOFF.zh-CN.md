@@ -10,7 +10,7 @@
 
 | 项 | 值 |
 |---|---|
-| 发布 | v1.8，`release/o3root2-v1.8.apk`（13,973,008 B，sha256 `0d7c5ea8…`） |
+| 发布 | v1.9，`release/o3root2-v1.9.apk`（13,977,104 B，sha256 `99c89628…`） |
 | 已验证设备 | 小米 Pad 9 Pro Max `yingtian`，HyperOS `OS4.0.16.0.XBMCNXM`，内核 `6.18.21-android17-5-g805aa6adea19-abogki565292102-4k` |
 | 第二目标 | `lhasa`（Xiaomi 18 Fold）`OS4.0.26.0.XPNCNXM` —— 同内核 sha256 `cde87cd7…`（boot header/ramdisk 不同）；**未实机测试** |
 | 持久化 | 无（仅当前 boot） |
@@ -27,19 +27,25 @@ App 日志中的成功标记（按顺序）：
    UAF → 用 kmalloc-8k 喷页回收 order-1 slab → 伪造 RB 节点 → 单次 8 字节写。
    stage 0 写 `selinux_state.enforcing=0`；stage 1 把 `task_struct.cred` 换成
    fake cred（uid 0、full caps）→ `uid=0`、rootd。
-2. **KernelSU**：官方 `android17-6.18` LKM；运行时把 225 个未定义符号重链接成
-   绝对地址（KASLR slide 来自泄漏的 `init_user_ns`），然后从 fork 出的 shell
+2. **KernelSU**：官方 `android17-6.18` LKM；加载器运行时经 `/proc/kallsyms`
+   解析全部未定义符号（默认不需要内嵌符号表），失败时回退到 248 符号并集 +
+   KASLR slide（slide 来自泄漏的 `init_user_ns`），然后从 fork 出的 shell
    执行 `insmod`。
 3. **APK**：Shizuku `newProcess` 在 shell 域运行载荷；状态探测
    （`/proc/modules`、`getenforce`、`pm path`）；固件门禁；内置 KernelSU 管理器
    APK + `PackageInstaller` 流程；主题 UI；日志导出。
 4. **v1.7 修复（断网）**：KernelSU 的 init 会调用 `getenforce()==0 →
-   setenforce(1)`；与被污染的 `policycap[]` 叠加后冻结 Wi-Fi TX。把
-   `.init.text+0x144` 的立即数改掉（`mov w0,#1`→`#0`），让 KSU 不再把
+   setenforce(1)`；与被污染的 `policycap[]` 叠加后冻结 Wi-Fi TX。加载器按
+   `.init.text` 里的 `setenforce` 重定位定位到 `r_offset-4` 并改掉该立即数
+   （`mov w0,#1`→`#0`；tiann/Next 0x144、SukiSU 0x178），让 KSU 不再把
    enforcing 拉回 1。冷启动已验证：KSU Live、管理器打开、网络正常。
 5. **v1.8 守护**：如果 KSU 已加载且 `getenforce` 是 Enforcing，就告警并提供
    一键 `su -c setenforce 0`；通过故意执行 `setenforce 1` 验证（网络断，点按钮
    恢复 Permissive + 网络）。
+6. **v1.9 运行时加载器**：载荷在加载时经 `/proc/kallsyms` 解析 KernelSU 符号
+   （回退：248 符号并集重链接 + slide），用 `.rela.init.text` 定位 `setenforce`
+   补丁点；tiann / KernelSU-Next / SukiSU 三种 LKM 均可；v1.9 APK 已冷启动
+   端到端验证。
 
 完整叙述与日志见 `docs/APP_O3_ROOT.md`（中文，原始开发日志；其中的目录名是
 历史名称：`work/`→`payload/`、`app5/`→`app/`）。
