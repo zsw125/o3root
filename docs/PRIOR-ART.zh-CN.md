@@ -93,10 +93,11 @@ Ubuntu 26.04 / 7.0.0-30-generic）。Android 版利用 **没有公开**——
    与 `policycap[]` 保持完好，因此之后的 `setenforce(1)` 是安全的。实现于
    `payload/o3p.c`（`selzero_mode()`；提交 `b6d67de`，自 `e3d25f6` 起为默认）。
    本镜像零写目标为 `0xffffffc082959629`；读回
-   `state=0x0100000101010100`，终态 Enforcing 且网络正常。该写会碰到
-   `avc_latest_notif_update.notif_lock` 的尾部（`0xffffffc082959628..2f`）；
-   本构建该锁为 0（未加锁），并且**每换一个内核镜像都必须重新确认**（对象
-   身份、大小与锁值，见 `docs/ARCHITECTURE.md` §Porting）。
+   `state=0x0100000101010100`，终态 Enforcing 且网络正常。该写清掉
+   `avc_latest_notif_update.notif_lock` 的字节 1..3（`0x…9629..962b`）加其后
+   4 字节（`0x…962c..962f`，同一静态对象；字节 0 `locked` 不被写）；本构建该锁
+   为 0（未加锁），并且**每换一个内核镜像都必须重新确认**（对象身份、大小与
+   锁值，见 `docs/ARCHITECTURE.md` §Porting）。
 5. **官方 `ksud late-load`（未采用）。** 上游 `late_load.rs` 做运行时
    kallsyms 恢复，是有效替代。我们保留自有 loader（`kallsyms_patch()`，提交
    `69f7375`；回退 `O3P_RELINK_ONLY=1` + 248 符号并集 + slide），让 App 保持

@@ -166,15 +166,19 @@ active — exactly the untested combination called out under Risks.
   resolves through `struct spinlock` -> `struct raw_spinlock` ->
   `arch_spinlock_t`/`struct qspinlock` to **4 bytes** (BTF: `spinlock_t` size
   0x4). The 8-byte write starts at `selinux_state - 7` = `0xffffffc082959629`,
-  so it covers lock bytes **1..3** (`0x…9629..962b`) — the low byte carrying
-  `locked`/`pending` is untouched — plus the four bytes `0x…962c..0x…962f`
-  (tail of the same static object; no separate symbol or BTF type in this
-  build) and finally the `enforcing` byte (`0x…9630`). A qspinlock's upper
-  three bytes are the MCS tail (waiter/queue state), so a contended lock can
-  have its queue corrupted without the locked bit being set; the lock reads 0
-  (unlocked) in sampled builds, so this needs a race.
+  so byte 0 of the lock (`locked`, `0x…9628`) is **not** written, while byte 1
+  (`pending`, `0x…9629`) and bytes 2..3 (`tail`, the MCS queue word,
+  `0x…962a..962b`) **are cleared** — together with the four following bytes
+  `0x…962c..0x…962f` (tail of the same static object; no separate symbol or
+  BTF type in this build) and the `enforcing` byte (`0x…9630`). If the write
+  lands while the lock is contended (`pending=1` with MCS waiters), losing
+  `pending` can make the unlock path skip the wakeup and leave queued waiters
+  stuck; `locked` staying untouched does not save that, because the waiter path
+  keys on `pending`. The lock reads 0 (unlocked) in sampled builds, so this
+  needs a race.
   `python3 tools/neighbor_lookup.py selinux_state --delta -7` reproduces the
-  neighbouring-symbol claim.
+  neighbouring-symbol claim (and prints an explicit warning when the symbol has
+  no `.symtab` size, which is the case here).
 - **H3: a wrong `rb_erase` branch near live data.** Tile1's erase writes next to
   `selinux_state`, whose neighbouring `status_lock`/`policy` are live kernel
   pointers; a Case-1/Case-2 branch taken differently than modelled could follow

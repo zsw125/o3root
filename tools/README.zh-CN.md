@@ -12,7 +12,7 @@
 | `unpack_boot.py <boot.img>` | 解析 Android boot 镜像（v0–v4），打印头，写出 `kernel`、`ramdisk`、`second`、`dtb` |
 | `check_hash.py <ota.zip>` | 研究用：确认 operation 的 `data_sha256` 覆盖的是存储（压缩后）块还是解压后数据 |
 | `hash_payload.py <ota.zip> [expected_b64]` | 用 `payload_properties.txt` 的 `FILE_HASH` 校验 `payload.bin` 的 SHA-256 |
-| `neighbor_lookup.py <symbol> [--delta N] [--require NAME]` | 打印 vmlinux ELF 中 `symbol+N` 附近的符号（最近符号解析）；`--require` 不匹配时以非零退出。用于 `selinux_state - 7` 写的移植核对。需要 `pyelftools`（设 `PYELFTOOLS`） |
+| `neighbor_lookup.py <symbol> [--delta N] [--require NAME] [--strict]` | 打印 vmlinux ELF 中 `symbol+N` 附近的符号并说明证据等级：符号有 `st_size` 时做真正的区间包含校验（`st_value <= target < st_value+size`），无 `st_size` 时退化为最近符号并警告（`--strict` 拒绝该回退）。`--require` 校验预期属主；`name source` 行说明名字来自 `.symtab` 原样（非 BTF 合成）。用于 `selinux_state - 7` 写的移植核对。需要 `pyelftools`（设 `PYELFTOOLS`） |
 | `kernel_cfg_btf.py <kernel>` | 打印内嵌内核配置（`IKCONFIG`）、BTF 布局（`task_struct`、`cred`、`k_itimer`、`selinux_state` 等），并反汇编探针点（`begin_new_exec`、`timerqueue_del`、`rb_erase`、`selinux_inode_permission`）。需要 `pyelftools` + `capstone`（设 `PYELFTOOLS`） |
 
 ## 获取内核

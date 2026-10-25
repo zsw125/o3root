@@ -215,7 +215,7 @@ alive for the rest of the boot:
 | `cred_security_struct` (osid, sid, …) | `0x18`, sid at `+0x04` |
 | `k_itimer` size / `it` / `elist` / `handling` | `0x180` / `0xe0` / `0x110` / `0x128` |
 | `selinux_state` (enforcing, initialized, policycap, policy) | `0` / `1` / `2` / `0x40` |
-| `selinux_state - 7` adjacent object | tail of `avc_latest_notif_update.notif_lock` (`0xffffffc082959628..2f`), 0 (unlocked) here — re-verify per kernel image |
+| `selinux_state - 7` adjacent object | bytes 1..3 of `avc_latest_notif_update.notif_lock` (`0xffffffc082959629..962b`) + the next 4 bytes of the same static object (`0x…962c..962f`); the lock reads 0 (unlocked) here — re-verify per kernel image |
 | page constants | `PAGE_OFFSET=0xffffff8000000000`, `VMEMAP_BASE=0xfffffffec0000000`, `struct page=0x40` |
 
 ### Porting to another kernel
@@ -232,15 +232,21 @@ alive for the rest of the boot:
    stage-0 write offset, probe offsets). The v3 stage-0 primitive writes 8
    bytes starting at `selinux_state - 7`; before trusting it, dump the 8 bytes
    before `selinux_state` in the new image and confirm the overlapped object
-   (here the tail of `avc_latest_notif_update.notif_lock`) is zero/unlocked,
-   then record it in the profile table above. Confirm the object's *identity*,
-   not only its value:
+   (here bytes 1..3 of `avc_latest_notif_update.notif_lock` plus the next four
+   bytes of the same static object) is zero/unlocked, then record it in the
+   profile table above. Confirm the object's *identity*, not only its value:
    `PYELFTOOLS=... python3 tools/neighbor_lookup.py selinux_state --delta -7
    --elf vmlinux.elf --require avc_latest_notif_update.notif_lock`
-   prints the owning symbols and exits non-zero if the nearest symbol is not
-   the expected one. A zero read alone proves nothing — another object can be
-   zero too. If the neighbour or the lock's size/field layout differs, re-derive
-   the write offset from the new image instead of reusing `-7`.
+   prints the owning symbols, their ranges and a `name source` line (`.symtab`
+   as emitted — member-qualified names are not BTF-synthesized), and exits
+   non-zero if the nearest symbol is not the expected one. When the symbol has
+   a `st_size`, `--require` is validated by a real
+   `st_value <= target < st_value+size` containment check; when `st_size` is 0
+   (as for `notif_lock` in this image) the tool falls back to nearest-symbol
+   matching and prints a warning — add `--strict` to refuse that fallback. A
+   zero read alone proves nothing — another object can be zero too. If the
+   neighbour or the lock's size/field layout differs, re-derive the write offset
+   from the new image instead of reusing `-7`.
 6. Only the legacy `O3P_CODEPATCH=1` path patches KernelSU: the instruction is
    located at runtime from `.rela.init.text` (the `setenforce` relocation minus
    4 bytes), so no per-build constant is required; the unique-scan fallback logs

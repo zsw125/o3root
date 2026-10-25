@@ -106,9 +106,10 @@ were cross-checked against our `vmlinux`.
    `payload/o3p.c` (`selzero_mode()`; commit `b6d67de`, default since
    `e3d25f6`). On our image the zero target is `0xffffffc082959629`; read-back
    was `state=0x0100000101010100`, end state Enforcing with working network.
-   The write touches the tail of `avc_latest_notif_update.notif_lock`
-   (`0xffffffc082959628..2f`); the lock is 0 (unlocked) on this build and this
-   is re-verified per kernel image.
+   The write clears bytes 1..3 of `avc_latest_notif_update.notif_lock`
+   (`0x…9629..962b`) plus the four bytes after it (`0x…962c..962f`, same static
+   object; byte 0 `locked` is untouched); the lock is 0 (unlocked) on this build
+   and this is re-verified per kernel image.
 5. **Official `ksud late-load` (not adopted).** Upstream `late_load.rs` does
    runtime kallsyms recovery and is a valid alternative. We keep our own loader
    (`kallsyms_patch()`, commit `69f7375`; fallback `O3P_RELINK_ONLY=1` with the

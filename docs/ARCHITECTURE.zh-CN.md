@@ -195,7 +195,7 @@ KernelSU 用运行时 kallsyms 加载器、**不打 init 补丁**。`policycap` 
 | `cred_security_struct`（osid、sid、…） | `0x18`，sid 在 `+0x04` |
 | `k_itimer` size / `it` / `elist` / `handling` | `0x180` / `0xe0` / `0x110` / `0x128` |
 | `selinux_state`（enforcing、initialized、policycap、policy） | `0` / `1` / `2` / `0x40` |
-| `selinux_state - 7` 的相邻对象 | `avc_latest_notif_update.notif_lock` 尾部（`0xffffffc082959628..2f`），本构建为 0（未加锁）；换内核必须复核 |
+| `selinux_state - 7` 的相邻对象 | `avc_latest_notif_update.notif_lock` 的字节 1..3（`0xffffffc082959629..962b`）加同一静态对象随后的 4 字节（`0x…962c..962f`）；本构建该锁为 0（未加锁）；换内核必须复核 |
 | 页相关常量 | `PAGE_OFFSET=0xffffff8000000000`、`VMEMAP_BASE=0xfffffffec0000000`、`struct page=0x40` |
 
 ### 移植到其它内核
@@ -211,13 +211,17 @@ KernelSU 用运行时 kallsyms 加载器、**不打 init 补丁**。`policycap` 
    （`INIT_USER_NS_STATIC`、`SELINUX_STATE_STATIC`、stage 0 的 `selinux_state - 7`
    写偏移、各探针偏移）。v3 stage 0 从 `selinux_state - 7` 起写 8 字节；换镜像前
    先 dump `selinux_state` 前 8 字节，确认被覆盖的对象（本机为
-   `avc_latest_notif_update.notif_lock` 尾部）为 0/未加锁，并记入上面的常量表。
-   还要确认对象的**身份**而不只是值：
+   `avc_latest_notif_update.notif_lock` 的字节 1..3 加同一静态对象随后的 4 字节）
+   为 0/未加锁，并记入上面的常量表。还要确认对象的**身份**而不只是值：
    `PYELFTOOLS=... python3 tools/neighbor_lookup.py selinux_state --delta -7
    --elf vmlinux.elf --require avc_latest_notif_update.notif_lock`
-   会打印相邻符号，最近符号不匹配时以非零退出。只读到 0 不能证明身份——别的
-   对象也可能为 0。若相邻对象或锁的大小/字段布局不同，应按新镜像重新推导写
-   偏移，不要沿用 `-7`。
+   会打印相邻符号、各自范围与 `name source` 行（`.symtab` 原样，
+   成员名不是 BTF 合成），最近符号不匹配时以非零退出。符号带 `st_size` 时，
+   `--require` 用真正的区间包含校验 `st_value <= target < st_value+size`；
+   `st_size` 为 0 时（本镜像的 `notif_lock` 即如此）退化为最近符号匹配并打印
+   警告——加 `--strict` 可拒绝这种回退。只读到 0 不能证明身份——别的对象也可能
+   为 0。若相邻对象或锁的大小/字段布局不同，应按新镜像重新推导写偏移，不要
+   沿用 `-7`。
 6. 只有旧 `O3P_CODEPATCH=1` 路径才打 KernelSU 指令补丁：位置由
    `.rela.init.text`（`setenforce` 重定位往前 4 字节）在运行时定位，不需要按
    构建写死常量；唯一扫描也找不到时会打印 `KSU_CODEPATCH … -2`。v3 默认完全
