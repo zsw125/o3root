@@ -11,6 +11,12 @@ no partition changes.
 > it). Only run on devices you own. Read [`docs/SECURITY.md`](docs/SECURITY.md)
 > before using it.
 
+**Agents / automated contributors:** start with [`AGENTS.md`](AGENTS.md) (entry
+point: invariants, build/test recipes, traps, hygiene), then
+[`docs/AGENT_HANDOFF.md`](docs/AGENT_HANDOFF.md) (verified state, failed
+experiments, open work). Run `bash scripts/verify.sh` before committing; it also
+rebuilds the payload/APK when the toolchain environment is set.
+
 ## Status
 
 | | |
@@ -55,6 +61,7 @@ installs the bundled APK (accept the system prompts).
 ## Repository layout
 
 ```
+AGENTS.md   entry point for automated contributors (invariants, traps, checks)
 app/        Android app sources (Java), manifest, res, build.sh
 payload/    o3p.c (exploit payload), KernelSU symbol table / relinker,
             mk_payload.py, build-payload.sh, legacy/ (earlier revisions)
@@ -107,6 +114,7 @@ in [`docs/APP_O3_ROOT.md`](docs/APP_O3_ROOT.md).
 
 | file | content |
 |---|---|
+| `docs/AGENT_HANDOFF.md` | handoff for automated contributors: verified state, failed experiments, open work, repro workflow |
 | `docs/ARCHITECTURE.md` | exploit chain, write primitive, KernelSU patch, constants, porting |
 | `docs/SECURITY.md` | threat model, side effects, recovery/cleanup |
 | `docs/BUILD.md` | build + install + verification |

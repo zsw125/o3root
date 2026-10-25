@@ -4,6 +4,11 @@ The project does **not** use Gradle. Everything is plain `javac` + Android SDK
 build tools + NDK, driven by shell scripts so the output is easy to inspect and
 modify.
 
+> **Automated contributors:** read [`AGENTS.md`](../AGENTS.md) for invariants and
+> build traps, and run `bash scripts/verify.sh` before committing. When the
+> environment below is set, verify also rebuilds the payload and the APK and
+> compares their hashes/version.
+
 ## Prerequisites
 
 | component | tested | notes |

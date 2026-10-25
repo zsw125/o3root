@@ -3,6 +3,8 @@
 一句话：装一个 APK，点一次按钮，在**没有电脑、没有 root** 的机器上完成
 提权 → SELinux 关闭 → 加载 KernelSU LKM → 自动打开 KernelSU 管理器。
 
+> 说明：本文件是开发过程的原始日志，保留当时的目录名（`work/`、`app5/`、`ota_extract/` 等）。仓库中的正式位置是 `payload/`（载荷与内核符号）、`app/`（APK 源码）、`docs/`（本目录）。接手开发请先读根目录 `AGENTS.md`。
+
 ## 产物
 
 | 文件 | 大小 | sha256 |
@@ -10,7 +12,7 @@
 | `app/build/o3root2.apk` | 13,973,008 B | `0d7c5ea8b1a4d4c35d0c7c444d0c022b36ed5af9b28f7d2f9c7b31e04afff05e` |
 
 包名 `o3.st.root1`，versionName `1.8`（versionCode 9），minSdk 31 / targetSdk 34，
-自签（`tools/android/patched-key.p12`）。**release 构建：`android:debuggable` 已移除。**
+自签（keystore 自建，见 `docs/BUILD.md`）。**release 构建：`android:debuggable` 已移除。**
 
 ## 前提（设备侧一次性设置）
 
@@ -70,7 +72,7 @@ ROOTD_OUT: uid=0(root) ... context=u:r:shell:s0 / Permissive
 
 内核侧核对：`/proc/modules` = `kernelsu 192512 1 - Live`；
 `getenforce` = **Permissive**；`/sys/module/kernelsu/initstate` 无（已 live）；
-`ping 192.168.31.1` 3.0 ms、`nc 223.5.5.5:443` rc=0；boot_id 未变。
+`ping <gateway>` 3.0 ms、`nc 223.5.5.5:443` rc=0；boot_id 未变。
 管理器自动打开，显示「工作中 [越狱模式] 32680-5 / LKM / 宽容模式」。
 
 ### 影响与残留风险（v1.7 补丁）
@@ -356,7 +358,7 @@ cd app && bash build.sh
 内部步骤：`javac --release 17 -classpath "build/cp/*"`（android.jar + Shizuku
 api/provider/aidl/shared）→ `d8 --release --min-api 31` → `aapt2 link` →
 python zipfile 加 `classes.dex` 与 `lib/arm64-v8a/libo3p.so` → `zipalign -f -p 4` →
-`apksigner sign`（keystore `tools/android/patched-key.p12`，alias `ennea-patched`，
+`apksigner sign`（keystore `<your-keystore>.p12`，alias `<your-alias>`，
 密码 `<keystore-password>`）。
 
 载荷单独构建：`work/o3p.c` 由 `work/mk_o3p.py` 从 `work/t34.c` 生成（内嵌
