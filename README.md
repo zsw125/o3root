@@ -48,8 +48,9 @@ rebuilds the payload/APK when the toolchain environment is set.
    page with a sprayed `kmalloc-8k` buffer containing a forged RB-tree node, and
    uses the second `timerqueue_del → rb_erase` to write one 8-byte value to an
    arbitrary kernel address.
-3. Stage 0 zeroes only the `enforcing` byte (8-byte unaligned write at
-   `selinux_state-7`, keeping `initialized`/`policycap`); stage 1 writes
+3. Stage 0 clears `enforcing` with an 8-byte unaligned write at
+   `selinux_state-7` (this also clears the adjacent `notif_lock` pending/tail
+   bytes; `initialized`/`policycap` stay intact); stage 1 writes
    `task_struct.cred` to a fake cred page (uid 0, full caps).
 4. The payload loads the embedded KernelSU LKM: undefined symbols are resolved
    at runtime through `/proc/kallsyms` (fallback: 248-symbol union relink + the

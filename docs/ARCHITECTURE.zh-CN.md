@@ -74,8 +74,8 @@ ldr  x9, [x8, #0x10] ; 解引用 parent->rb_left
 ### stage 0 —— SELinux 状态
 
 - v3 默认（两段式）：`S = SELINUX_STATE_STATIC + slide - 7`，值 `0` —— 8 字节
-  非对齐零写，只清 `enforcing`，`initialized`/`policycap[]` 原样保留（实测
-  `state=0x0100000101010100`）。
+  非对齐零写，清 `enforcing`（同时清相邻 `notif_lock` 的 pending/tail 字节），
+  `initialized`/`policycap[]` 原样保留（实测 `state=0x0100000101010100`）。
 - 旧路径 `O3P_SELDIRTY=1` 仍用旧的脏写（`V = fakekva | 0x100`）：同样清
   `enforcing`，但 `policycap[]` 变成地址垃圾——permissive 下无害，一旦回到
   Enforcing 就破坏 socket 检查。
@@ -151,11 +151,12 @@ KernelSU 用运行时 kallsyms 加载器、**不打 init 补丁**。`policycap` 
 成功后载荷 fork 一个脱离的守护进程（`o3p --rootd`），并在本次 boot 的剩余时间里
 保持存活：
 
-- 抽象 unix socket `@o3p_rootd`；`/data/local/tmp` 里不放文件
+- 抽象 unix socket `@o3p_rootd`；守护进程自己只写
+  `/data/local/tmp/o3p_rootd.log`（模式 0600）
 - `SO_PEERCRED` 检查：只允许 `uid 0` 或 `uid 2000` 连接
 - 协议：每连接一条命令，用 `/system/bin/sh -c` 执行，stdout/stderr 合并回传，
   以 `__EXIT=<code>` 结束
-- 客户端：`./o3p.bin --shell "<command>"`
+- 客户端：`/data/local/tmp/o3p_<millis>.bin --shell "<command>"`
 
 ## App 封装
 
@@ -163,7 +164,7 @@ KernelSU 用运行时 kallsyms 加载器、**不打 init 补丁**。`policycap` 
   `dev.rikka.shizuku:api/provider/aidl/shared` 与 Shizuku 通信。
 - 载荷以 `lib/arm64-v8a/libo3p.so` 分发（可执行 ELF —— `extractNativeLibs`
   路径保证安装后仍可执行）。点“Continue”时，App 通过 `Shizuku.newProcess`
-  拉起 `sh`，把文件复制到 `/data/local/tmp/o3p.bin` 并执行。
+  拉起 `sh`，把文件复制到 `/data/local/tmp/o3p_<millis>.bin` 并执行。
 - 状态探测：`grep -c kernelsu /proc/modules; getenforce; pm path
   me.weishu.kernelsu`。
 - v3 没有 Enforcing 守护：正常终态就是 Enforcing 且 `selinux_state` 干净，App 只

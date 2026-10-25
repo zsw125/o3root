@@ -71,7 +71,7 @@ Linux version 6.18.21-android17-5-g805aa6adea19-abogki565292102-4k (kleaf@build-
 
 ## 3. 通路核验：基准 vs 4.0.16 内核
 
-基准值来自 [README.md](../README.md)、`scripts/run-macos.sh` 与 APK 内注入的 `classes2.dex`；新值从重建的 `vmlinux.elf` / BTF / 内核配置中取得。
+基准值来自 [README.md](../../README.md)、`scripts/run-macos.sh` 与 APK 内注入的 `classes2.dex`；新值从重建的 `vmlinux.elf` / BTF / 内核配置中取得。
 
 | 检查项 | 旧基准（4.0.15/4.0.18 内核） | 4.0.16 内核 | 结论 |
 |---|---|---|---|
@@ -136,7 +136,7 @@ Linux version 6.18.21-android17-5-g805aa6adea19-abogki565292102-4k (kleaf@build-
 | `ota_extract/extract_summary.json` | 提取过程与哈希校验结果 |
 | `ota_extract/route_compatibility.json` | 通路核验的机器可读结果 |
 | `patched/scripts/run-macos-4.0.16.sh` 等 | 已改新 slide 常量的脚本**副本**（原分发文件未改动） |
-| [tools/](../tools/) | 提取/校验脚本（probe_payload、extract_payload、unpack_boot、verify_path、kernel_cfg_btf、hash_payload 等） |
+| [tools/](../../tools/) | 提取/校验脚本（probe_payload、extract_payload、unpack_boot、verify_path、kernel_cfg_btf、hash_payload 等） |
 
 ---
 

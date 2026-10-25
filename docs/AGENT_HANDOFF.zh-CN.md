@@ -51,8 +51,9 @@ Permissive）、网络可用、`boot_id` 未变。
    端到端验证。
 
 7. **v3.0（当前，2026-10-25）**：两段式取代单次写入。stage 0 在
-   `selinux_state-7` 做 8 字节非对齐零写（只清 `enforcing`，保留
-   `initialized`/`policycap`），stage 1 换 `task_cred`；KernelSU 经运行时
+   `selinux_state-7` 做 8 字节非对齐零写（清 `enforcing`，同时清相邻锁的
+   pending/tail 字节；保留 `initialized`/`policycap`），stage 1 换 `task_cred`；
+   KernelSU 经运行时
    kallsyms 加载、**不打 init 补丁**，其 `setenforce(1)` 不再影响网络，设备停在
    Enforcing。单次回收三写方案（v3a–v3c）连续三次 panic，仅保留在 `O3P_D3V3`
    后供分析。详见 `docs/V3-DESIGN.md` 与下文“v3.0”一节。
@@ -223,8 +224,8 @@ adb shell 'tail -f /data/data/o3.st.root1/files/run.log'   # 仅 debuggable 构�
 
 ## v2.1 —— 权限感知探测（2026-10-25）
 
-- 只有 Shizuku 已授权（`checkSelfPermission`）后才跑 probe；用本地
-  `PackageManager` 识别三种管理器；`PackageInstaller` 安装成功后再探测；载荷
+- 只有 Shizuku 已授权（`checkSelfPermission`）后才跑 probe；在 Shizuku 里用
+  `pm path` 探测三种管理器包；`PackageInstaller` 安装成功后再探测；载荷
   文件名用唯一的 `o3p_<millis>.bin` 避免 `ETXTBSY`。
 - 修掉 18 Fold 死锁：`ERR java.lang.reflect.InvocationTargetException` 曾被当作
   正常 probe 输出，导致“安装管理器”循环。

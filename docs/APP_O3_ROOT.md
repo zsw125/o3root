@@ -5,11 +5,15 @@
 
 > 说明：本文件是开发过程的原始日志，保留当时的目录名（`work/`、`app5/`、`ota_extract/` 等）。仓库中的正式位置是 `payload/`（载荷与内核符号）、`app/`（APK 源码）、`docs/`（本目录）。接手开发请先读根目录 `AGENTS.md`。
 
-## 产物
+## 产物（v1.8，历史）
+
+> 当前发布件是 **v3.0**：`release/o3root2-v3.0.apk`（14,218,768 B，sha256
+> `c80f499a6b06ddf92241aa8cb0aa8874767eccdd960e631b28dcff98e7c141dd`）。下表的
+> 13,973,008 B/`0d7c5ea8…` 仅指 v1.8 的 APK，保留作历史记录。
 
 | 文件 | 大小 | sha256 |
 |---|---|---|
-| `app/build/o3root2.apk` | 13,973,008 B | `0d7c5ea8b1a4d4c35d0c7c444d0c022b36ed5af9b28f7d2f9c7b31e04afff05e` |
+| `app/build/o3root2.apk`（v1.8） | 13,973,008 B | `0d7c5ea8b1a4d4c35d0c7c444d0c022b36ed5af9b28f7d2f9c7b31e04afff05e` |
 
 包名 `o3.st.root1`，versionName `1.8`（versionCode 9），minSdk 31 / targetSdk 34，
 自签（keystore 自建，见 `docs/BUILD.md`）。**release 构建：`android:debuggable` 已移除。**
@@ -505,9 +509,9 @@ features=0x3ffff`（成功）；App 域历史实测 `io_uring_setup` 被 seccomp
 - 三 fork LKM 冷启验证：tiann v3.3.1（found=225，offset 0x144）、KernelSU-Next
   v3.4.2（227，0x144）、SukiSU v4.2.1-r2（245，0x178）；relink 回退用 tiann 复验。
 
-## v2.0 (dev log, 2026-10-25): multi-LKM blob + adaptive manager selection
+## v3.0 (dev log, 2026-10-25): multi-LKM blob + adaptive manager selection + two-reap payload
 
-- Artifacts: payload `payload/o3p.c` 51,517 B -> `build/o3p.bin` 73,768 B;
+- Artifacts: payload `payload/o3p.c` 56,631 B -> `build/o3p.bin` 73,768 B;
   `build/libo3p.so` 1,492,484 B
   (`sha256 e64217c8fac2950763869881efdd15ff9fb76f1423a3388185bca7e72499aac3`);
   APK `app/o3root2.apk` 14,218,768 B

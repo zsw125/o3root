@@ -77,7 +77,8 @@ KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
    fresh exec is required (`fork` + `sh -c insmod`). In-process load BUGs in
    `commit_creds` (`task->cred != task->real_cred`).
 5. **v3 stage 0 no longer pollutes `policycap`.** The 8-byte unaligned zero at
-   `selinux_state-7` clears only `enforcing`, so Enforcing is safe and the app
+   `selinux_state-7` clears `enforcing` (and the adjacent `notif_lock`
+   pending/tail bytes), so Enforcing is safe and the app
    ships no recovery guard. Only the legacy `O3P_SELDIRTY=1` path dirties
    `policycap[]`; if used, any `setenforce 1` freezes Wi-Fi TX until
    `setenforce 0` or reboot.

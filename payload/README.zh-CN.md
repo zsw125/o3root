@@ -89,7 +89,7 @@ KernelSU-Next v3.4.2、SukiSU v4.2.1-r2）+ 每项 24 字节的 tag 表 +
 - 载荷是**设备/profile 特定**的：偏移与静态地址都是按
   `6.18.21-android17-5-g805aa6adea19-abogki565292102-4k`（yingtian/lhasa）编译
   的。常量与换内核时如何重新推导，见 `docs/ARCHITECTURE.md`。
-- v3 默认是在 `selinux_state-7` 做非对齐零写：只清 `enforcing`，
-  `initialized`/`policycap[]` 原样保留，所以重新开启 Enforcing 是安全的，App
+- v3 默认是在 `selinux_state-7` 做非对齐零写：清 `enforcing`（同时清相邻锁的
+  pending/tail 字节），`initialized`/`policycap[]` 原样保留，所以重新开启 Enforcing 是安全的，App
   不再带恢复守护。只有旧 `O3P_SELDIRTY=1` 路径会破坏 `policycap[]`（第 2..7
   字节），并在 Enforcing 回来时可能弄坏网络；见 `docs/SECURITY.md`。

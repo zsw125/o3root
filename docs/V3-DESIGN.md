@@ -11,7 +11,8 @@ One UAF, one reclaimed slab page, one reap — and in that single reap do both
 things v2.x needed two separate exploitations for:
 
 1. install the fake `cred` (`task->cred = fake cred page`);
-2. clear only `selinux_state.enforcing` (unaligned zero write), leaving
+2. clear `selinux_state.enforcing` with the unaligned zero write (which also
+   clears the adjacent `notif_lock` pending/tail bytes), leaving
    `initialized` / `policycap` intact.
 
 Side effects we want at the end:
@@ -43,13 +44,16 @@ nodes share one 8 KiB slab page. When that page is reclaimed by our sprayed
 page, `posix_cpu_timers_exit()` walks all three trees and we get three
 independent `rb_erase` fast-path writes.
 
+> The tile table and single-reap flow below are the **abandoned v3a** design;
+> the shipped v3.0 path uses two reaps (see *Staged delivery* / *Outcome*).
+
 Tile layout (each node: `+0xe0 = pc`, `+0xe8 = rb_right = 0`,
 `+0xf0 = rb_left = S`; slow path writes `*(S) = pc`):
 
 | tree | `pc` | `S` | effect |
 |---|---|---|---|
 | PROF | `fake_page_va` | `PTASK+0x908` | `task->cred = fake_page_va` (user becomes uid 0) |
-| VIRT | `0` | `selinux_state-7` | 8-byte unaligned zero: `enforcing=0` only |
+| VIRT | `0` | `selinux_state-7` | 8-byte unaligned zero: `enforcing=0` (also clears the adjacent lock's pending/tail bytes) |
 | SCHED | `0` | `fake_page_va+0x10` | scratch zero write (witness / no-op) |
 
 The PROF tile also makes `rb_erase` write into the fake page through the
@@ -138,7 +142,8 @@ has no `o3p/` probe lines).
 
 v3a/v3b/v3c crashed right after `D3ADDR` in three consecutive cold boots; the
 single-reap design was abandoned. v3.0 instead ships a **two-reap** variant on
-`main` (`dc06899`, tag `v3.0`): A (enforcing-only zero) in stage 0 and the
+`main` (`dc06899`, tag `v3.0`): A (the enforcing zero; it also clears the
+adjacent lock's tail bytes) in stage 0 and the
 proven `task_cred` swap in stage 1, with KernelSU loaded without the init patch.
 Experiments B (`tp_slide`) and C (`tp_reclaim`) remain validated prototypes; see
 `experiments/README.md`.

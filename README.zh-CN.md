@@ -45,8 +45,9 @@ Max）与 **lhasa**（Xiaomi 18 Fold）系列，做本地提权 + KernelSU。整
    （CVE-2026-98260），用一个包含伪造 RB 树节点的 `kmalloc-8k` 喷页缓冲回收已
    释放的 `posix_timers_cache` order-1 slab 页，并借第二次
    `timerqueue_del → rb_erase` 向任意内核地址写入一个 8 字节值。
-3. stage 0 只把 `enforcing` 字节清零（在 `selinux_state-7` 做 8 字节非对齐写，
-   `initialized`/`policycap` 保留）；stage 1 把 `task_struct.cred` 指向伪造的
+3. stage 0 在 `selinux_state-7` 做 8 字节非对齐写清掉 `enforcing`（同时清掉
+   相邻 `notif_lock` 的 pending/tail 字节；`initialized`/`policycap` 保留）；
+   stage 1 把 `task_struct.cred` 指向伪造的
    cred 页（uid 0、full caps）。
 4. 载荷加载内置 KernelSU LKM：未定义符号默认运行时经 `/proc/kallsyms` 解析
    （回退：248 符号并集重链接 + 当前 KASLR slide），**默认不打 init 补丁**——

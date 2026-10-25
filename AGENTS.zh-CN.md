@@ -59,8 +59,9 @@ KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
    确切的内核构建。不要重排或“简化”它们；在没有对应镜像的情况下改动 =
    内核 oops。
 2. **v3 默认不给 KernelSU 打 init 补丁 —— 保持这个默认。**
-   断网根因已消除：stage0 只把 `enforcing` 字节清零（在 `selinux_state-7` 做 8 字节
-   非对齐零写，`initialized`/`policycap` 原样保留），所以 KSU 重新拉回
+   断网根因已消除：stage0 在 `selinux_state-7` 做 8 字节非对齐零写清掉 `enforcing`
+   （同时清掉相邻锁的 pending/tail 字节，`initialized`/`policycap` 原样保留），
+   所以 KSU 重新拉回
    Enforcing 后 Wi-Fi 仍正常；日志里 `KSU_CODEPATCH skip` 即正确路径。
    仅用于对比时可用 `O3P_CODEPATCH=1` 回退旧补丁（`.rela.init.text` 动态定位，
    tiann/Next `0x144`、SukiSU `0x178`；文件偏移 `0x22144`/`0x37144`/`0x3e178`）。
@@ -73,7 +74,7 @@ KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
    新起一次 exec（`fork` + `sh -c insmod`）。进程内加载会在 `commit_creds`
    触发 BUG（`task->cred != task->real_cred`）。
 5. **v3 的 stage0 不再污染 `policycap`。** 在 `selinux_state-7` 做 8 字节非对齐零写
-   只清 `enforcing`，所以 Enforcing 是安全终态、App 不再带恢复守护。只有旧路径
+   清掉 `enforcing`（相邻锁的 pending/tail 字节也一并清零），所以 Enforcing 是安全终态、App 不再带恢复守护。只有旧路径
    `O3P_SELDIRTY=1` 会污染 `policycap[]`；用它时任何 `setenforce 1` 都会让 Wi-Fi TX
    冻结，直到 `setenforce 0` 或重启。
 6. **rootd 协议**：抽象 socket `@o3p_rootd`，`SO_PEERCRED` 只接受 uid 0/2000，
@@ -175,8 +176,9 @@ KernelSU（LKM + 管理器 APK）是 GPL-3.0。
 
 ### v3（当前）
 
-v3 保留两段式利用，但两次写都改了：stage0 是**只清 enforcing** 的零写
-（在 `selinux_state-7` 做 8 字节非对齐写），stage1 仍是 `task_cred` 换指针。之后用运行时
+v3 保留两段式利用，但两次写都改了：stage0 是清 `enforcing` 的零写
+（在 `selinux_state-7` 做 8 字节非对齐写，同时清掉相邻锁的 pending/tail 字节），
+stage1 仍是 `task_cred` 换指针。之后用运行时
 kallsyms 加载器装 KSU，**不打 init 补丁**；KSU 自己的 `setenforce(1)` 无害（policycap
 干净），所以设备停在 Enforcing 且 Wi-Fi 正常。曾尝试“一次 reap 三次写”，连续 panic，
 现仅保留在 `O3P_D3V3` 后供分析。yingtian 冷启已验证（`KSU_CODEPATCH skip`、

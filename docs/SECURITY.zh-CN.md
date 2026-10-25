@@ -33,8 +33,9 @@ root 并加载 KernelSU。
 
 载荷只修改内核内存：
 
-1. `selinux_state`（stage 0）：在 `selinux_state-7` 做 8 字节非对齐零写，只清
-   `enforcing`；`initialized` 与 `policycap[]` 原样保留（只有旧路径
+1. `selinux_state`（stage 0）：在 `selinux_state-7` 做 8 字节非对齐零写，清
+   `enforcing`（同时清相邻 `notif_lock` 的 pending/tail 字节）；`initialized` 与
+   `policycap[]` 原样保留（只有旧路径
    `O3P_SELDIRTY=1` 仍写旧的脏值、会污染 `policycap[]`）。
 2. 载荷进程的 `task_struct.cred`（stage 1）→ 一个伪造 cred 页：uid 0、
    full capabilities，SELinux blob 沿用原来的（仍是 shell 域）。
@@ -44,9 +45,15 @@ root 并加载 KernelSU。
 
 除了以下文件，不写磁盘：
 
-- `/data/local/tmp/o3p.bin`、`/data/local/tmp/o3p_ksu.ko`（载荷与打好补丁的
-  模块，模式 0755），
-- `/data/local/tmp/o3p_proof.txt`、`/data/local/tmp/o3p_rootd.log`（模式 0600），
+- `/data/local/tmp/o3p_<millis>.bin`（App 复制的载荷，模式 0755）与
+  `/data/local/tmp/o3p_ksu.ko`（运行时重定基后的 LKM，模式 0644；内置 LKM 本身
+  未改，v3 既不补 `.init.text` 也不改字节，只按当前 slide 重写 UNDEF 符号地址），
+- `/data/local/tmp/o3p_rootd.log`（模式 0600）与 proof 文件
+  `/data/local/tmp/o3p_proof.txt`（经 `sh` 重定向写入，模式 0666 再受 umask），
+  以及 `/data/local/tmp/o3p_stage.txt`（模式 0644），
+- 按需诊断文件：`/data/local/tmp/o3p_insmod.out`、`/data/local/tmp/canary_t34`
+  （模式 0666，stage-0 探针），可选的 `o3p_sd.log`、`o3p_post.sh` /
+  `o3p_post.out`，
 - App 外部文件目录下的可选日志。
 
 ## 已知副作用

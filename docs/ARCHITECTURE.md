@@ -77,8 +77,9 @@ The payload repeats the whole UAF/reclaim cycle per stage (`g_ntg = 2`):
 ### Stage 0 — SELinux state
 
 - v3 default (two-reap): `S = SELINUX_STATE_STATIC + slide - 7`, value `0` —
-  an 8-byte unaligned zero that clears only `enforcing` while keeping
-  `initialized`/`policycap[]` intact (observed `state=0x0100000101010100`).
+  an 8-byte unaligned zero that clears `enforcing` (and the adjacent
+  `notif_lock` pending/tail bytes) while keeping `initialized`/`policycap[]`
+  intact (observed `state=0x0100000101010100`).
 - Legacy `O3P_SELDIRTY=1` keeps the old dirty write (`S = ...`,
   `V = fakekva | 0x100`), which also zeroes `enforcing` but leaves address
   garbage in `policycap[]` — inert while Permissive, breaks socket checks once
@@ -169,11 +170,12 @@ restores the legacy patch.
 After success the payload forks a detached daemon (`o3p --rootd`) and keeps it
 alive for the rest of the boot:
 
-- abstract unix socket `@o3p_rootd`; no files in `/data/local/tmp`
+- abstract unix socket `@o3p_rootd`; the daemon's own log is
+  `/data/local/tmp/o3p_rootd.log` (mode 0600)
 - `SO_PEERCRED` check: only `uid 0` or `uid 2000` may connect
 - protocol: one command per connection, executed via `/system/bin/sh -c`, the
   combined stdout/stderr streamed back, terminated by `__EXIT=<code>`
-- client: `./o3p.bin --shell "<command>"`
+- client: `/data/local/tmp/o3p_<millis>.bin --shell "<command>"`
 
 ## App packaging
 
@@ -182,7 +184,7 @@ alive for the rest of the boot:
 - The payload is shipped as `lib/arm64-v8a/libo3p.so` (an executable ELF — the
   `extractNativeLibs` path keeps it executable after install). On "Continue",
   the app spawns `sh` via `Shizuku.newProcess`, copies the file to
-  `/data/local/tmp/o3p.bin`, and executes it.
+  `/data/local/tmp/o3p_<millis>.bin`, and executes it.
 - Status probing: `grep -c kernelsu /proc/modules; getenforce; pm path
   me.weishu.kernelsu`.
 - v3 has no Enforcing guard: the chain normally ends Enforcing with a clean

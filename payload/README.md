@@ -98,8 +98,9 @@ unset.
   compiled for `6.18.21-android17-5-g805aa6adea19-abogki565292102-4k` on
   yingtian/lhasa. See `docs/ARCHITECTURE.md` for the constants and how to
   re-derive them for another kernel.
-- The v3 default is an unaligned zero at `selinux_state-7`: it clears only
-  `enforcing`, so `initialized`/`policycap[]` stay intact and re-enabling
+- The v3 default is an unaligned zero at `selinux_state-7`: it clears
+  `enforcing` (and the adjacent lock's pending/tail bytes), so
+  `initialized`/`policycap[]` stay intact and re-enabling
   Enforcing is safe; the app therefore ships no recovery guard. Only the legacy
   `O3P_SELDIRTY=1` path corrupts `policycap[]` (bytes 2..7) and can break the
   network once Enforcing returns; see `docs/SECURITY.md`.

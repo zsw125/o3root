@@ -46,16 +46,18 @@ Dates/commits/credits: `docs/PRIOR-ART.md` §5–7; superseded reports:
    network OK. (v3.0 no longer patches — see item 7.)
 5. **v1.8 guard (historical; removed in v3.0)**: v1.8–v2.1 warned when KSU
    was loaded and SELinux had rebounded to Enforcing, offering one-click
-   `su -c setenforce 0`. v3 removes it: stage 0 clears only `enforcing`, so
-   Enforcing is a safe end state (see §5 and the v3.0 notes).
+   `su -c setenforce 0`. v3 removes it: stage 0 clears `enforcing` (and the
+   adjacent `notif_lock` pending/tail bytes), so Enforcing is a safe end state
+   (see §5 and the v3.0 notes).
 6. **v1.9 runtime loader**: the payload resolves KernelSU symbols through
    `/proc/kallsyms` at load time (fallback: 248-symbol union relink + slide),
    locates the `setenforce` patch point from `.rela.init.text`, and works with
    tiann, KernelSU-Next and SukiSU LKMs; the v1.9 APK was cold-boot verified.
 
 7. **v3.0 (current, 2026-10-25)**: two reaps instead of one. Stage 0 is an
-   unaligned 8-byte zero at `selinux_state-7` (clears only `enforcing`, keeps
-   `initialized`/`policycap`), stage 1 is the `task_cred` swap; KernelSU loads
+   unaligned 8-byte zero at `selinux_state-7` (clears `enforcing` and the
+   adjacent `notif_lock` pending/tail bytes; keeps `initialized`/`policycap`),
+   stage 1 is the `task_cred` swap; KernelSU loads
    through the runtime kallsyms loader with **no init patch**, so its own
    `setenforce(1)` leaves the network healthy and the device in Enforcing. The
    single-reap three-write variant (v3a–v3c) panicked three times and stays
@@ -242,7 +244,7 @@ The payload can be tested standalone (root or shell): push `libo3p.so` as
 ## v2.1 — permission-aware probe (2026-10-25)
 
 - The probe runs only after Shizuku is authorized (`checkSelfPermission`),
-  detects the manager through the local `PackageManager` (three packages), and
+  detects the manager through a Shizuku `pm path` probe for the three packages, and
   re-probes after a successful `PackageInstaller` install; payload files get a
   unique `o3p_<millis>.bin` name to avoid `ETXTBSY`.
 - Fixes the 18 Fold deadlock (`ERR java.lang.reflect.InvocationTargetException`

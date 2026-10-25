@@ -36,7 +36,8 @@ KernelSU.
 The payload modifies kernel memory only:
 
 1. `selinux_state` (stage 0): an 8-byte unaligned zero at `selinux_state-7`
-   clears only `enforcing`; `initialized` and `policycap[]` stay intact (the
+   clears `enforcing` (and the adjacent `notif_lock` pending/tail bytes);
+   `initialized` and `policycap[]` stay intact (the
    legacy `O3P_SELDIRTY=1` path still writes the old dirty value and dirties
    `policycap[]`).
 2. `task_struct.cred` of the payload process (stage 1) → a fake cred page with
@@ -47,9 +48,16 @@ The payload modifies kernel memory only:
    legacy patch (which then needs the old dirty-write caveats below).
 
 Nothing is written to disk except:
-- `/data/local/tmp/o3p.bin`, `/data/local/tmp/o3p_ksu.ko` (the payload and the
-  patched module, mode 0755),
-- `/data/local/tmp/o3p_proof.txt`, `/data/local/tmp/o3p_rootd.log` (mode 0600),
+- `/data/local/tmp/o3p_<millis>.bin` (the app's copy of the payload, mode 0755)
+  and `/data/local/tmp/o3p_ksu.ko` (the runtime-rebased LKM, mode 0644; the
+  embedded LKM ships unmodified and v3 patches neither `.init.text` nor its
+  bytes — only its UNDEF symbols are rebased for the current slide),
+- `/data/local/tmp/o3p_rootd.log` (mode 0600) and the proof file
+  `/data/local/tmp/o3p_proof.txt` (written through `sh` redirection, so mode
+  0666 before umask), plus `/data/local/tmp/o3p_stage.txt` (mode 0644),
+- diagnostics on demand: `/data/local/tmp/o3p_insmod.out`,
+  `/data/local/tmp/canary_t34` (mode 0666, stage-0 probe), and optionally
+  `o3p_sd.log`, `o3p_post.sh` / `o3p_post.out`,
 - optional app logs under the app's external files dir.
 
 ## Known side effects

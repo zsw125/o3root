@@ -85,7 +85,7 @@ independent cred/`init_user_ns`-based measurement on the same boot.
 
 ## A — unaligned `selinux_state - 7` zero + KernelSU without the init patch
 
-The payload now understands two experimental environment variables:
+Environment switches relevant here (full table in `payload/README.md`):
 
 - **shipped default since v3.0** (originally gated as `O3P_SELZERO=1`; legacy
   `O3P_SELDIRTY=1` restores the old dirty write) — stage0 targets
@@ -93,8 +93,9 @@ The payload now understands two experimental environment variables:
   `initialized` and `policycap[]` stay intact (the old stage0 wrote a pointer
   *into* `selinux_state` and clobbered `policycap`, which later broke Wi-Fi when
   SELinux returned to Enforcing).
-- `O3P_NO_CODEPATCH=1` — skip the KernelSU `.init.text` `mov w0,#0` patch, so
-  upstream KernelSU restores Enforcing through its own init hook.
+- `O3P_CODEPATCH=1` — restore the legacy KernelSU `.init.text` `mov w0,#0`
+  patch (skipped by default since v3.0), so upstream KernelSU restores Enforcing
+  through its own init hook instead of the patched opt-out.
 
 Measured on a clean boot (`3976b14a-…`, Enforcing, no KernelSU loaded), tiann
 LKM, official 375,328-byte build:
