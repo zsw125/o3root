@@ -18,7 +18,7 @@ Everything here is specific to the target profile below; see
 
 The kernel image hashes to
 `cde87cd70206f21db4359aa1148f5f68e693ffefb11108dffde99c07c8c5ad88`
-(identical on both firmwares). See `docs/OTA_4.0.16_kernel_report.md`.
+(identical on both firmwares). See `docs/history/OTA_4.0.16_kernel_report.md`.
 
 ## Vulnerability: CVE-2026-98260
 
@@ -133,17 +133,18 @@ static addresses, including the embedded KernelSU LKM.
    upstream forks and rewrites each undefined symbol to `vmlinux_addr + slide`.
    It also bypasses module symbol-namespace checks, `TRIM_UNUSED_KSYMS`
    exports, protected symbols and CRCs.
-4. One instruction is patched in either path: the loader parses
-   `.rela.init.text`, finds the relocation whose symbol is `setenforce`, and
-   rewrites the 4 bytes at `r_offset - 4` (`mov w0,#1` → `mov w0,#0`;
+4. **Legacy only (`O3P_CODEPATCH=1`)**: one instruction is patched. The loader
+   parses `.rela.init.text`, finds the relocation whose symbol is `setenforce`,
+   and rewrites the 4 bytes at `r_offset - 4` (`mov w0,#1` → `mov w0,#0`;
    section-relative `.init.text+0x144` for tiann/KernelSU-Next and `+0x178` for
    SukiSU — the log prints absolute file offsets 0x22144 / 0x37144 / 0x3e178
    for these builds). A unique-scan fallback covers LKMs whose relocations cannot
-   be resolved. So the module does **not** call `setenforce(1)` during init.
+   be resolved. The v3 default skips this entirely, so KernelSU's own
+   `setenforce(1)` runs and is safe (clean `policycap`).
    (Patching the `bl setenforce` call site instead is not possible: the CALL26
    relocation rewrites those 4 bytes at load time, causing an undefined
    instruction / module stuck in `coming`.)
-5. Write the patched LKM to `/data/local/tmp/o3p_ksu.ko`, then
+5. Write the (legacy: patched; v3: unmodified) LKM to `/data/local/tmp/o3p_ksu.ko`, then
    `fork()` + `exec("/system/bin/sh","-c","insmod ...")`, wait, and verify
    `/proc/modules` contains `kernelsu`.
 

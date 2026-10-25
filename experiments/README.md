@@ -237,8 +237,22 @@ so the same reap performed the SELinux zero and two controlled zero writes
 **Limits:** all three nodes must fall in the same 8 KiB page (observed on
 every attempt here, not guaranteed); D3 is a shell-domain experiment and does
 not load KernelSU. Combined with the C harness (PFN-verified reclaim) this
-becomes a single-reap "cred + enforcing" primitive, with tile PROF retargeted
-to `&task->cred-8`.
+becomes a single-reap "cred + enforcing" primitive: `O3P_D3V3=1` retargets the
+PROF tile to `task->cred` (`PTASK+0x908`), keeps the VIRT tile at
+`selinux_state-7`, and drops the SCHED witness. That combination panicked on
+three cold boots (see “Outcome in v3.0”).
+
+## Helper probes
+
+Two tiny utilities used to fire the tracepoint anchors without the full
+payload (they are not part of the exploit):
+
+- `tp_timer.c` — `timer_create(CLOCK_THREAD_CPUTIME_ID)` + `timer_delete` in a
+  loop; triggers `alloc_posix_timer` so `tp_slide` can sample `TIMER_LINK`.
+- `tp_cred.c` — `setresuid(2000,2000,2000)` / `setfsuid` / `setresgid`; forces
+  `prepare_creds` so the `CRED_LINK` anchor can be cross-checked.
+
+Build them with the NDK clang like any other host-side test.
 
 ## Outcome in v3.0
 

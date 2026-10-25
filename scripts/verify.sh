@@ -48,7 +48,7 @@ for f in \
   docs/ARCHITECTURE.md docs/SECURITY.md docs/BUILD.md docs/AGENT_HANDOFF.md \
   docs/AGENT_HANDOFF.zh-CN.md \
   docs/ARCHITECTURE.zh-CN.md docs/SECURITY.zh-CN.md docs/BUILD.zh-CN.md \
-  docs/CVE-2026-98260_FEASIBILITY.md docs/CVE-2026-98260_FEASIBILITY.zh-CN.md \
+  docs/history/README.md docs/history/CVE-2026-98260_FEASIBILITY.md   docs/history/CVE-2026-98260_FEASIBILITY.zh-CN.md docs/history/ROOT_ACHIEVED_OS4.0.16.md   docs/history/ALTERNATIVE_ROOT_DIRECTIONS.md docs/history/OTA_4.0.16_kernel_report.md \
   payload/README.md payload/README.zh-CN.md tools/README.md tools/README.zh-CN.md \
   docs/APP_O3_ROOT.md
 do

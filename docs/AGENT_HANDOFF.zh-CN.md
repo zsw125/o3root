@@ -21,6 +21,7 @@ App 日志中的成功标记（按顺序）：
 `✔ 全部完成，正在打开 KernelSU…` → `top -> …me.weishu.kernelsu/.ui.MainActivity`。
 健康状态：`getenforce` = `Enforcing`（v3；旧路径 `O3P_SELDIRTY=1` 会停在
 Permissive）、网络可用、`boot_id` 未变。
+日期/提交/致谢见 `docs/PRIOR-ART.md` §5–7；历史报告索引见 `docs/history/README.md`。
 
 ## 它是怎么走到这里的（压缩时间线）
 

@@ -53,6 +53,23 @@ KernelSU-Next v3.4.2、SukiSU v4.2.1-r2）+ 每项 24 字节的 tag 表 +
    监听抽象 unix socket `@o3p_rootd`，只接受 uid 0 或 2000 的对端
    （SO_PEERCRED）。客户端：`--shell "<cmd>"`。
 
+## 环境开关
+
+全部可选；生产使用（APK 或 `--shell`）应保持不设置。
+
+| 变量 | 值 | 作用 |
+|---|---|---|
+| `O3P_SELDIRTY` | `1` | 旧 stage-0 写：在 `selinux_state` 写 8 字节（污染 `policycap[]`、终态 Permissive，Enforcing 回来会断网）。v3 默认是 `selinux_state-7` 的干净非对齐零写。 |
+| `O3P_CODEPATCH` | `1` | 旧 KernelSU init 补丁（`mov w0,#1`→`#0`）；v3 默认加载未修改模块。 |
+| `O3P_NOSEL` | `1` | 跳过 stage 0（SELinux）——仅调试。 |
+| `O3P_NOKSU` | `1` | 跳过 KernelSU blob 加载。 |
+| `O3P_RELINK_ONLY` | `1` | 绕过 `/proc/kallsyms`，用内置 248 符号表 + slide 重链接。 |
+| `O3P_KSU_FORK` | `tiann`/`next`/`sukisu` | 强制使用某个内置 LKM，而非按管理器选择。 |
+| `O3P_D3` | `1` | 三 timerqueue 单次回收实验（D）；不加载 KernelSU，仅 shell 域。 |
+| `O3P_D3V3` | `1` | **危险**：单次回收 cred+enforcing+空写实验（v3a–v3c），本内核会 panic。 |
+| `O3P_SDLOG` | `1` | 进度镜像到 `/sdcard/o3p_sd.log`（调试；panic 时 FUSE 写可能丢）。 |
+| `O3P_SIDFORGE` | `1` | **已废弃**：伪造 `cred_security_struct.sid=1`；得到 `unlabeled` 且 KernelSU `hook_file_open` oops。 |
+
 ## 文件
 
 | 文件 | 作用 |

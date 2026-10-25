@@ -60,6 +60,24 @@ readable.
    `--rootd`, which listens on the abstract unix socket `@o3p_rootd` and only
    accepts peers with uid 0 or 2000 (SO_PEERCRED). Clients: `--shell "<cmd>"`.
 
+## Environment switches
+
+All are optional; production usage (the APK or `--shell`) should leave them
+unset.
+
+| variable | value | effect |
+|---|---|---|
+| `O3P_SELDIRTY` | `1` | legacy stage-0 write: 8 bytes at `selinux_state` (dirties `policycap[]`, ends Permissive, network breaks once Enforcing returns). v3 default is the clean unaligned zero at `selinux_state-7`. |
+| `O3P_CODEPATCH` | `1` | legacy KernelSU init patch (`mov w0,#1` → `#0`); v3 default loads the LKM unmodified. |
+| `O3P_NOSEL` | `1` | skip stage 0 (SELinux) entirely — debugging only. |
+| `O3P_NOKSU` | `1` | skip the KernelSU blob load. |
+| `O3P_RELINK_ONLY` | `1` | bypass `/proc/kallsyms`; relink with the embedded 248-symbol table + slide. |
+| `O3P_KSU_FORK` | `tiann` / `next` / `sukisu` | force one embedded LKM instead of manager-based selection. |
+| `O3P_D3` | `1` | lab demo of the three-timerqueue single reap (D); no KernelSU, shell domain only. |
+| `O3P_D3V3` | `1` | **unsafe**: single-reap cred+enforcing+no-op experiment (v3a–v3c); panics on this kernel. |
+| `O3P_SDLOG` | `1` | mirror progress to `/sdcard/o3p_sd.log` (debugging; FUSE writes may be lost on panic). |
+| `O3P_SIDFORGE` | `1` | **abandoned**: forge `cred_security_struct.sid=1`; yields `unlabeled` and KernelSU `hook_file_open` oops. |
+
 ## Files
 
 | file | role |

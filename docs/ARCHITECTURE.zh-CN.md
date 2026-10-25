@@ -17,7 +17,7 @@ profile；常量与移植方法见 [内核 profile](#内核-profile)。
 
 内核镜像的 sha256 为
 `cde87cd70206f21db4359aa1148f5f68e693ffefb11108dffde99c07c8c5ad88`
-（两个固件完全相同）。见 `docs/OTA_4.0.16_kernel_report.md`。
+（两个固件完全相同）。见 `docs/history/OTA_4.0.16_kernel_report.md`。
 
 ## 漏洞：CVE-2026-98260
 
@@ -122,14 +122,14 @@ KernelSU-Next v3.4.2（473,552 B）、SukiSU v4.2.1-r2（569,752 B）。加载�
    使用内置的 248 个 KernelSU 符号并集（来自上游各 fork），把每个未定义符号
    改写为 `vmlinux_addr + slide`。这同样绕过模块符号命名空间检查、
    `TRIM_UNUSED_KSYMS` 导出限制、受保护符号与 CRC。
-4. 两条路径都会改同一条指令：解析 `.rela.init.text`，找符号为 `setenforce`
+4. 只有旧路径（`O3P_CODEPATCH=1`）才改这一条指令：解析 `.rela.init.text`，找符号为 `setenforce`
    的重定位，改写 `r_offset - 4` 的 4 字节（`mov w0,#1` → `mov w0,#0`；
    `.init.text` 段内偏移 tiann/KernelSU-Next `+0x144`、SukiSU `+0x178`；
    日志打印的是文件绝对偏移，这几次构建分别 0x22144 / 0x37144 / 0x3e178）。
    重定位无法解析时回退到唯一扫描。这样模块 init 期间**不会**调用
    `setenforce(1)`。（改 `bl setenforce` 调用点是不可行的：CALL26 重定位会
    在加载时重写这 4 字节，导致未定义指令 / 模块卡在 `coming`。）
-5. 把打好补丁的 LKM 写到 `/data/local/tmp/o3p_ksu.ko`，然后
+5. 把 LKM（旧路径：已打补丁；v3：未修改）写到 `/data/local/tmp/o3p_ksu.ko`，然后
    `fork()` + `exec("/system/bin/sh","-c","insmod ...")`，等待并确认
    `/proc/modules` 里有 `kernelsu`。
 

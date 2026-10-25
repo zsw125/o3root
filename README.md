@@ -146,11 +146,12 @@ history. Detailed logs and the write-up live in
 | `docs/BUILD.zh-CN.md` | 构建说明（中文版） |
 | `docs/APP_O3_ROOT.md` | full development log / validation report |
 | `docs/V3-DESIGN.md` | v3 design analysis; why the single-reap variant was abandoned |
-| `docs/OTA_4.0.16_kernel_report.md` | OTA extraction, kernel analysis, KASLR constants |
-| `docs/CVE-2026-98260_FEASIBILITY.md` | vulnerability analysis and upstream fix references |
-| `docs/CVE-2026-98260_FEASIBILITY.zh-CN.md` | 可行性报告（中文版） |
-| `docs/ROOT_ACHIEVED_OS4.0.16.md` | first end-to-end run notes |
-| `docs/ALTERNATIVE_ROOT_DIRECTIONS.md` | directions considered before this chain |
+| `docs/history/README.md` | index of superseded reports (dates + why they are historical) |
+| `docs/history/OTA_4.0.16_kernel_report.md` | OTA extraction, kernel analysis, KASLR constants |
+| `docs/history/CVE-2026-98260_FEASIBILITY.md` | vulnerability analysis and upstream fix references |
+| `docs/history/CVE-2026-98260_FEASIBILITY.zh-CN.md` | 可行性报告（中文版） |
+| `docs/history/ROOT_ACHIEVED_OS4.0.16.md` | first end-to-end run notes |
+| `docs/history/ALTERNATIVE_ROOT_DIRECTIONS.md` | directions considered before this chain |
 | `AGENTS.zh-CN.md` | 自动化贡献者入口（中文版） |
 | `README.zh-CN.md` | 本 README 的中文版 |
 | `payload/README.md` / `payload/README.zh-CN.md` | payload internals (EN / 中文) |

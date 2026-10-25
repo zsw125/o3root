@@ -135,11 +135,12 @@ bash app/build.sh                                # -> app/build/o3root2.apk
 | `docs/BUILD.zh-CN.md` | 构建说明（中文版） |
 | `docs/APP_O3_ROOT.md` | 完整开发日志 / 验证报告（中文） |
 | `docs/V3-DESIGN.md` | v3 设计分析；单次回收方案为何被放弃 |
-| `docs/OTA_4.0.16_kernel_report.md` | OTA 提取、内核分析、KASLR 常量（中文） |
-| `docs/CVE-2026-98260_FEASIBILITY.md` | 漏洞分析与上游修复引用 |
-| `docs/CVE-2026-98260_FEASIBILITY.zh-CN.md` | 可行性报告（中文版） |
-| `docs/ROOT_ACHIEVED_OS4.0.16.md` | 首次端到端运行记录（中文） |
-| `docs/ALTERNATIVE_ROOT_DIRECTIONS.md` | 本方案之前考虑过的方向（中文） |
+| `docs/history/README.md` | 历史报告索引（日期与过时原因） |
+| `docs/history/OTA_4.0.16_kernel_report.md` | OTA 提取、内核分析、KASLR 常量（中文） |
+| `docs/history/CVE-2026-98260_FEASIBILITY.md` | 漏洞分析与上游修复引用 |
+| `docs/history/CVE-2026-98260_FEASIBILITY.zh-CN.md` | 可行性报告（中文版） |
+| `docs/history/ROOT_ACHIEVED_OS4.0.16.md` | 首次端到端运行记录（中文） |
+| `docs/history/ALTERNATIVE_ROOT_DIRECTIONS.md` | 本方案之前考虑过的方向（中文） |
 | `AGENTS.zh-CN.md` | 自动化贡献者入口（中文版） |
 | `README.zh-CN.md` | 本 README 的中文版 |
 | `payload/README.md` / `payload/README.zh-CN.md` | 载荷说明（英文 / 中文） |

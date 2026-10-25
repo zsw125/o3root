@@ -124,6 +124,6 @@ because it affects exploitability.
 ## Reporting
 
 Please do not file this as a vulnerability against Xiaomi's bounty program
-without reading `docs/CVE-2026-98260_FEASIBILITY.md`; the underlying bugs
+without reading `docs/history/CVE-2026-98260_FEASIBILITY.md`; the underlying bugs
 (`CVE-2026-98260`, and the earlier `CVE-2026-64560`/`CVE-2026-49881`) are
 documented there with upstream fix references.

@@ -22,6 +22,8 @@ Success markers in the app log (in order):
 `✔ 全部完成，正在打开 KernelSU…` → `top -> …me.weishu.kernelsu/.ui.MainActivity`.
 Health: `getenforce` = `Enforcing` (v3; legacy `O3P_SELDIRTY=1` ends
 Permissive), network works, `boot_id` unchanged.
+Dates/commits/credits: `docs/PRIOR-ART.md` §5–7; superseded reports:
+`docs/history/README.md`.
 
 ## How it got here (compressed timeline)
 

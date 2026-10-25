@@ -6,6 +6,18 @@ This repository is security research tooling. Run it only on hardware you own.
 Several bundled or build-time components are third-party software with their own
 licenses and redistribution terms.
 
+## Prior-art credits (research; no code bundled)
+
+- **V4bel / InfinityCore** — CVE-2026-98260 research and the public Ubuntu
+  proof-of-concept. Our chain is an independent re-implementation for kernel
+  6.18.21; no source code is copied.
+- **EAEdward/xiaomi9pmroot** (MIT) — the tracepoint slide measurement,
+  PFN-verified reclaim prototype, three-tree write experiment, and the
+  unaligned `selinux_state-7` zero are adapted from that project's write-up and
+  code (ideas, re-implemented here). See `docs/PRIOR-ART.md` for the itemised
+  comparison and the snapshot date.
+- KernelSU / KernelSU-Next / SukiSU-Ultra — see the GPL-3.0 sections below.
+
 ## KernelSU (GPL-3.0)
 
 - Project: KernelSU — https://github.com/tiann/KernelSU

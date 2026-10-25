@@ -115,6 +115,6 @@ rootd **没有 seccomp 过滤**；`system_server`、`systemui` 与普通 App 是
 
 ## 报告
 
-在未读 `docs/CVE-2026-98260_FEASIBILITY.md` 之前，请不要把本工作当作漏洞提交给
+在未读 `docs/history/CVE-2026-98260_FEASIBILITY.md` 之前，请不要把本工作当作漏洞提交给
 小米的赏金计划；底层漏洞（`CVE-2026-98260`，以及更早的
 `CVE-2026-64560`/`CVE-2026-49881`）都在该文件里记录了上游修复引用。

@@ -5,6 +5,15 @@
 本仓库是安全研究工具。请只在你本人拥有的硬件上运行。仓库内置或构建时依赖的若干
 组件属于第三方软件，各有自己的许可证与再分发条件。
 
+## 研究先例致谢（仅思想借鉴，未内置其代码）
+
+- **V4bel / InfinityCore** —— CVE-2026-98260 研究与公开的 Ubuntu PoC。本项目的
+  利用链是针对 6.18.21 的独立重实现，未复制其源码。
+- **EAEdward/xiaomi9pmroot**（MIT）—— tracepoint 测 slide、PFN 校验回收、三树一次
+  三写实验、`selinux_state-7` 非对齐零写等思路来自该项目；本仓库为重新实现，
+  逐项对照与快照日期见 `docs/PRIOR-ART.md`。
+- KernelSU / KernelSU-Next / SukiSU-Ultra —— 见下方各 GPL-3.0 段落。
+
 ## KernelSU（GPL-3.0）
 
 - 项目：KernelSU — https://github.com/tiann/KernelSU
