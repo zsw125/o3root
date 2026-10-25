@@ -140,6 +140,17 @@ in [`docs/APP_O3_ROOT.md`](docs/APP_O3_ROOT.md).
 | `NOTICE.zh-CN.md` | 第三方组件说明（中文版） |
 | `third_party/NOTICE.zh-CN.md` | 第三方组件明细（中文版） |
 
+## Disclaimer
+
+This project is published for **security research and education** only.
+
+- Use it **only on devices you own** and can afford to lose or reset. Do not use it on shared, corporate, or third-party devices.
+- Running it can **crash, reboot, or soft-brick** the device, cause **data loss**, and **void warranties**. It modifies kernel memory and loads an unsigned kernel module; until the next reboot the device is in a non-standard, tainted state.
+- It may be **illegal or contractually prohibited** in your jurisdiction or under your device/carrier terms. You are responsible for compliance.
+- The software is provided **as is, without warranty of any kind**, express or implied, including merchantability, fitness for a particular purpose, and non-infringement. The authors and contributors are **not liable** for any claim, damage, or other liability arising from its use.
+- Not affiliated with, endorsed by, or supported by Xiaomi, KernelSU, Shizuku, or Google. All trademarks belong to their owners.
+- If you do not accept these terms, do not use the software.
+
 ## License
 
 MIT — see [`LICENSE`](LICENSE). Bundled third-party components keep their own

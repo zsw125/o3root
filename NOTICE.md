@@ -42,6 +42,15 @@ licenses and redistribution terms.
 
 ---
 
+## Disclaimer
+
+Published for security research and education only; use it only on hardware you
+own. The software is provided **as is, without warranty of any kind**, and the
+authors accept **no liability** for device damage, data loss, warranty
+invalidation, or legal consequences. You are responsible for complying with the
+laws and contracts that apply to you. See the full disclaimer in
+[`README.md`](README.md#disclaimer).
+
 # 中文说明
 
 本仓库是安全研究工具，仅可用于你本人拥有的设备。

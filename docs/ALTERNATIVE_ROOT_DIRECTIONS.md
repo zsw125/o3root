@@ -1,6 +1,6 @@
 # yingtian（小米平板 9 Pro Max / XRING O3）替代 root 方向调研
 
-> **状态更新（2026-10-23 18:28）**：用户决定暂不走解锁路径，保留经验待后续进展；本文件仅作备查，不执行解锁。归档要点见 [notes/05_ALTERNATIVE_DIRECTIONS.md](notes/05_ALTERNATIVE_DIRECTIONS.md)。
+> **状态更新（2026-10-23 18:28）**：用户决定暂不走解锁路径，保留经验待后续进展；本文件仅作备查，不执行解锁。归档要点见 `notes/05_ALTERNATIVE_DIRECTIONS.md`（原工作区文件，未随仓库分发）。
 
 - 日期：2026-10-23
 - 设备：Xiaomi Pad 9 Pro Max（代号 yingtian，型号 M367FC），**玄戒 O3（XRING O3）自研 SoC**，HyperOS 4.0 / Android 17.0，当前系统 OS4.0.16.0.XBMCNXM

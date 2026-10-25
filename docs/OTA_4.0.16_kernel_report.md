@@ -66,7 +66,7 @@ Linux version 6.18.21-android17-5-g805aa6adea19-abogki565292102-4k (kleaf@build-
 
 ## 3. 通路核验：基准 vs 4.0.16 内核
 
-基准值来自 [README.md](README.md)、[scripts/run-macos.sh](scripts/run-macos.sh) 与 APK 内注入的 `classes2.dex`；新值从重建的 `vmlinux.elf` / BTF / 内核配置中取得。
+基准值来自 [README.md](../README.md)、`scripts/run-macos.sh` 与 APK 内注入的 `classes2.dex`；新值从重建的 `vmlinux.elf` / BTF / 内核配置中取得。
 
 | 检查项 | 旧基准（4.0.15/4.0.18 内核） | 4.0.16 内核 | 结论 |
 |---|---|---|---|
@@ -124,14 +124,14 @@ Linux version 6.18.21-android17-5-g805aa6adea19-abogki565292102-4k (kleaf@build-
 
 | 路径 | 说明 |
 |---|---|
-| [ota_extract/kernel](ota_extract/kernel) | 解出的裸 arm64 内核 Image（42,940,928 B） |
-| [ota_extract/vmlinux.elf](ota_extract/vmlinux.elf) | 带 139,243 个符号的重建 ELF（可反汇编/查符号） |
-| [ota_extract/boot.img](ota_extract/boot.img) / [init_boot.img](ota_extract/init_boot.img) / [vendor_boot.img](ota_extract/vendor_boot.img) | 已校验的分区镜像 |
-| [ota_extract/kernel_version.txt](ota_extract/kernel_version.txt) | 版本字符串与 boot 头信息 |
-| [ota_extract/extract_summary.json](ota_extract/extract_summary.json) | 提取过程与哈希校验结果 |
-| [ota_extract/route_compatibility.json](ota_extract/route_compatibility.json) | 通路核验的机器可读结果 |
-| [patched/scripts/run-macos-4.0.16.sh](patched/scripts/run-macos-4.0.16.sh) 等 | 已改新 slide 常量的脚本**副本**（原分发文件未改动） |
-| [tools/](tools/) | 提取/校验脚本（probe_payload、extract_payload、unpack_boot、verify_path、kernel_cfg_btf、hash_payload 等） |
+| `ota_extract/kernel` | 解出的裸 arm64 内核 Image（42,940,928 B） |
+| `ota_extract/vmlinux.elf` | 带 139,243 个符号的重建 ELF（可反汇编/查符号） |
+| `ota_extract/boot.img` / `ota_extract/init_boot.img` / `ota_extract/vendor_boot.img` | 已校验的分区镜像 |
+| `ota_extract/kernel_version.txt` | 版本字符串与 boot 头信息 |
+| `ota_extract/extract_summary.json` | 提取过程与哈希校验结果 |
+| `ota_extract/route_compatibility.json` | 通路核验的机器可读结果 |
+| `patched/scripts/run-macos-4.0.16.sh` 等 | 已改新 slide 常量的脚本**副本**（原分发文件未改动） |
+| [tools/](../tools/) | 提取/校验脚本（probe_payload、extract_payload、unpack_boot、verify_path、kernel_cfg_btf、hash_payload 等） |
 
 ---
 
@@ -162,7 +162,7 @@ python tools/hash_payload.py         # payload.bin 与 FILE_HASH 比对（约 9 
 
 | 项 | 值 |
 |---|---|
-| 文件 | [patched/EnneaO3V2-4.0.16-v50-auto.apk](patched/EnneaO3V2-4.0.16-v50-auto.apk) |
+| 文件 | `patched/EnneaO3V2-4.0.16-v50-auto.apk` |
 | 大小 | 25,031,847 B |
 | SHA-256 | `e78c296161ab8dfc6f017e29d3cfb83843ee38837ed584243be3df97c9517575` |
 | 签名 | 自签 RSA 4096，CN=Ennea O3V2 Patched，v1+v2+v3；apksigner/apksig 校验 `verified=true`（v3 通过） |
@@ -171,7 +171,7 @@ python tools/hash_payload.py         # payload.bin 与 FILE_HASH 比对（约 9 
 
 安装注意：签名与作者原版不同 → **必须先卸载原 App**（`adb uninstall o3.ennea.pocv1`）再安装；该 APK 仅适用于 4.0.16 内核，4.0.15 上请继续用原版 APK。
 
-详细说明见 [patched/README.md](patched/README.md)。
+详细说明见 `patched/README.md`。
 
 ---
 
