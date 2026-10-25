@@ -20,7 +20,8 @@ work with rough effort estimates.
 Success markers in the app log (in order):
 `★ UIDNOW uid=0` → `KSU_INSMOD_OUT:[rc=0]` → `★ KSU_MODULE LIVE` →
 `✔ 全部完成，正在打开 KernelSU…` → `top -> …me.weishu.kernelsu/.ui.MainActivity`.
-Health: `getenforce` = `Permissive`, network works, `boot_id` unchanged.
+Health: `getenforce` = `Enforcing` (v3; legacy `O3P_SELDIRTY=1` ends
+Permissive), network works, `boot_id` unchanged.
 
 ## How it got here (compressed timeline)
 
@@ -41,9 +42,10 @@ Health: `getenforce` = `Permissive`, network works, `boot_id` unchanged.
    relocation in `.init.text` minus 4 (0x144 tiann/Next, 0x178 SukiSU), so KSU
    does not re-enable enforcing. Cold-boot verified: KSU Live, manager opens,
    network OK.
-5. **v1.8 guard**: if KSU is loaded and `getenforce` is Enforcing, warn and
-   offer one-click `su -c setenforce 0`; verified by deliberately running
-   `setenforce 1` (network dies, button restores Permissive + network).
+5. **v1.8 guard (historical; removed in v3.0)**: v1.8–v2.1 warned when KSU
+   was loaded and SELinux had rebounded to Enforcing, offering one-click
+   `su -c setenforce 0`. v3 removes it: stage 0 clears only `enforcing`, so
+   Enforcing is a safe end state (see §5 and the v3.0 notes).
 6. **v1.9 runtime loader**: the payload resolves KernelSU symbols through
    `/proc/kallsyms` at load time (fallback: 248-symbol union relink + slide),
    locates the `setenforce` patch point from `.rela.init.text`, and works with
@@ -105,11 +107,14 @@ Why not write `0x0100` (initialized=1, policycap=0)? The primitive writes
 pointer value is the only other safe option, and its high bytes land in
 `policycap` anyway.
 
-### 5. Enforcing rebound / policycap side effect — **known limitation**
+### 5. Legacy `policycap` side effect (pre-v3 paths) — **historical**
 
-Any `setenforce 1` after the exploit freezes `wlan0` TX (RX keeps working); from
-the shell domain you then cannot `setenforce 0` (no `mac_admin`). Recovery is
-KernelSU `su -c setenforce 0`, or reboot. This is why v1.8 has the guard.
+The old stage 0 wrote 8 bytes at `selinux_state`, so `policycap[]` received
+address garbage; any later `setenforce 1` froze `wlan0` TX (RX kept working) and
+the shell domain could not `setenforce 0` (no `mac_admin`) — recovery was
+KernelSU `su -c setenforce 0`, or reboot. **v3 default avoids all of this** by
+zeroing a single byte at `selinux_state-7` (see the v3.0 notes); the old
+behaviour survives only behind `O3P_SELDIRTY=1`.
 
 ### 6. Label repair — **positive, operational note**
 
@@ -205,7 +210,8 @@ The payload can be tested standalone (root or shell): push `libo3p.so` as
   `env.sh`, OTA zips, `.img` files, or device identifiers.
 - Do not patch the KernelSU `bl setenforce` call site (CALL26 relocation).
 - Do not "fix" the write value to `0x100` (dereference crash).
-- Do not enable enforcing after the exploit without the app's recovery path.
+- Do not use the legacy `O3P_SELDIRTY=1` path on a device you cannot reboot or
+  `su`-recover; the v3 default ends Enforcing and is safe.
 - Do not run this on devices you don't own; see `docs/SECURITY.md`.
 
 ## v2.0 — adaptive LKM (2026-10-25)
@@ -220,4 +226,29 @@ The payload can be tested standalone (root or shell): push `libo3p.so` as
   resolved activity.
 - Cold-boot verified on three images (only KernelSU / only KernelSU-Next / only
   SukiSU installed); `/data/local/tmp/o3p_ksu.ko` sizes and manager foregrounds
-  matched the selection every time; SELinux Permissive and Wi-Fi working.
+  matched the selection every time; SELinux Permissive (v2.x era) and Wi-Fi
+  working.
+
+## v2.1 — permission-aware probe (2026-10-25)
+
+- The probe runs only after Shizuku is authorized (`checkSelfPermission`),
+  detects the manager through the local `PackageManager` (three packages), and
+  re-probes after a successful `PackageInstaller` install; payload files get a
+  unique `o3p_<millis>.bin` name to avoid `ETXTBSY`.
+- Fixes the 18 Fold deadlock (`ERR java.lang.reflect.InvocationTargetException`
+  was parsed as a normal probe result, so "install manager" looped).
+
+## v3.0 — two-reap, no KernelSU init patch (2026-10-25)
+
+- Stage 0 now zeroes a single byte: 8-byte unaligned write at
+  `selinux_state-7` (clears `enforcing`, keeps `initialized`/`policycap`); the
+  old dirty write remains behind `O3P_SELDIRTY=1`.
+- Stage 1 is still the `task_cred` swap; the two stages use two independent
+  reaps (single-reap three-write panicked three times — kept only behind
+  `O3P_D3V3`).
+- KernelSU loads through the runtime kallsyms loader with **no init patch**
+  (`KSU_CODEPATCH skip`); its `setenforce(1)` leaves Wi-Fi healthy because
+  `policycap` stayed clean. The app therefore drops the v1.8 guard/recovery UI.
+- Cold-boot verified (yingtian): `KALLSYMS_PATCH found=225 missing=0`,
+  `KSU_INSMOD_OUT:[rc=0]`, `KSU_MODULE LIVE`, Enforcing, `ping` 22 ms,
+  `nc 443` rc=0, manager auto-opened, `boot_id` unchanged.

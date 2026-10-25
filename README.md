@@ -48,14 +48,17 @@ rebuilds the payload/APK when the toolchain environment is set.
    page with a sprayed `kmalloc-8k` buffer containing a forged RB-tree node, and
    uses the second `timerqueue_del → rb_erase` to write one 8-byte value to an
    arbitrary kernel address.
-3. Stage 0 writes `selinux_state.enforcing = 0`; stage 1 writes
+3. Stage 0 zeroes only the `enforcing` byte (8-byte unaligned write at
+   `selinux_state-7`, keeping `initialized`/`policycap`); stage 1 writes
    `task_struct.cred` to a fake cred page (uid 0, full caps).
 4. The payload loads the embedded KernelSU LKM: undefined symbols are resolved
    at runtime through `/proc/kallsyms` (fallback: 248-symbol union relink + the
-   current KASLR slide), its init patch is applied at the `setenforce`
-   relocation, then it is `insmod`ed and a `rootd` daemon is left behind
+   current KASLR slide), with **no init patch** — because `policycap` stayed
+   clean, KernelSU's own `setenforce(1)` is harmless and the device ends in
+   Enforcing. Then it is `insmod`ed and a `rootd` daemon is left behind
    (abstract socket `@o3p_rootd`, peer-uid 0/2000). Upstream KernelSU,
-   KernelSU-Next and SukiSU LKMs all work.
+   KernelSU-Next and SukiSU LKMs all work (legacy: `O3P_CODEPATCH=1` patches the
+   `setenforce` immediate).
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for offsets, the write
 primitive, the KernelSU patch and the porting guide.
@@ -102,16 +105,18 @@ Full prerequisites and troubleshooting: [`docs/BUILD.md`](docs/BUILD.md).
 
 ## Limitations
 
-- **Boot-only**: reboot removes root, KernelSU and the permissive SELinux
-  state. Persistence would require patching `boot`/`init_boot` (blocked by the
-  locked bootloader) and is out of scope.
+- **Boot-only**: reboot removes root and KernelSU. Persistence would require
+  patching `boot`/`init_boot` (blocked by the locked bootloader) and is out of
+  scope.
 - **Probabilistic**: the UAF race needs 1–6 attempts (occasionally more). The
   app retries; a reboot usually helps.
-- **Permissive SELinux posture**: while active, MAC is off for the whole
-  system. See the security notes.
-- **Policycap side effect**: if anything sets SELinux back to Enforcing, the
-  Wi-Fi TX path stalls until `setenforce 0` or reboot. The app v1.8 detects
-  this and offers one-click recovery.
+- **SELinux posture**: v3 ends in **Enforcing** with a clean `selinux_state`
+  (`policycap` untouched), so MAC stays on. Only the legacy `O3P_SELDIRTY=1`
+  path ends Permissive (MAC off system-wide); see the security notes.
+- **Legacy policycap side effect**: only with `O3P_SELDIRTY=1`. That path
+  still writes the old dirty value, so any `setenforce 1` stalls Wi-Fi TX until
+  `setenforce 0` or reboot. The v3 default avoids it and ships no recovery UI
+  (v1.8–v2.1 had a guard and a recovery button).
 - **KernelSU LKM ABI**: upstream built the module for `6.18.32-4k`; it is
   relinked for this `6.18.21` kernel and therefore taints the kernel. Do not
   treat it as a production root solution.
@@ -121,10 +126,11 @@ Full prerequisites and troubleshooting: [`docs/BUILD.md`](docs/BUILD.md).
 
 ## Evidence
 
-`docs/evidence/` contains device screenshots: app success log (`v17app.png`),
-KernelSU manager (`v17ksu.png`), the Enforcing-rebound warning (`v18risk.png`)
-and the one-click recovery (`v18rec.png`). Detailed logs and the write-up live
-in [`docs/APP_O3_ROOT.md`](docs/APP_O3_ROOT.md).
+`docs/evidence/` contains device screenshots: the v3 app success log
+(`v3_app_log.png`) and KernelSU running in Enforcing (`v3_ksu.png`); the older
+v1.8 guard/recovery screenshots (`v18risk.png`, `v18rec.png`) are kept as
+history. Detailed logs and the write-up live in
+[`docs/APP_O3_ROOT.md`](docs/APP_O3_ROOT.md).
 
 ## Docs
 

@@ -76,11 +76,13 @@ The payload repeats the whole UAF/reclaim cycle per stage (`g_ntg = 2`):
 
 ### Stage 0 — SELinux state
 
-- `S = SELINUX_STATE_STATIC + slide`, `V = fakekva | 0x100`
-- writes `enforcing = 0`, keeps `initialized = 1`, but the high 6 bytes (the
-  `policycap[]` array) become garbage address bytes.
-- Result: SELinux **Permissive**; the garbage `policycap` is inert while
-  permissive but breaks socket checks if enforcing is re-enabled.
+- v3 default (two-reap): `S = SELINUX_STATE_STATIC + slide - 7`, value `0` —
+  an 8-byte unaligned zero that clears only `enforcing` while keeping
+  `initialized`/`policycap[]` intact (observed `state=0x0100000101010100`).
+- Legacy `O3P_SELDIRTY=1` keeps the old dirty write (`S = ...`,
+  `V = fakekva | 0x100`), which also zeroes `enforcing` but leaves address
+  garbage in `policycap[]` — inert while Permissive, breaks socket checks once
+  Enforcing returns.
 
 ### Stage 1 — credentials
 
@@ -149,8 +151,17 @@ Validated on `6.18.21` with three manager images (only KernelSU v3.3.1, only
 KernelSU-Next v3.4.2, only SukiSU v4.2.1-r2 installed): in each cold boot the
 app detected the manager, the blob yielded the matching LKM (the file written to
 `/data/local/tmp/o3p_ksu.ko` was 375,328 / 473,552 / 569,752 bytes), the module
-ended `Live` with SELinux still Permissive and Wi-Fi working, and the matching
-manager was brought to the foreground.
+ended `Live` with SELinux still Permissive (v2.x era) and Wi-Fi working, and
+the matching manager was brought to the foreground.
+
+### v3 default (two-reap, no init patch)
+
+Since 3.0 the exploit uses two independent reaps (one for `selinux_state-7`,
+one for `task_cred`) and loads KernelSU with the runtime kallsyms loader and
+**no init patch**. `policycap` stays clean, so KernelSU's own `setenforce(1)`
+is harmless: the device ends in Enforcing with working Wi-Fi and the manager
+opens. `KSU_CODEPATCH skip` is the expected log line; `O3P_CODEPATCH=1`
+restores the legacy patch.
 
 ## rootd
 
@@ -173,8 +184,9 @@ alive for the rest of the boot:
   `/data/local/tmp/o3p.bin`, and executes it.
 - Status probing: `grep -c kernelsu /proc/modules; getenforce; pm path
   me.weishu.kernelsu`.
-- When KernelSU is loaded but SELinux has been set back to Enforcing, the app
-  shows a warning and offers a one-click recovery (`su -c setenforce 0`).
+- v3 has no Enforcing guard: the chain normally ends Enforcing with a clean
+  `selinux_state`, so the app only shows status (v1.8–v2.1 had a warning plus
+  a one-click `su -c setenforce 0`).
 - Firmware gate: the kernel release string must match
   `6.18.21-android17-5-g805aa6adea19-abogki565292102-4k`, and the device build
   fingerprint must contain `/yingtian/` or `/lhasa/`.

@@ -45,13 +45,15 @@ Max）与 **lhasa**（Xiaomi 18 Fold）系列，做本地提权 + KernelSU。整
    （CVE-2026-98260），用一个包含伪造 RB 树节点的 `kmalloc-8k` 喷页缓冲回收已
    释放的 `posix_timers_cache` order-1 slab 页，并借第二次
    `timerqueue_del → rb_erase` 向任意内核地址写入一个 8 字节值。
-3. stage 0 写 `selinux_state.enforcing = 0`；stage 1 把 `task_struct.cred` 指向
-   伪造的 cred 页（uid 0、full caps）。
+3. stage 0 只把 `enforcing` 字节清零（在 `selinux_state-7` 做 8 字节非对齐写，
+   `initialized`/`policycap` 保留）；stage 1 把 `task_struct.cred` 指向伪造的
+   cred 页（uid 0、full caps）。
 4. 载荷加载内置 KernelSU LKM：未定义符号默认运行时经 `/proc/kallsyms` 解析
-   （回退：248 符号并集重链接 + 当前 KASLR slide），在 `setenforce` 重定位处
-   打补丁，然后 `insmod` 并留下一个 `rootd` 守护进程（抽象 socket
-   `@o3p_rootd`，peer-uid 0/2000）。上游 KernelSU、KernelSU-Next、SukiSU
-   三种 LKM 都可加载。
+   （回退：248 符号并集重链接 + 当前 KASLR slide），**默认不打 init 补丁**——
+   `policycap` 干净，所以 KSU 自己的 `setenforce(1)` 无害、设备停在 Enforcing。
+   然后 `insmod` 并留下一个 `rootd` 守护进程（抽象 socket `@o3p_rootd`，
+   peer-uid 0/2000）。上游 KernelSU、KernelSU-Next、SukiSU 三种 LKM 都可加载
+   （旧行为：`O3P_CODEPATCH=1` 才会去改 `setenforce` 立即数）。
 
 偏移、写原语、KernelSU 补丁与移植指南见
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)（中文版
@@ -97,13 +99,16 @@ bash app/build.sh                                # -> app/build/o3root2.apk
 
 ## 限制
 
-- **仅当前 boot**：重启会移除 root、KernelSU 与 Permissive 状态。持久化需要改
+- **仅当前 boot**：重启会移除 root 与 KernelSU。持久化需要改
   `boot`/`init_boot`（被锁定的 bootloader 挡住），不在范围内。
 - **概率性**：UAF 竞态需要 1–6 次尝试（偶尔更多）。App 会自动重试；重启通常
   有帮助。
-- **Permissive SELinux 姿态**：生效期间整个系统的 MAC 关闭。见安全说明。
-- **policycap 副作用**：任何把 SELinux 设回 Enforcing 的操作都会让 Wi-Fi TX
-  卡住，直到 `setenforce 0` 或重启。v1.8 App 会检测并提供一键恢复。
+- **SELinux 姿态**：v3 终态是 **Enforcing**，`selinux_state` 干净（`policycap`
+  不变），MAC 保持开启。只有旧路径 `O3P_SELDIRTY=1` 会停在 Permissive（全系统
+  MAC 关闭）；见安全说明。
+- **旧 policycap 副作用**：仅 `O3P_SELDIRTY=1` 时存在。该路径仍写旧的脏值，任何
+  `setenforce 1` 都会让 Wi-Fi TX 卡住，直到 `setenforce 0` 或重启；v3 默认不碰
+  `policycap`、也不再带恢复 UI（v1.8–v2.1 有守护与一键恢复）。
 - **KernelSU LKM ABI**：上游模块是为 `6.18.32-4k` 构建的；这里为 `6.18.21`
   内核重链接，因此会污染内核（taint）。不要把它当生产级 root 方案。
 - **绑定 profile**：偏移/地址是按这个确切内核编译的。换内核构建需要新的
@@ -111,9 +116,9 @@ bash app/build.sh                                # -> app/build/o3root2.apk
 
 ## 证据
 
-`docs/evidence/` 里有设备截图：App 成功日志（`v17app.png`）、KernelSU 管理器
-（`v17ksu.png`）、Enforcing 回弹告警（`v18risk.png`）与一键恢复
-（`v18rec.png`）。详细日志与完整记录在
+`docs/evidence/` 里有设备截图：v3 App 成功日志（`v3_app_log.png`）、Enforcing
+下的 KernelSU 管理器（`v3_ksu.png`）；旧的 v1.8 守护/恢复截图（`v18risk.png`、
+`v18rec.png`）保留作为历史。详细日志与完整记录在
 [`docs/APP_O3_ROOT.md`](docs/APP_O3_ROOT.md)。
 
 ## 文档

@@ -120,7 +120,7 @@ keytool -genkeypair -keystore release.p12 -storetype PKCS12 \
 ```sh
 adb shell 'grep kernelsu /proc/modules; getenforce; id'
 # kernelsu 192512 1 - Live 0x0000000000000000 (O)
-# Permissive
+# Enforcing                 （v3；旧路径 O3P_SELDIRTY=1 会停在 Permissive）
 # uid=0(root) ... context=u:r:ksu:s0   （仅当 KSU 授权 shell root 后）
 ```
 

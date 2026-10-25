@@ -127,7 +127,7 @@ keytool -genkeypair -keystore release.p12 -storetype PKCS12 \
 ```sh
 adb shell 'grep kernelsu /proc/modules; getenforce; id'
 # kernelsu 192512 1 - Live 0x0000000000000000 (O)
-# Permissive
+# Enforcing                 (v3; legacy O3P_SELDIRTY=1 ends Permissive)
 # uid=0(root) ... context=u:r:ksu:s0   (only if KSU granted shell root)
 ```
 
@@ -140,7 +140,7 @@ The app's LogBox shows every payload stage; use **Export log** to write
 |---|---|
 | `固件门禁未通过` | kernel/fingerprint mismatch — see `docs/ARCHITECTURE.md` (kernel profile) |
 | `VERDICT NO_RECLAIM` repeatedly | race is probabilistic; press Continue again (or reboot), usually succeeds in 1–6 attempts |
-| Network dead after loading KernelSU | SELinux went back to Enforcing and `policycap` is polluted — press the recovery button (`su -c setenforce 0`) or reboot |
+| Network dead after loading KernelSU | only with legacy `O3P_SELDIRTY=1`: `policycap` polluted + Enforcing — `su -c setenforce 0` or reboot (v3 default keeps `policycap` clean) |
 | Shizuku `root mode` instead of shell | start Shizuku in adb/wireless-debug mode on a device without `su`; root mode is rejected by the chain |
 | `INSTALL_FAILED_USER_RESTRICTED` | allow install-via-USB, or root `pm install` |
 | `KSU_CODEPATCH … -2` | the `setenforce` relocation was not found (unique-scan fallback failed) — check the LKM/build |

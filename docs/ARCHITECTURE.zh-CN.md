@@ -73,11 +73,12 @@ ldr  x9, [x8, #0x10] ; 解引用 parent->rb_left
 
 ### stage 0 —— SELinux 状态
 
-- `S = SELINUX_STATE_STATIC + slide`，`V = fakekva | 0x100`
-- 写入 `enforcing = 0`，保留 `initialized = 1`，但高 6 字节（`policycap[]`
-  数组）变成地址垃圾字节。
-- 结果：SELinux **Permissive**；垃圾 `policycap` 在 permissive 下无害，但一旦
-  重新开启 enforcing 就会破坏 socket 检查。
+- v3 默认（两段式）：`S = SELINUX_STATE_STATIC + slide - 7`，值 `0` —— 8 字节
+  非对齐零写，只清 `enforcing`，`initialized`/`policycap[]` 原样保留（实测
+  `state=0x0100000101010100`）。
+- 旧路径 `O3P_SELDIRTY=1` 仍用旧的脏写（`V = fakekva | 0x100`）：同样清
+  `enforcing`，但 `policycap[]` 变成地址垃圾——permissive 下无害，一旦回到
+  Enforcing 就破坏 socket 检查。
 
 ### stage 1 —— 凭据
 
@@ -135,8 +136,15 @@ KernelSU-Next v3.4.2（473,552 B）、SukiSU v4.2.1-r2（569,752 B）。加载�
 已在 `6.18.21` 上按三种管理器镜像验证（分别只装 KernelSU v3.3.1 / 仅
 KernelSU-Next v3.4.2 / 仅 SukiSU v4.2.1-r2）：每次冷启动应用都识别出管理器，
 容器切出对应 LKM（写入 `/data/local/tmp/o3p_ksu.ko` 的大小分别为 375,328 /
-473,552 / 569,752 B），模块 `Live`、SELinux 仍 Permissive、Wi‑Fi 正常，且对应
-管理器被拉到前台。
+473,552 / 569,752 B），模块 `Live`、SELinux 仍 Permissive（v2.x 时代）、Wi‑Fi
+正常，且对应管理器被拉到前台。
+
+### v3 默认（两段式，无 init 补丁）
+
+自 3.0 起，利用改为两次独立 reap（分别写 `selinux_state-7` 与 `task_cred`），
+KernelSU 用运行时 kallsyms 加载器、**不打 init 补丁**。`policycap` 保持干净，
+所以 KSU 自己的 `setenforce(1)` 无害：设备停在 Enforcing、Wi‑Fi 正常、管理器
+正常打开。`KSU_CODEPATCH skip` 是预期日志行；`O3P_CODEPATCH=1` 可回退旧补丁。
 
 ## rootd
 
@@ -158,8 +166,8 @@ KernelSU-Next v3.4.2 / 仅 SukiSU v4.2.1-r2）：每次冷启动应用都识别�
   拉起 `sh`，把文件复制到 `/data/local/tmp/o3p.bin` 并执行。
 - 状态探测：`grep -c kernelsu /proc/modules; getenforce; pm path
   me.weishu.kernelsu`。
-- 当 KernelSU 已加载但 SELinux 被设回 Enforcing 时，App 会告警并提供一键恢复
-  （`su -c setenforce 0`）。
+- v3 没有 Enforcing 守护：正常终态就是 Enforcing 且 `selinux_state` 干净，App 只
+  显示状态（v1.8–v2.1 才有告警与一键 `su -c setenforce 0`）。
 - 固件门禁：内核 release 字符串必须匹配
   `6.18.21-android17-5-g805aa6adea19-abogki565292102-4k`，且设备 build
   fingerprint 必须包含 `/yingtian/` 或 `/lhasa/`。

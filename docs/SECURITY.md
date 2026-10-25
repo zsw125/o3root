@@ -33,12 +33,16 @@ KernelSU.
 
 The payload modifies kernel memory only:
 
-1. `selinux_state` first 8 bytes (stage 0) → `enforcing = 0` (Permissive),
-   `initialized = 1`, and **`policycap[0..5]` become garbage address bytes**.
+1. `selinux_state` (stage 0): an 8-byte unaligned zero at `selinux_state-7`
+   clears only `enforcing`; `initialized` and `policycap[]` stay intact (the
+   legacy `O3P_SELDIRTY=1` path still writes the old dirty value and dirties
+   `policycap[]`).
 2. `task_struct.cred` of the payload process (stage 1) → a fake cred page with
    uid 0, full capabilities and the original SELinux blob (still shell domain).
-3. Loads a KernelSU LKM (relinked at runtime for the current KASLR slide, with
-   its init patched so it does not force SELinux back to enforcing).
+3. Loads a KernelSU LKM (relinked at runtime for the current KASLR slide) with
+   **no init patch** by default; because `policycap` is clean, KernelSU's own
+   `setenforce(1)` does not break networking. `O3P_CODEPATCH=1` restores the
+   legacy patch (which then needs the old dirty-write caveats below).
 
 Nothing is written to disk except:
 - `/data/local/tmp/o3p.bin`, `/data/local/tmp/o3p_ksu.ko` (the payload and the
@@ -48,22 +52,24 @@ Nothing is written to disk except:
 
 ## Known side effects
 
-### Policycap corruption → network loss when enforcing
+### Legacy policycap corruption (`O3P_SELDIRTY=1` only) → network loss
 
-Because the 8-byte write cannot preserve `policycap[]`, re-enabling SELinux
-enforcement (any `setenforce 1`, including one performed by KernelSU's init in
-unpatched builds) makes the Wi-Fi transmit path stall: `wlan0` TX freezes, RX
-continues, all traffic dies. Recovery:
+The v3 default does not touch `policycap[]`. Only the legacy dirty write
+(`O3P_SELDIRTY=1`) cannot preserve it, and then re-enabling SELinux enforcement
+(any `setenforce 1`) makes the Wi-Fi transmit path stall: `wlan0` TX freezes,
+RX continues, all traffic dies. Recovery:
 
 - `setenforce 0` (from a context with `CAP_MAC_ADMIN`, e.g. KernelSU `su`), or
 - reboot (clears the corruption; root/KSU are lost).
 
-The APK (v1.8+) probes this condition (`kernelsu` loaded + `getenforce` =
-Enforcing), shows a warning, and offers a one-click `su -c setenforce 0`.
+v1.8–v2.1 shipped a probe/warning and a one-click `su -c setenforce 0`; v3.0
+removed them because the default no longer corrupts `policycap`.
 
-### Global permissive SELinux
+### Global permissive SELinux (legacy paths only)
 
-While the device stays in Permissive, all SELinux MAC checks are disabled:
+The v3 default ends in Enforcing with MAC on. Only `O3P_SELDIRTY=1` (or a manual
+`setenforce 0`) leaves the device Permissive; then all SELinux MAC checks are
+disabled:
 
 - SELinux domain isolation is gone; a local app compromise is much easier to
   turn into root (tracefs/kprobe interfaces are 0777 and only SELinux stops

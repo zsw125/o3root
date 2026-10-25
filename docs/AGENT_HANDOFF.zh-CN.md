@@ -19,7 +19,8 @@
 App 日志中的成功标记（按顺序）：
 `★ UIDNOW uid=0` → `KSU_INSMOD_OUT:[rc=0]` → `★ KSU_MODULE LIVE` →
 `✔ 全部完成，正在打开 KernelSU…` → `top -> …me.weishu.kernelsu/.ui.MainActivity`。
-健康状态：`getenforce` = `Permissive`、网络可用、`boot_id` 未变。
+健康状态：`getenforce` = `Enforcing`（v3；旧路径 `O3P_SELDIRTY=1` 会停在
+Permissive）、网络可用、`boot_id` 未变。
 
 ## 它是怎么走到这里的（压缩时间线）
 
@@ -39,9 +40,9 @@ App 日志中的成功标记（按顺序）：
    `.init.text` 里的 `setenforce` 重定位定位到 `r_offset-4` 并改掉该立即数
    （`mov w0,#1`→`#0`；tiann/Next 0x144、SukiSU 0x178），让 KSU 不再把
    enforcing 拉回 1。冷启动已验证：KSU Live、管理器打开、网络正常。
-5. **v1.8 守护**：如果 KSU 已加载且 `getenforce` 是 Enforcing，就告警并提供
-   一键 `su -c setenforce 0`；通过故意执行 `setenforce 1` 验证（网络断，点按钮
-   恢复 Permissive + 网络）。
+5. **v1.8 守护（历史；v3.0 已移除）**：v1.8–v2.1 在 KSU 已加载且 SELinux 回弹
+   到 Enforcing 时告警并提供一键 `su -c setenforce 0`；v3 不再需要——stage0 只清
+   `enforcing`，Enforcing 是安全终态（见 §5 与 v3.0 说明）。
 6. **v1.9 运行时加载器**：载荷在加载时经 `/proc/kallsyms` 解析 KernelSU 符号
    （回退：248 符号并集重链接 + slide），用 `.rela.init.text` 定位 `setenforce`
    补丁点；tiann / KernelSU-Next / SukiSU 三种 LKM 均可；v1.9 APK 已冷启动
@@ -100,11 +101,13 @@ KernelSU 也能加载，但 `initialized=0` 破坏 `zygote` 对新 App 的
 `parent = value & ~3`；只有 `0` 能让 parent 保持 0。另一种安全选择是“受控页
 指针”，而它的高位字节反正也会落进 `policycap`。
 
-### 5. Enforcing 回弹 / policycap 副作用 —— **已知限制**
+### 5. 旧 `policycap` 副作用（v3 之前的路径）—— **历史**
 
-利用之后任何 `setenforce 1` 都会冻结 `wlan0` TX（RX 仍工作）；此后从 shell 域
-无法 `setenforce 0`（没有 `mac_admin`）。恢复手段：KernelSU
-`su -c setenforce 0`，或重启。这就是 v1.8 要有守护的原因。
+旧的 stage0 在 `selinux_state` 一次写 8 字节，`policycap[]` 会变成地址垃圾；
+之后任何 `setenforce 1` 都会冻结 `wlan0` TX（RX 仍工作），而 shell 域又无法
+`setenforce 0`（没有 `mac_admin`）——恢复手段：KernelSU `su -c setenforce 0`
+或重启。**v3 默认避免了这一切**：只在 `selinux_state-7` 清一个字节（见 v3.0
+说明）；旧行为仅保留在 `O3P_SELDIRTY=1` 后面。
 
 ### 6. 标签修复 —— **正面，操作说明**
 
@@ -193,7 +196,8 @@ adb shell 'tail -f /data/data/o3.st.root1/files/run.log'   # 仅 debuggable 构�
   OTA zip、`.img` 文件或设备标识。
 - 不要改 KernelSU 的 `bl setenforce` 调用点（`CALL26` 重定位）。
 - 不要“修正”写入值为 `0x100`（解引用崩溃）。
-- 利用之后不要在缺少 App 恢复路径的情况下开启 enforcing。
+- 不要在无法重启或 `su` 恢复的设备上使用旧路径 `O3P_SELDIRTY=1`；v3 默认终态
+  是 Enforcing，是安全的。
 - 不要在非本人设备上运行；见 `docs/SECURITY.md`。
 
 ## v2.0 — 自适应 LKM（2026-10-25）
@@ -206,4 +210,26 @@ adb shell 'tail -f /data/data/o3.st.root1/files/run.log'   # 仅 debuggable 构�
   做同样探测、把 fork 传给载荷，并用解析出的 activity 打开对应管理器。
 - 已在三种镜像上冷启动验证（仅 KernelSU / 仅 KernelSU-Next / 仅 SukiSU）：
   `/data/local/tmp/o3p_ksu.ko` 大小与前台管理器每次都与选择一致；SELinux 保持
-  Permissive、Wi-Fi 正常。
+  Permissive（v2.x 时代）、Wi-Fi 正常。
+
+## v2.1 —— 权限感知探测（2026-10-25）
+
+- 只有 Shizuku 已授权（`checkSelfPermission`）后才跑 probe；用本地
+  `PackageManager` 识别三种管理器；`PackageInstaller` 安装成功后再探测；载荷
+  文件名用唯一的 `o3p_<millis>.bin` 避免 `ETXTBSY`。
+- 修掉 18 Fold 死锁：`ERR java.lang.reflect.InvocationTargetException` 曾被当作
+  正常 probe 输出，导致“安装管理器”循环。
+
+## v3.0 —— 两段式、不打 KernelSU init 补丁（2026-10-25）
+
+- stage0 改为只清一个字节：在 `selinux_state-7` 做 8 字节非对齐零写（清
+  `enforcing`，保留 `initialized`/`policycap`）；旧的脏写只在
+  `O3P_SELDIRTY=1` 时保留。
+- stage1 仍是 `task_cred` 换指针；两段使用两次独立 reap（一次 reap 三写连续
+  三次 panic，仅保留在 `O3P_D3V3` 后）。
+- KernelSU 用运行时 kallsyms 加载器、**不打 init 补丁**（`KSU_CODEPATCH
+  skip`）；`policycap` 干净，所以 KSU 的 `setenforce(1)` 不影响 Wi‑Fi。App 因此
+  移除 v1.8 的守护/一键恢复 UI。
+- yingtian 冷启验证：`KALLSYMS_PATCH found=225`、`KSU_INSMOD_OUT:[rc=0]`、
+  `KSU_MODULE LIVE`、Enforcing、`ping` 22 ms、`nc 443` rc=0、管理器自动打开、
+  `boot_id` 未变。

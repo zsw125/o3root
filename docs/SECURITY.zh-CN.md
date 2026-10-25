@@ -31,12 +31,14 @@ root 并加载 KernelSU。
 
 载荷只修改内核内存：
 
-1. `selinux_state` 的前 8 字节（stage 0）→ `enforcing = 0`（Permissive）、
-   `initialized = 1`，并且 **`policycap[0..5]` 变成地址垃圾字节**。
+1. `selinux_state`（stage 0）：在 `selinux_state-7` 做 8 字节非对齐零写，只清
+   `enforcing`；`initialized` 与 `policycap[]` 原样保留（只有旧路径
+   `O3P_SELDIRTY=1` 仍写旧的脏值、会污染 `policycap[]`）。
 2. 载荷进程的 `task_struct.cred`（stage 1）→ 一个伪造 cred 页：uid 0、
    full capabilities，SELinux blob 沿用原来的（仍是 shell 域）。
-3. 加载一个 KernelSU LKM（运行时按当前 KASLR slide 重链接，并给它的 init 打了
-   补丁，使其不会把 SELinux 强制拉回 enforcing）。
+3. 加载一个 KernelSU LKM（运行时按当前 KASLR slide 重链接），**默认不打 init
+   补丁**；`policycap` 干净，所以 KSU 自己 `setenforce(1)` 不影响网络。
+   `O3P_CODEPATCH=1` 才会回退旧补丁（那时才需要下面的旧脏写注意事项）。
 
 除了以下文件，不写磁盘：
 
@@ -47,17 +49,17 @@ root 并加载 KernelSU。
 
 ## 已知副作用
 
-### policycap 被破坏 → 开启 enforcing 时断网
+### 旧 policycap 污染（仅 `O3P_SELDIRTY=1`）→ 开启 enforcing 时断网
 
-由于 8 字节写无法保留 `policycap[]`，一旦重新开启 SELinux 强制模式（任何
-`setenforce 1`，包括未打补丁时 KernelSU init 自己做的那次），Wi-Fi 发送路径就会
-卡死：`wlan0` TX 冻结、RX 继续、所有流量失效。恢复：
+v3 默认不碰 `policycap[]`。只有旧的脏写（`O3P_SELDIRTY=1`）无法保留它，此时重新
+开启 SELinux 强制模式（任何 `setenforce 1`）会让 Wi-Fi 发送路径卡死：`wlan0` TX
+冻结、RX 继续、所有流量失效。恢复：
 
 - `setenforce 0`（需要有 `CAP_MAC_ADMIN` 的上下文，例如 KernelSU 的 `su`），或
 - 重启（清除污染；root/KSU 丢失）。
 
-APK（v1.8+）会探测这个状态（`kernelsu` 已加载 + `getenforce` = Enforcing），
-弹出告警，并提供一键 `su -c setenforce 0`。
+v1.8–v2.1 会探测并告警、提供一键 `su -c setenforce 0`；v3.0 已移除，因为默认
+路径不再污染 `policycap`。
 
 ### 全局 Permissive SELinux
 
