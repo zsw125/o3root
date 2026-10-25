@@ -84,7 +84,7 @@ public class Main extends Activity implements PayloadSink {
         lastNight = isNight();
         setContentView(buildUi());
         applyWindowTheme();
-        append("O3 Root v2.1 · CVE-2026-98260");
+        append("O3 Root v3 · CVE-2026-98260");
         append("payload=" + payloadPath);
         checkFirmware();
         Shizuku.addBinderReceivedListenerSticky(new BindListener(this));
@@ -225,7 +225,7 @@ public class Main extends Activity implements PayloadSink {
         titleView = title;
         root.addView(title);
 
-        TextView sub = text("v2.1 · CVE-2026-98260 · OS4", 12, MUTED, false);
+        TextView sub = text("v3 · CVE-2026-98260 · OS4", 12, MUTED, false);
         subView = sub;
         sub.setPadding(0, dp(4), 0, 0);
         root.addView(sub);
@@ -652,7 +652,7 @@ public class Main extends Activity implements PayloadSink {
             tvKsu.setText("未加载");
             tvKsu.setTextColor(MUTED);
         }
-        boolean risk = ksuOk && enf.indexOf("Enforcing") >= 0;
+        boolean risk = false; /* v3: Enforcing is the normal end state (clean policycap) */
         netRisk = risk;
         if (risk) {
             tvSelinux.setText("Enforcing ⚠");

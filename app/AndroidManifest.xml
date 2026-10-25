@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="o3.st.root1"
-    android:versionCode="12"
-    android:versionName="2.1">
+    android:versionCode="13"
+    android:versionName="3.0">
 
     <uses-sdk android:minSdkVersion="31" android:targetSdkVersion="34" />
     <uses-permission android:name="moe.shizuku.manager.permission.API_V23" />

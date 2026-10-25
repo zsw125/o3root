@@ -12,8 +12,8 @@
 
 ## 状态
 
-- 发布 **v2.1**：`release/o3root2-v2.1.apk`
-  （`14,218,768 B`，`sha256 85c3516b84010af241dc95bbca345ebf1d8ed1f2c6ebd8cc0f82161371067178`）；
+- 发布 **v3.0**：`release/o3root2-v3.0.apk`
+  （`14,218,768 B`，`sha256 c80f499a6b06ddf92241aa8cb0aa8874767eccdd960e631b28dcff98e7c141dd`）；
   载荷内置 tiann / KernelSU-Next / SukiSU 三种 LKM，按已安装的管理器自动选择（`O3P_KSU_FORK` 可覆盖），
 并默认运行时解析符号（kallsyms）；v2.1 让探测先检查 Shizuku 授权、用本地包管理器识别管理器、
 授权后先探测再决定是否跑载荷，并使用唯一载荷文件名；v1.8/v1.9 保留在 git 历史里。
@@ -30,7 +30,7 @@ bash scripts/fetch-toolchain.sh   # android.jar、build-tools r34、Shizuku jars
 
 # payload（需要 NDK clang）
 NDK_CC=/path/to/ndk/.../aarch64-linux-android35-clang bash payload/build-payload.sh
-# 参考结果：payload 69,568 B；含三种 LKM 的 libo3p.so 1,488,284 B，sha256 98936d14…87dfa
+# 参考结果：payload 73,768 B；含三种 LKM 的 libo3p.so 1,492,484 B，sha256 e64217c8…87dfa
 
 # app（需要 SDK + Shizuku jars + 你自己的 keystore；见 docs/BUILD.md）
 ANDROID_JAR=... BUILD_TOOLS=... SHIZUKU_JARS=... \
@@ -56,20 +56,24 @@ KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
    `SELINUX_STATE_STATIC`、探针偏移、BTF 偏移与 `ksu_symtab.h` 都绑定这个
    确切的内核构建。不要重排或“简化”它们；在没有对应镜像的情况下改动 =
    内核 oops。
-2. **KernelSU init 补丁只改一个立即数**：`.init.text+0x144`
-   （`52 80 00 20` → `52 80 00 00`，即 `mov w0,#1` → `mov w0,#0`），文件
-   偏移 `0x22144`，由 `ksu_patch()` 校验。**绝对不要**改 `+0x148` 的
-   `bl setenforce`：该槽位带 `CALL26` 重定位，加载器会重写它，结果是
-   `Undefined instruction`、模块卡在 `coming`（见 `docs/APP_O3_ROOT.md`）。
+2. **v3 默认不给 KernelSU 打 init 补丁 —— 保持这个默认。**
+   断网根因已消除：stage0 只把 `enforcing` 字节清零（在 `selinux_state-7` 做 8 字节
+   非对齐零写，`initialized`/`policycap` 原样保留），所以 KSU 重新拉回
+   Enforcing 后 Wi-Fi 仍正常；日志里 `KSU_CODEPATCH skip` 即正确路径。
+   仅用于对比时可用 `O3P_CODEPATCH=1` 回退旧补丁（`.rela.init.text` 动态定位，
+   tiann/Next `0x144`、SukiSU `0x178`；文件偏移 `0x22144`/`0x37144`/`0x3e178`）。
+   **绝对不要**改 `+0x148` 的 `bl setenforce`：该槽位带 `CALL26` 重定位，加载器会重写它，
+   结果是 `Undefined instruction`、模块卡在 `coming`（见 `docs/APP_O3_ROOT.md`）。
 3. **写原语只能写 `0` 或“受控页指针”。** 它写入 `[forged_node]` 并解引用
    `parent = value & ~3`，所以 `0x100` 会被当作地址解引用。不要“干脆写
    0x0100”。
 4. **`real_cred` 不会被替换。** 绝不要进程内调用 `finit_module` —— 必须
    新起一次 exec（`fork` + `sh -c insmod`）。进程内加载会在 `commit_creds`
    触发 BUG（`task->cred != task->real_cred`）。
-5. **stage 0 会污染 `selinux_state.policycap[]`。** SELinux 保持 Permissive
-   时无害，但任何 `setenforce 1` 都会让 Wi-Fi TX 冻结，直到 `setenforce 0`
-   或重启。App（v1.8+）会检测并提供恢复；不要移除这个守护。
+5. **v3 的 stage0 不再污染 `policycap`。** 在 `selinux_state-7` 做 8 字节非对齐零写
+   只清 `enforcing`，所以 Enforcing 是安全终态、App 不再带恢复守护。只有旧路径
+   `O3P_SELDIRTY=1` 会污染 `policycap[]`；用它时任何 `setenforce 1` 都会让 Wi-Fi TX
+   冻结，直到 `setenforce 0` 或重启。
 6. **rootd 协议**：抽象 socket `@o3p_rootd`，`SO_PEERCRED` 只接受 uid 0/2000，
    每连接一条命令，以 `__EXIT=<n>` 结束。不要把全局可写命令文件重新引入
    `/data/local/tmp`。
@@ -115,13 +119,13 @@ root 请求后才出现。
 
 1. 确认 Shizuku 以 shell 模式运行：
    `ps -A -o UID,LABEL,ARGS | grep shizuku_plus_server` → `2000 u:r:shell:s0`。
-2. 安装：`adb install -r release/o3root2-v2.1.apk`；MIUI 若报
+2. 安装：`adb install -r release/o3root2-v3.0.apk`；MIUI 若报
    `INSTALL_FAILED_USER_RESTRICTED`，允许“USB 安装”或用 root 执行
    `pm install -r -d`。
 3. 打开 App，授予 Shizuku 权限，点 Continue；等待 20–120 秒。
 4. 成功标记：`★ UIDNOW uid=0`、`KSU_INSMOD_OUT:[rc=0]`、
    `★ KSU_MODULE LIVE`、管理器在前台（`am start` 日志 + `top ->`）。
-5. 健康检查：`getenforce` = Permissive、`ping <gateway>`、
+5. 健康检查：`getenforce` = Enforcing（v3；旧的脏写路径会停在 Permissive）、`ping <gateway>`、
    `nc 223.5.5.5 443`、`cat /proc/sys/kernel/random/boot_id` 未变。
 6. 回滚：重启；可选 `rm -f /data/local/tmp/o3p*` 并卸载 App。
 
@@ -129,7 +133,7 @@ root 请求后才出现。
 |---|---|
 | 反复 `VERDICT NO_RECLAIM` | 竞态是概率性的；重试（通常 1–6 次），卡住就重启 |
 | `固件门禁未通过` | 内核/指纹不匹配 —— 需要新的 profile |
-| KernelSU 加载后断网 | SELinux 回到 Enforcing + policycap 被污染 → 点恢复按钮或重启 |
+| KernelSU 加载后断网 | 仅旧路径 `O3P_SELDIRTY=1`：policycap 被污染 + Enforcing → `setenforce 0` 或重启 |
 | `KSU_CODEPATCH … -2` | 没找到 `setenforce` 重定位（唯一扫描也失败）—— 核对 LKM |
 | 管理器打不开 | 检查 App 安装路径/包名，以及 KSU 管理器包是否存在 |
 
@@ -160,3 +164,12 @@ KernelSU（LKM + 管理器 APK）是 GPL-3.0。
   `libo3p.so` 的 sha 与参考值对比。
 - **开放想法 / 实验历史**：`docs/AGENT_HANDOFF.md`（中文版
   `docs/AGENT_HANDOFF.zh-CN.md`）。
+
+### v3（当前）
+
+v3 保留两段式利用，但两次写都改了：stage0 是**只清 enforcing** 的零写
+（在 `selinux_state-7` 做 8 字节非对齐写），stage1 仍是 `task_cred` 换指针。之后用运行时
+kallsyms 加载器装 KSU，**不打 init 补丁**；KSU 自己的 `setenforce(1)` 无害（policycap
+干净），所以设备停在 Enforcing 且 Wi-Fi 正常。曾尝试“一次 reap 三次写”，连续 panic，
+现仅保留在 `O3P_D3V3` 后供分析。yingtian 冷启已验证（`KSU_CODEPATCH skip`、
+`KALLSYMS_PATCH found=225`、`KSU_MODULE LIVE`、Enforcing、`ping`/`nc` 正常、管理器已打开）。

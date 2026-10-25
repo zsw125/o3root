@@ -31,7 +31,7 @@ Max）与 **lhasa**（Xiaomi 18 Fold）系列，做本地提权 + KernelSU。整
 
 | | |
 |---|---|
-| 发布 | **v2.1**（`release/o3root2-v2.1.apk`，sha256 `85c3516b…`） |
+| 发布 | **v3.0**（`release/o3root2-v3.0.apk`，sha256 `c80f499a…`） |
 | 链路 | Shizuku shell → CVE-2026-98260 → `uid=0` + full caps → 对应 KernelSU LKM（KernelSU / KernelSU-Next / SukiSU）→ rootd |
 | 持久化 | 无（仅当前 boot） |
 | 已验证设备 | 小米 Pad 9 Pro Max `yingtian`，HyperOS `OS4.0.16.0.XBMCNXM` |
@@ -62,7 +62,7 @@ Max）与 **lhasa**（Xiaomi 18 Fold）系列，做本地提权 + KernelSU。整
 1. 设备上：开启开发者选项 → 无线调试（或 ADB）。安装 **Shizuku** / ShizukuX，
    并以 **shell 模式** 启动：`shizuku_plus_server` 必须是 `uid=2000`、
    `u:r:shell:s0`。
-2. 安装 `release/o3root2-v2.1.apk`（MIUI 可能需要允许“USB 安装”）。
+2. 安装 `release/o3root2-v3.0.apk`（MIUI 可能需要允许“USB 安装”）。
 3. 打开 **O3 Root**，授予 Shizuku 权限，点 **Continue to UID 0**。日志会显示
    `★ UIDNOW uid=0`、`★ KSU_MODULE LIVE`，随后 KernelSU 管理器自动打开。
 

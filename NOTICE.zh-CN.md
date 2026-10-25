@@ -13,9 +13,9 @@
   - `payload/lkm/lkm-aarch64-android17-6.18_kernelsu.ko` —— GKI
     `android17-6.18` 的官方预编译 LKM（release 资产，aarch64）。
   - `app/assets/ksu-manager.apk` —— 同一 release 的 KernelSU 管理器 APK。
-  - `release/o3root2-v2.1.apk` 同时内置管理器 APK 与未修改的官方 LKM；载荷在
-    加载时生成*运行时副本*（经 `/proc/kallsyms` 重定位符号，并改一处 init
-    立即数）再加载。离线 `payload/ksu/relink_ksu.py` 做同样的重定位。
+  - `release/o3root2-v3.0.apk` 同时内置管理器 APK 与未修改的官方 LKM；载荷在
+    加载时生成*运行时副本*（经 `/proc/kallsyms` 重定位符号）再加载；v3 默认不改 init
+    立即数（`O3P_CODEPATCH=1` 可回退旧补丁）。离线 `payload/ksu/relink_ksu.py` 做同样的重定位。
 - 运行时/离线重定位只改写 ELF 符号值（以及 `.init.text` 的一处 `mov` 立即
   数），不修改 KernelSU 源码。KernelSU 本身并未 vendored 到本仓库 —— 如需源码请从上游获取；按
   GPL-3.0 要求，再分发二进制时应一并满足源码提供义务。
@@ -44,7 +44,7 @@
 - 项目：Shizuku — https://github.com/RikkaApps/Shizuku-API
 - 制品：`dev.rikka.shizuku:api`、`:provider`、`:aidl`、`:shared`（13.1.5），由
   `scripts/fetch-toolchain.sh` 从 Maven Central 拉取。
-- 不提交到本仓库；`release/o3root2-v2.1.apk` 中内嵌了由这些 jar 编译出的类。
+- 不提交到本仓库；`release/o3root2-v3.0.apk` 中内嵌了由这些 jar 编译出的类。
 
 ## Android SDK（Android SDK License）
 

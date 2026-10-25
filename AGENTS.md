@@ -10,8 +10,8 @@ and leaves a root daemon for the current boot. Read this file first, then
 
 ## State
 
-- Release **v2.1**, `release/o3root2-v2.1.apk`
-  (`14,218,768 B`, `sha256 85c3516b84010af241dc95bbca345ebf1d8ed1f2c6ebd8cc0f82161371067178`).
+- Release **v3.0**, `release/o3root2-v3.0.apk`
+  (`14,218,768 B`, `sha256 c80f499a6b06ddf92241aa8cb0aa8874767eccdd960e631b28dcff98e7c141dd`).
   v2.0 added the multi-LKM blob (KernelSU / KernelSU-Next / SukiSU) with
   manager-based selection; v2.1 makes the probe permission-aware (local manager
   detection, probe-then-payload after granting, unique payload path); v1.8
@@ -29,7 +29,7 @@ bash scripts/fetch-toolchain.sh   # android.jar, build-tools r34, Shizuku jars, 
 
 # payload  (needs an NDK clang)
 NDK_CC=/path/to/ndk/.../aarch64-linux-android35-clang bash payload/build-payload.sh
-# reference result: 69,568 B payload; libo3p.so 1,488,284 B (three LKMs), sha256 98936d14…87dfa
+# reference result: 73,768 B payload; libo3p.so 1,492,484 B (three LKMs), sha256 e64217c8…87dfa
 
 # app (needs SDK + Shizuku jars + your keystore; see docs/BUILD.md)
 ANDROID_JAR=... BUILD_TOOLS=... SHIZUKU_JARS=... \
@@ -55,13 +55,14 @@ KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
    `SELINUX_STATE_STATIC`, probe offsets, BTF offsets and `ksu_symtab.h` are
    tied to this exact kernel build. Don't reformat or "simplify" them; changing
    them without a matching image = kernel oops.
-2. **The KernelSU init patch is dynamic, but still exactly one immediate.**
-   The loader parses `.rela.init.text`, finds the relocation whose symbol is
-   `setenforce`, and rewrites the 4 bytes at `r_offset - 4` (`mov w0,#1` →
-   `mov w0,#0`: `52 80 00 20` → `52 80 00 00`). Observed offsets inside
-   `.init.text`: `0x144` (tiann / KernelSU-Next) and `0x178` (SukiSU). If the
-   relocation cannot be resolved it falls back to scanning for a unique
-   `mov w0,#1` followed by `BL`. Do **not** patch the `bl setenforce` itself:
+2. **v3 applies no KernelSU init patch by default — keep it that way.**
+   The network break is fixed at the source: stage 0 zeroes only the
+   `enforcing` byte (8-byte unaligned zero at `selinux_state-7`, leaving
+   `initialized`/`policycap` intact), so when KernelSU restores Enforcing the
+   Wi-Fi path stays healthy. `KSU_CODEPATCH skip` is the expected line.
+   `O3P_CODEPATCH=1` restores the legacy patch (dynamic `.rela.init.text`
+   rewrite, offsets `0x144` tiann / KernelSU-Next, `0x178` SukiSU) for
+   comparison only. Do **not** patch the `bl setenforce` itself:
    that slot carries a `CALL26` relocation, the loader rewrites it, and the
    result is `Undefined instruction` with the module stuck in `coming` (see
    `docs/APP_O3_ROOT.md`).
@@ -71,10 +72,11 @@ KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
 4. **`real_cred` is not replaced.** Never call `finit_module` in-process — a
    fresh exec is required (`fork` + `sh -c insmod`). In-process load BUGs in
    `commit_creds` (`task->cred != task->real_cred`).
-5. **Stage 0 pollutes `selinux_state.policycap[]`.** While SELinux stays
-   Permissive that's inert, but any `setenforce 1` makes Wi-Fi TX freeze until
-   `setenforce 0` or reboot. The app (v1.8+) detects this and offers recovery;
-   don't remove the guard.
+5. **v3 stage 0 no longer pollutes `policycap`.** The 8-byte unaligned zero at
+   `selinux_state-7` clears only `enforcing`, so Enforcing is safe and the app
+   ships no recovery guard. Only the legacy `O3P_SELDIRTY=1` path dirties
+   `policycap[]`; if used, any `setenforce 1` freezes Wi-Fi TX until
+   `setenforce 0` or reboot.
 6. **rootd protocol**: abstract socket `@o3p_rootd`, `SO_PEERCRED` only accepts
    uid 0/2000, one command per connection, terminated by `__EXIT=<n>`. Do not
    reintroduce world-writable command files in `/data/local/tmp`.
@@ -135,13 +137,13 @@ Negative results — don't repeat without a new idea (details in
 
 1. Shizuku running in shell mode: `ps -A -o UID,LABEL,ARGS | grep shizuku_plus_server`
    → `2000 u:r:shell:s0`.
-2. Install: `adb install -r release/o3root2-v2.1.apk`; if MIUI says
+2. Install: `adb install -r release/o3root2-v3.0.apk`; if MIUI says
    `INSTALL_FAILED_USER_RESTRICTED`, allow install-via-USB or, with root,
    `pm install -r -d`.
 3. Open the app, grant Shizuku permission, press Continue; wait 20–120 s.
 4. Success markers: `★ UIDNOW uid=0`, `KSU_INSMOD_OUT:[rc=0]`,
    `★ KSU_MODULE LIVE`, manager in foreground (`am start` log + `top ->`).
-5. Health: `getenforce` = Permissive, `ping <gateway>`, `nc 223.5.5.5 443`,
+5. Health: `getenforce` = Enforcing (v3; legacy dirty write ends Permissive), `ping <gateway>`, `nc 223.5.5.5 443`,
    `cat /proc/sys/kernel/random/boot_id` unchanged.
 6. Rollback: reboot; optional `rm -f /data/local/tmp/o3p*` and uninstall.
 
@@ -149,7 +151,7 @@ Negative results — don't repeat without a new idea (details in
 |---|---|
 | `VERDICT NO_RECLAIM` repeated | race is probabilistic; retry (1–6 attempts typical), reboot if stuck |
 | `固件门禁未通过` | kernel/fingerprint mismatch — new profile needed |
-| network dead after KernelSU | SELinux back to Enforcing + polluted policycap → recovery button or reboot |
+| network dead after KernelSU | only with legacy `O3P_SELDIRTY=1`: polluted policycap + Enforcing → `setenforce 0` or reboot |
 | `KSU_CODEPATCH … -2` | the `setenforce` relocation was not found (unique-scan fallback failed) — check the LKM |
 | manager not opening | check the app install path/package, and that KSU manager package exists |
 
@@ -180,3 +182,15 @@ stay accurate — KernelSU (LKM + manager APK) is GPL-3.0.
 - **Payload behavior**: `payload/o3p.c`; rebuild with
   `payload/build-payload.sh` and compare `libo3p.so` sha against the reference.
 - **Open ideas / history of experiments**: `docs/AGENT_HANDOFF.md`.
+
+### v3 (current)
+
+v3 keeps the two-stage exploit but changes both writes: stage 0 is an
+**enforcing-only** zero (8-byte unaligned write at `selinux_state-7`), stage 1
+is the usual `task_cred` swap. KernelSU is then loaded with the runtime
+kallsyms loader and **no init patch**; its own `setenforce(1)` is harmless
+because `policycap` stayed clean, so the device ends in Enforcing with working
+Wi-Fi. A single-reap three-write variant was tried and continuously panicked;
+it is kept only behind `O3P_D3V3` for analysis. Cold-boot tested on yingtian
+(`KSU_CODEPATCH skip`, `KALLSYMS_PATCH found=225`, `KSU_MODULE LIVE`,
+Enforcing, `ping`/`nc` OK, manager opened).

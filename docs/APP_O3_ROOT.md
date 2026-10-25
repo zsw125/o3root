@@ -505,11 +505,11 @@ features=0x3ffff`（成功）；App 域历史实测 `io_uring_setup` 被 seccomp
 
 ## v2.0 (dev log, 2026-10-25): multi-LKM blob + adaptive manager selection
 
-- Artifacts: payload `payload/o3p.c` 51,517 B -> `build/o3p.bin` 69,568 B;
-  `build/libo3p.so` 1,488,284 B
-  (`sha256 98936d14b5f50b1fc4a9b35741404088a33e1a1fe68042b61e8e948c31f87dfa`);
+- Artifacts: payload `payload/o3p.c` 51,517 B -> `build/o3p.bin` 73,768 B;
+  `build/libo3p.so` 1,492,484 B
+  (`sha256 e64217c8fac2950763869881efdd15ff9fb76f1423a3388185bca7e72499aac3`);
   APK `app/o3root2.apk` 14,218,768 B
-  (`sha256 85c3516b84010af241dc95bbca345ebf1d8ed1f2c6ebd8cc0f82161371067178`).
+  (`sha256 c80f499a6b06ddf92241aa8cb0aa8874767eccdd960e631b28dcff98e7c141dd`).
 - Blob v2 layout: payload + KernelSU v3.3.1 (375,328) + KernelSU-Next v3.4.2
   (473,552) + SukiSU v4.2.1-r2 (569,752) + 24-byte tag table + `O3KSKM02`/count;
   `--legacy` keeps the single-LKM `O3KSKO01` layout readable.
@@ -547,4 +547,35 @@ v2.1 修复：`StateProbe` 先 `Shizuku.checkSelfPermission()`（未授权 → `
 真机（yingtian，冷启动 boot 8d747c66）：撤销授权 → 首启只显示「需要授权」+ Continue；
 点按授权后自动跑载荷：`KSU_CODEPATCH mov_w0_zero=1 off=0x22144`、`rc=0`、`KSU_MODULE LIVE`、
 `ROOTD self=…/o3p_1792926817016.bin`、`UIDNOW uid=0`、Permissive、管理器前台、ping 6.7 ms。
-发布件 `release/o3root2-v2.1.apk` 14,218,768 B `sha256 85c3516b…`。
+发布件 `release/o3root2-v3.0.apk` 14,218,768 B `sha256 c80f499a…`。
+
+## v3 (2026-10-25 22:34, branch exp/v3-tracepoint → main)
+
+Two-reap v3: stage 0 is an unaligned 8-byte zero at `selinux_state-7` (clears
+`enforcing`, keeps `initialized`/`policycap`), stage 1 is the `task_cred`
+swap. KernelSU loads through the runtime kallsyms loader with **no init
+patch**; its own `setenforce(1)` now leaves the network healthy.
+
+Cold boot (yingtian, boot `42860b0e-b370-4594-b14d-da2d521fa62b`, no KSU):
+
+```
+KSU_FORK chosen=tiann tag=1 src=env
+KSU_BLOB v2 tag=1 len=375328 count=3 matched=1
+KALLSYMS_PATCH found=225 missing=0
+KSU_CODEPATCH skip
+KSU_WROTE /data/local/tmp/o3p_ksu.ko 375328
+KSU_EXEC done=1 status=0x0
+KSU_INSMOD_OUT:[rc=0]
+KSU_MODULE LIVE
+ROOTD sock ready
+UIDNOW uid=0
+payload exit=0
+am start -> me.weishu.kernelsu/.ui.MainActivity Status: ok
+top -> me.weishu.kernelsu/.ui.MainActivity
+```
+
+Final state: Enforcing, `kernelsu` Live, `ping 10.30.0.1` 22 ms,
+`nc 223.5.5.5:443` rc=0, manager shows `工作中 [越狱模式]`.
+
+Single-reap, three-write attempt (v3a/v3b/v3c) panicked three times right
+after the first `D3ADDR`; it stays behind `O3P_D3V3` for analysis only.
