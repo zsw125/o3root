@@ -71,5 +71,7 @@ technique, re-derived against our kernel image.
 - Experiment **B** (tracepoint-only slide) — implemented and validated, see
   `experiments/README.md`.
 - Experiment **A** (unaligned enforcing-only zero + KSU without the
-  `KSU_CODEPATCH` init patch) and **C/D** (PFN-verified reclaim; three-tree
-  single reap) — prototypes pending on branch `exp/v3-tracepoint`.
+  `KSU_CODEPATCH` init patch) — validated on branch `exp/v3-tracepoint`, see
+  `experiments/README.md` (clean `selinux_state`, KSU restores Enforcing,
+  network and manager stay healthy).
+- **C/D** (PFN-verified reclaim; three-tree single reap) — prototypes pending.

