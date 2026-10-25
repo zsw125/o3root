@@ -14,12 +14,16 @@ and leaves a root daemon for the current boot. Read this file first, then
   (`14,218,768 B`, `sha256 c80f499a6b06ddf92241aa8cb0aa8874767eccdd960e631b28dcff98e7c141dd`).
   v2.0 added the multi-LKM blob (KernelSU / KernelSU-Next / SukiSU) with
   manager-based selection; v2.1 makes the probe permission-aware (local manager
-  detection, probe-then-payload after granting, unique payload path); v1.8
-  (relink-only) and v1.9 remain in the git history.
+  detection, probe-then-payload after granting, unique payload path); v3.0
+  replaces the single-reap write with two reaps — an unaligned enforcing-only
+  zero at `selinux_state-7` plus the cred swap — and drops the KernelSU init
+  patch (KSU's own `setenforce(1)` is safe because `policycap` stays clean).
+  v1.8 (relink-only) and v1.9 remain in the git history.
 - Hardware-verified on `yingtian` / `OS4.0.16.0.XBMCNXM` (cold boot, end-to-end).
 - `lhasa` / `OS4.0.26.0.XPNCNXM` ships the **bit-identical kernel**
   (`sha256 cde87cd7…`); not device-tested.
-- Boot-only: a reboot removes root, KernelSU and the permissive SELinux state.
+- Boot-only: a reboot removes root and KernelSU (legacy `O3P_SELDIRTY=1`
+  paths also lose the permissive SELinux state; the v3 default ends in Enforcing).
 
 ## Fast commands
 
@@ -40,10 +44,10 @@ KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
 
 | path | what lives there |
 |---|---|
-| `payload/o3p.c` | the exploit payload (C): UAF trigger, page reclaim, RB write primitive, two stages, KASLR slide, KernelSU runtime loader (kallsyms first, relink fallback), dynamic init patch, rootd |
+| `payload/o3p.c` | the exploit payload (C): UAF trigger, page reclaim, RB write primitive, two stages, KASLR slide, KernelSU runtime loader (kallsyms first, relink fallback), legacy init patch (`O3P_CODEPATCH=1`), rootd |
 | `payload/ksu/` | `ksu_symtab.h` (union of 248 KernelSU symbols from upstream forks), `mksymtab.py` (regen single-LKM table), `relink_ksu.py` (offline relinker reference) |
 | `payload/lkm/` | official `android17-6.18` LKMs (GPL-3.0, unmodified): KernelSU v3.3.1, KernelSU-Next v3.4.2, SukiSU-Ultra v4.2.1-r2 |
-| `app/src/o3/st/root1/` | Java: `Main` (UI/state machine), `PayloadRunner`, `StateProbe`, `RecoverRunner`, `ManagerInstaller`, listeners |
+| `app/src/o3/st/root1/` | Java: `Main` (UI/state machine), `PayloadRunner`, `StateProbe`, `RecoverRunner` (legacy guard; disabled in v3), `ManagerInstaller`, listeners |
 | `app/build.sh`, `payload/build-payload.sh`, `scripts/*` | build entry points |
 | `docs/` | ARCHITECTURE (design + porting), SECURITY (risks/cleanup), BUILD, APP_O3_ROOT (dev log), OTA/kernel report, CVE feasibility, evidence PNGs |
 | `tools/` | OTA extraction / boot image unpack / BTF+disasm checks |
@@ -97,9 +101,11 @@ KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
 
 ## Verified / not verified
 
-Verified on hardware: full cold-boot chain, `uid=0` + full caps, KernelSU
-`Live`, manager auto-open, Enforcing-rebound guard and one-click recovery,
-network health while Permissive. The v2.0 release APK was cold-boot tested; v2.1 was cold-boot tested with a revoked Shizuku permission (grant → probe → automatic payload)
+Verified on hardware (v3.0): full cold-boot chain (`uid=0` + full caps),
+KernelSU `Live` with **no init patch**, manager auto-open, Enforcing end state
+with healthy network (`ping`/`nc`) and unchanged `boot_id`. v1.8–v2.1 had
+additionally verified the old guard/recovery UI and network health while
+Permissive (both removed in v3.0). The v2.0 release APK was cold-boot tested; v2.1 was cold-boot tested with a revoked Shizuku permission (grant → probe → automatic payload)
 end-to-end on three images (only the tiann manager, only KernelSU-Next, only
 SukiSU): each time the app detected the manager, the payload selected the
 matching embedded LKM and the matching manager came to the foreground;
@@ -152,7 +158,7 @@ Negative results — don't repeat without a new idea (details in
 | `VERDICT NO_RECLAIM` repeated | race is probabilistic; retry (1–6 attempts typical), reboot if stuck |
 | `固件门禁未通过` | kernel/fingerprint mismatch — new profile needed |
 | network dead after KernelSU | only with legacy `O3P_SELDIRTY=1`: polluted policycap + Enforcing → `setenforce 0` or reboot |
-| `KSU_CODEPATCH … -2` | the `setenforce` relocation was not found (unique-scan fallback failed) — check the LKM |
+| `KSU_CODEPATCH … -2` | only with legacy `O3P_CODEPATCH=1`: the `setenforce` relocation was not found (unique-scan fallback failed) — check the LKM |
 | manager not opening | check the app install path/package, and that KSU manager package exists |
 
 ## Hygiene before commit
@@ -176,7 +182,8 @@ stay accurate — KernelSU (LKM + manager APK) is GPL-3.0.
 
 - **Port to another kernel/device**: `docs/ARCHITECTURE.md` → "Porting"; then
   regenerate `payload/ksu/ksu_symtab.h`, update constants, re-locate the KSU
-  patch offset, update the app gate, and test cold boot.
+  patch offset (only if you keep the legacy `O3P_CODEPATCH=1` path), update the
+  app gate, and test cold boot.
 - **App/UI/feature work**: `app/src/o3/st/root1/*.java`; build with
   `app/build.sh`; keep the class set free of anonymous classes.
 - **Payload behavior**: `payload/o3p.c`; rebuild with

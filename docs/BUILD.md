@@ -65,8 +65,8 @@ PAYLOAD=.../payload/build/libo3p.so           # default is this
 
 ```bash
 bash payload/build-payload.sh
-# build/o3p.bin      ~62 KB
-# build/libo3p.so    payload + LKM + trailer
+# build/o3p.bin      73,768 B (payload)
+# build/libo3p.so    payload + three LKMs (blob v2 trailer)
 ```
 
 `build-payload.sh` only needs `NDK_CC`. The KernelSU LKM is in

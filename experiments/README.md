@@ -1,7 +1,11 @@
-# experiments — branch `exp/v3-tracepoint`
+# experiments — branch `exp/v3-tracepoint` (merged as v3.0)
 
 Prototypes for the v3 direction suggested by [EAEdward/xiaomi9pmroot](https://github.com/EAEdward/xiaomi9pmroot)
 (MIT). See `docs/PRIOR-ART.md` for the comparison and the credit.
+
+**Status:** A is the shipped default since v3.0 (two-reap payload); B/C/D remain
+prototypes. The single-reap combination of A+D was attempted as v3a and panicked
+three times — see “Outcome in v3.0” at the end.
 
 These are **research prototypes**, not part of the shipped payload. They do not
 modify the device beyond enabling one ftrace event for the duration of the run.
@@ -83,10 +87,12 @@ independent cred/`init_user_ns`-based measurement on the same boot.
 
 The payload now understands two experimental environment variables:
 
-- `O3P_SELZERO=1` — stage0 targets `selinux_state - 7` and writes **0**, so the
-  `enforcing` byte becomes 0 while `initialized` and `policycap[]` stay intact
-  (our default stage0 writes a pointer *into* `selinux_state` and clobbers
-  `policycap`, which is what later breaks Wi-Fi when SELinux returns to Enforcing).
+- **shipped default since v3.0** (originally gated as `O3P_SELZERO=1`; legacy
+  `O3P_SELDIRTY=1` restores the old dirty write) — stage0 targets
+  `selinux_state - 7` and writes **0**, so the `enforcing` byte becomes 0 while
+  `initialized` and `policycap[]` stay intact (the old stage0 wrote a pointer
+  *into* `selinux_state` and clobbered `policycap`, which later broke Wi-Fi when
+  SELinux returned to Enforcing).
 - `O3P_NO_CODEPATCH=1` — skip the KernelSU `.init.text` `mov w0,#0` patch, so
   upstream KernelSU restores Enforcing through its own init hook.
 
@@ -233,3 +239,12 @@ every attempt here, not guaranteed); D3 is a shell-domain experiment and does
 not load KernelSU. Combined with the C harness (PFN-verified reclaim) this
 becomes a single-reap "cred + enforcing" primitive, with tile PROF retargeted
 to `&task->cred-8`.
+
+## Outcome in v3.0
+
+The A+D single-reap combination was shipped behind `O3P_D3V3` and attempted as
+v3a/v3b/v3c; all three cold boots panicked shortly after `D3ADDR` (see
+`docs/V3-DESIGN.md`). v3.0 therefore ships the **two-reap** payload: A
+(enforcing-only zero) in stage 0 and the proven `task_cred` swap in stage 1, with
+KernelSU loaded without the init patch. B/C remain validated prototypes but are
+not in the shipped payload.

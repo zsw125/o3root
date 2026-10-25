@@ -547,7 +547,7 @@ v2.1 修复：`StateProbe` 先 `Shizuku.checkSelfPermission()`（未授权 → `
 真机（yingtian，冷启动 boot 8d747c66）：撤销授权 → 首启只显示「需要授权」+ Continue；
 点按授权后自动跑载荷：`KSU_CODEPATCH mov_w0_zero=1 off=0x22144`、`rc=0`、`KSU_MODULE LIVE`、
 `ROOTD self=…/o3p_1792926817016.bin`、`UIDNOW uid=0`、Permissive、管理器前台、ping 6.7 ms。
-发布件 `release/o3root2-v3.0.apk` 14,218,768 B `sha256 c80f499a…`。
+历史发布件 `release/o3root2-v2.1.apk`（14,218,768 B，sha256 `85c3516b…`；v3.0 起由 `release/o3root2-v3.0.apk` 取代）。
 
 ## v3 (2026-10-25 22:34, branch exp/v3-tracepoint → main)
 

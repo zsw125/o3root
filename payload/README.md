@@ -40,8 +40,8 @@ readable.
 4. **Write primitive**: the reap (`release_task` → `posix_cpu_timers_exit` →
    `cleanup_timerqueue` → `timerqueue_del` → `rb_erase`) writes the forged
    node's `__rb_parent_color` into an arbitrary target address. The payload
-   uses it to rewrite `selinux_state.enforcing` (stage 0) and
-   `task_struct.cred` (stage 1).
+   uses it to clear `selinux_state.enforcing` (stage 0, an unaligned zero at
+   `selinux_state-7`) and to rewrite `task_struct.cred` (stage 1).
 5. **Fake cred** (`stage 1`): a perf ring page (kernel VA leaked via kretprobe)
    holds a fake `struct cred` with uid/euid/fsuid=0, full caps, and the
    original SELinux blob pointer.
@@ -52,9 +52,10 @@ readable.
    (`O3P_KSU_FORK` overrides). It then resolves the LKM's undefined symbols at
    runtime via `/proc/kallsyms` (temporarily lowering `kptr_restrict`, then
    restoring it); `O3P_RELINK_ONLY=1` falls back to the 248-symbol union +
-   address+slide. It also patches the module so it does not force SELinux back
-   to Enforcing, writes `/data/local/tmp/o3p_ksu.ko`, then `insmod`s it from a
-   forked `/system/bin/sh`.
+   address+slide. With the v3 default the module is loaded **unmodified** (no
+   init patch): `policycap` stays clean, so KernelSU's own `setenforce(1)` is
+   harmless (`O3P_CODEPATCH=1` restores the legacy patch). It writes
+   `/data/local/tmp/o3p_ksu.ko` and `insmod`s it from a forked `/system/bin/sh`.
 7. **rootd**: forks a detached root daemon; the parent execs the payload with
    `--rootd`, which listens on the abstract unix socket `@o3p_rootd` and only
    accepts peers with uid 0 or 2000 (SO_PEERCRED). Clients: `--shell "<cmd>"`.
@@ -63,7 +64,7 @@ readable.
 
 | file | role |
 |---|---|
-| `o3p.c` | complete payload (25 KB of C; generated from the t32/t34 lineage) |
+| `o3p.c` | complete payload (≈55 KB of C; generated from the t32/t34 lineage) |
 | `ksu/ksu_symtab.h` | union of 248 KernelSU symbols (upstream forks) → vmlinux addresses; used by the relink fallback |
 | `ksu/mksymtab.py` | regenerate `ksu_symtab.h` from `vmlinux.elf` (+ env `VMLINUX`) |
 | `ksu/relink_ksu.py` | offline relinker, reference for the runtime `ksu_patch` |
@@ -79,7 +80,8 @@ readable.
   compiled for `6.18.21-android17-5-g805aa6adea19-abogki565292102-4k` on
   yingtian/lhasa. See `docs/ARCHITECTURE.md` for the constants and how to
   re-derive them for another kernel.
-- The manipulation corrupts `selinux_state.policycap[]` (bytes 2..7 of the
-  first 8-byte write). This is harmless while SELinux stays Permissive, but if
-  enforcing is set to 1 the network stack breaks. The APK has a guard/recovery
-  UI for this; see `docs/SECURITY.md`.
+- The v3 default is an unaligned zero at `selinux_state-7`: it clears only
+  `enforcing`, so `initialized`/`policycap[]` stay intact and re-enabling
+  Enforcing is safe; the app therefore ships no recovery guard. Only the legacy
+  `O3P_SELDIRTY=1` path corrupts `policycap[]` (bytes 2..7) and can break the
+  network once Enforcing returns; see `docs/SECURITY.md`.

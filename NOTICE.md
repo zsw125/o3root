@@ -30,8 +30,9 @@ licenses and redistribution terms.
 - Files in this repository derived from KernelSU-Next release artifacts:
   - `payload/lkm/aarch64-next-android17-6.18_kernelsu.ko` — official prebuilt
     LKM for GKI `android17-6.18` (release asset, aarch64, 473,552 bytes).
-- The same runtime rebasing and the one-instruction init patch described above
-  are applied to a generated copy; the file in this repository is unmodified.
+- The same runtime rebasing (and, only under legacy `O3P_CODEPATCH=1`, the
+  one-instruction init patch described above) is applied to a generated copy;
+  the file in this repository is unmodified.
 
 ## SukiSU-Ultra (GPL-3.0)
 
@@ -40,7 +41,7 @@ licenses and redistribution terms.
 - Files in this repository derived from SukiSU-Ultra release artifacts:
   - `payload/lkm/sukisu-aarch64-android17-6.18.ko` — official prebuilt LKM for
     GKI `android17-6.18` (release asset, aarch64, 569,752 bytes).
-- Same runtime rebasing / init patch on the generated copy.
+- Same runtime rebasing (legacy `O3P_CODEPATCH=1`: init patch) on the generated copy.
 
 ## Shizuku client libraries (Apache-2.0)
 

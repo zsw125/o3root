@@ -2,6 +2,8 @@
 
 > Chinese translation: [`SECURITY.zh-CN.md`](SECURITY.zh-CN.md) — a translation of this file; if the two disagree, this English file is authoritative.
 
+**Scope:** v3.0 (2026-10-25); legacy v1.7–v2.1 behaviour is called out explicitly.
+
 ## Read this first
 
 This repository contains a **working local privilege-escalation exploit** for a

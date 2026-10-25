@@ -4,6 +4,13 @@ The tree is GitHub-ready: `main` branch, MIT license, third-party notices,
 `scripts/verify.sh` (also run by `.github/workflows/verify.yml`), and no
 secrets or device identifiers — the script scans both text and binaries.
 
+## Current publication state (2026-10-25)
+
+- `main` head: `17a8cb6`; tag `v3.0` → `dc06899`.
+- Release: <https://github.com/zsw125/o3root/releases/tag/v3.0> with
+  `o3root2-v3.0.apk` (14,218,768 B, sha256 `c80f499a…`) and `SHA256SUMS.txt`.
+- CI: `verify` succeeded on `main`, on the merge commit, and on tag `v3.0`.
+
 ## 1. Create an empty repository
 
 Create `o3root` on GitHub **without** a README/license/gitignore (this repo

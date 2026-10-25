@@ -35,8 +35,9 @@ KernelSU-Next v3.4.2、SukiSU v4.2.1-r2）+ 每项 24 字节的 tag 表 +
    （`send(...,7872)`）喷页回收已释放的 order-1 `posix_timers_cache` slab 页。
 4. **写原语**：回收（`release_task` → `posix_cpu_timers_exit` →
    `cleanup_timerqueue` → `timerqueue_del` → `rb_erase`）会把伪造节点的
-   `__rb_parent_color` 写进任意目标地址。载荷用它改写
-   `selinux_state.enforcing`（stage 0）和 `task_struct.cred`（stage 1）。
+   `__rb_parent_color` 写进任意目标地址。载荷用它清
+   `selinux_state.enforcing`（stage 0：在 `selinux_state-7` 做非对齐零写）并把
+   `task_struct.cred` 换成伪造页（stage 1）。
 5. **伪造 cred**（`stage 1`）：一个 perf ring 页（内核 VA 经 kretprobe 泄漏）里放
    伪造的 `struct cred`，uid/euid/fsuid=0、full caps、`security` 沿用原来的
    SELinux blob 指针。
@@ -45,9 +46,9 @@ KernelSU-Next v3.4.2、SukiSU v4.2.1-r2）+ 每项 24 字节的 tag 表 +
    `com.sukisu.ultra`（SukiSU-Ultra，tag 3）——从内置 blob 里切出对应 LKM
    （`O3P_KSU_FORK` 可覆盖）。随后经 `/proc/kallsyms` 解析该 LKM 的未定义符号
    （临时降低 `kptr_restrict`，结束前恢复）；`O3P_RELINK_ONLY=1` 时回退到
-   248 符号并集 + address+slide。它还会打补丁使其不把 SELinux 强制拉回
-   Enforcing，写 `/data/local/tmp/o3p_ksu.ko`，然后从 fork 出的
-   `/system/bin/sh` 执行 `insmod`。
+   248 符号并集 + address+slide。v3 默认加载**未修改**的模块（不打 init 补丁）：`policycap` 干净，KernelSU
+   自己的 `setenforce(1)` 无害（`O3P_CODEPATCH=1` 可回退旧补丁）。随后写
+   `/data/local/tmp/o3p_ksu.ko`，从 fork 出的 `/system/bin/sh` 执行 `insmod`。
 7. **rootd**：fork 一个脱离的 root 守护进程；父进程以 `--rootd` exec 载荷，后者
    监听抽象 unix socket `@o3p_rootd`，只接受 uid 0 或 2000 的对端
    （SO_PEERCRED）。客户端：`--shell "<cmd>"`。
@@ -56,7 +57,7 @@ KernelSU-Next v3.4.2、SukiSU v4.2.1-r2）+ 每项 24 字节的 tag 表 +
 
 | 文件 | 作用 |
 |---|---|
-| `o3p.c` | 完整载荷（约 25 KB C；由 t32/t34 血统生成） |
+| `o3p.c` | 完整载荷（约 55 KB C；由 t32/t34 血统生成） |
 | `ksu/ksu_symtab.h` | 上游各 fork 的 248 个 KernelSU 符号并集 → vmlinux 地址（供 relink 回退） |
 | `ksu/mksymtab.py` | 从 `vmlinux.elf` 重新生成 `ksu_symtab.h`（env `VMLINUX`） |
 | `ksu/relink_ksu.py` | 离线重链接器，运行时 `ksu_patch` 的参考实现 |
@@ -71,6 +72,7 @@ KernelSU-Next v3.4.2、SukiSU v4.2.1-r2）+ 每项 24 字节的 tag 表 +
 - 载荷是**设备/profile 特定**的：偏移与静态地址都是按
   `6.18.21-android17-5-g805aa6adea19-abogki565292102-4k`（yingtian/lhasa）编译
   的。常量与换内核时如何重新推导，见 `docs/ARCHITECTURE.md`。
-- 该写操作会破坏 `selinux_state.policycap[]`（第一次 8 字节写的第 2..7 字节）。
-  SELinux 保持 Permissive 时无害，但若 enforcing 被置 1，网络栈就会坏。APK 为此
-  有守护/恢复 UI；见 `docs/SECURITY.md`。
+- v3 默认是在 `selinux_state-7` 做非对齐零写：只清 `enforcing`，
+  `initialized`/`policycap[]` 原样保留，所以重新开启 Enforcing 是安全的，App
+  不再带恢复守护。只有旧 `O3P_SELDIRTY=1` 路径会破坏 `policycap[]`（第 2..7
+  字节），并在 Enforcing 回来时可能弄坏网络；见 `docs/SECURITY.md`。

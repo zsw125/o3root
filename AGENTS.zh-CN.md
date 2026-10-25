@@ -16,11 +16,13 @@
   （`14,218,768 B`，`sha256 c80f499a6b06ddf92241aa8cb0aa8874767eccdd960e631b28dcff98e7c141dd`）；
   载荷内置 tiann / KernelSU-Next / SukiSU 三种 LKM，按已安装的管理器自动选择（`O3P_KSU_FORK` 可覆盖），
 并默认运行时解析符号（kallsyms）；v2.1 让探测先检查 Shizuku 授权、用本地包管理器识别管理器、
-授权后先探测再决定是否跑载荷，并使用唯一载荷文件名；v1.8/v1.9 保留在 git 历史里。
+授权后先探测再决定是否跑载荷，并使用唯一载荷文件名；v3.0 改为两段式（`selinux_state-7` 只清
+enforcing + cred 写入），并默认不打 KernelSU init 补丁（`policycap` 干净，KSU 自己的
+`setenforce(1)` 无害）；v1.8/v1.9 保留在 git 历史里。
 - 已在 `yingtian` / `OS4.0.16.0.XBMCNXM` 实机验证（冷启动，端到端）。
 - `lhasa` / `OS4.0.26.0.XPNCNXM` 携带**逐位相同的内核**
   （`sha256 cde87cd7…`）；未实机测试。
-- 仅当前 boot 有效：重启后 root、KernelSU 与 Permissive 状态全部消失。
+- 仅当前 boot 有效：重启后 root 与 KernelSU 消失（旧 `O3P_SELDIRTY=1` 路径下的 Permissive 也一并消失；v3 默认终态是 Enforcing）。
 
 ## 快速命令
 
@@ -41,10 +43,10 @@ KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
 
 | 路径 | 内容 |
 |---|---|
-| `payload/o3p.c` | 利用载荷（C）：UAF 触发、页回收、RB 写原语、两阶段、KASLR slide、KernelSU 重链接/补丁/加载、rootd |
+| `payload/o3p.c` | 利用载荷（C）：UAF 触发、页回收、RB 写原语、两阶段、KASLR slide、KernelSU 重链接/kallsyms 加载（默认不打补丁，旧 `O3P_CODEPATCH=1` 才有补丁）、rootd |
 | `payload/ksu/` | `ksu_symtab.h`（上游各 fork 的 248 个 KernelSU 符号并集，供 relink 回退）、`mksymtab.py`（重新生成单 LKM 表）、`relink_ksu.py`（离线重链接参考实现） |
 | `payload/lkm/` | 官方 `android17-6.18` LKM（GPL-3.0，未修改）：KernelSU v3.3.1、KernelSU-Next v3.4.2、SukiSU-Ultra v4.2.1-r2 |
-| `app/src/o3/st/root1/` | Java：`Main`（UI/状态机）、`PayloadRunner`、`StateProbe`、`RecoverRunner`、`ManagerInstaller`、各监听器 |
+| `app/src/o3/st/root1/` | Java：`Main`（UI/状态机）、`PayloadRunner`、`StateProbe`、`RecoverRunner`（旧守护，v3 已停用）、`ManagerInstaller`、各监听器 |
 | `app/build.sh`、`payload/build-payload.sh`、`scripts/*` | 构建入口 |
 | `docs/` | ARCHITECTURE（设计+移植）、SECURITY（风险/清理）、BUILD、APP_O3_ROOT（开发日志）、OTA/内核报告、CVE 可行性、证据截图 |
 | `tools/` | OTA 提取 / boot 镜像解包 / BTF+反汇编检查 |
@@ -84,8 +86,10 @@ KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
 
 ## 已验证 / 未验证
 
-实机已验证：完整冷启动链、`uid=0` + full caps、KernelSU `Live`、管理器自动
-打开、Enforcing 回弹守护与一键恢复、Permissive 期间网络正常；v2.1 发布 APK（权限感知探测：先查授权、本地识别管理器、授权后先探测再跑载荷）
+实机已验证（v3.0）：完整冷启动链（`uid=0` + full caps）、KernelSU `Live` 且
+**未打 init 补丁**、管理器自动打开、Enforcing 终态下网络正常（`ping`/`nc`）、
+`boot_id` 未变。v1.8–v2.1 另外验证过旧的守护/一键恢复与 Permissive 期间网络正常
+（这两项在 v3.0 已移除）。v2.1 发布 APK（权限感知探测：先查授权、本地识别管理器、授权后先探测再跑载荷）
 已在三种管理器镜像上冷启动验证（仅 tiann / 仅 KernelSU-Next / 仅 SukiSU）：
 应用识别管理器、载荷从内置 LKM 中选对应版本、对应管理器被拉到前台。
 
@@ -156,7 +160,7 @@ KernelSU（LKM + 管理器 APK）是 GPL-3.0。
 ## 从哪里开始
 
 - **移植到别的内核/设备**：`docs/ARCHITECTURE.md` → “Porting”；然后重新生成
-  `payload/ksu/ksu_symtab.h`、更新常量、重新定位 KSU 补丁偏移、更新 App
+  `payload/ksu/ksu_symtab.h`、更新常量、重新定位 KSU 补丁偏移（仅当保留旧 `O3P_CODEPATCH=1` 路径时）、更新 App
   门禁，并做冷启动测试。
 - **App/UI/功能**：`app/src/o3/st/root1/*.java`；用 `app/build.sh` 构建；
   保持类集合里没有匿名内部类。

@@ -208,9 +208,10 @@ KernelSU 用运行时 kallsyms 加载器、**不打 init 补丁**。`policycap` 
    `payload/ksu/ksu_symtab.h`（默认的 kallsyms 路径不需要该表）。
 5. 更新 `payload/o3p.c` 中的静态地址与常量
    （`INIT_USER_NS_STATIC`、`SELINUX_STATE_STATIC`、各探针偏移）。
-6. KernelSU 的指令补丁在运行时由 `.rela.init.text`（`setenforce` 重定位
-   往前 4 字节）定位，不需要按构建写死常量；唯一扫描也找不到时会打印
-   `KSU_CODEPATCH … -2`。
+6. 只有旧 `O3P_CODEPATCH=1` 路径才打 KernelSU 指令补丁：位置由
+   `.rela.init.text`（`setenforce` 重定位往前 4 字节）在运行时定位，不需要按
+   构建写死常量；唯一扫描也找不到时会打印 `KSU_CODEPATCH … -2`。v3 默认完全
+   跳过该补丁。
 7. 更新固件门禁（`Main.checkFirmware`）并重编 APK。
 
 KASLR 本身不需要按设备适配：slide 是运行时推导的。

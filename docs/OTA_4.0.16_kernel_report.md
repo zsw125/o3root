@@ -1,5 +1,10 @@
 # yingtian OS4.0.16.0 OTA 内核提取与 EnneaO3V2 通路核验报告
 
+> **Reference (partially superseded 2026-10-25)** — the OTA extraction and kernel constants are
+> still accurate and used by the payload; the EnneaO3V2 route audit in this file is obsolete
+> (both CVEs it covers are patched in OS4.0.16). Mainline: release v3.0.
+
+
 - 生成时间：2026-10-23 14:50 (UTC+8)
 - 对象：yingtian-ota_full-OS4.0.16.0.XBMCNXM-user-17.0-4215476d07.zip（10,373,766,105 B，A/B 全量 OTA）
 - 目的：从 OTA 提取内核，核验现有 EnneaO3V2 越狱通路（脚本版 / APK 自动版）在该内核上是否可用

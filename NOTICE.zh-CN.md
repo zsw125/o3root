@@ -27,8 +27,8 @@
 - 仓库中来自 KernelSU-Next 发布产物的文件：
   - `payload/lkm/aarch64-next-android17-6.18_kernelsu.ko` —— GKI
     `android17-6.18` 官方预编译 LKM（aarch64，473,552 B）。
-- 与上文相同，运行时重定位与一条 init 立即数补丁只作用于生成的副本；仓库内
-  文件保持未修改。
+- 与上文相同，运行时重定位（仅旧 `O3P_CODEPATCH=1` 路径才加一条 init 立即数
+  补丁）只作用于生成的副本；仓库内文件保持未修改。
 
 ## SukiSU-Ultra（GPL-3.0）
 
@@ -37,7 +37,7 @@
 - 仓库中来自 SukiSU-Ultra 发布产物的文件：
   - `payload/lkm/sukisu-aarch64-android17-6.18.ko` —— GKI `android17-6.18`
     官方预编译 LKM（aarch64，569,752 B）。
-- 生成的副本同样做运行时重定位与 init 立即数补丁。
+- 生成的副本同样做运行时重定位（旧 `O3P_CODEPATCH=1`：init 立即数补丁）。
 
 ## Shizuku 客户端库（Apache-2.0）
 

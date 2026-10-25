@@ -1,8 +1,9 @@
-# v3 payload design (experimental)
+# v3 payload design (historical; shipped as two-reap v3.0)
 
-Status: design draft on branch `exp/v3-tracepoint`. Nothing here is in a
-release yet; every step is gated behind an environment flag so the shipped
-payload keeps working unchanged.
+Status: this document records the **single-reap** design explored on branch
+`exp/v3-tracepoint`. That variant (v3a/v3b/v3c) panicked three times and was
+abandoned; v3.0 ships a **two-reap** variant that keeps the enforcing-only zero
+and the no-init-patch loader. See “Outcome” at the end.
 
 ## Goal
 
@@ -15,7 +16,7 @@ things v2.x needed two separate exploitations for:
 
 Side effects we want at the end:
 
-- `getuid()==0`, full caps, SELinux Permissive;
+- `getuid()==0`, full caps; SELinux ends **Enforcing** after KSU's `setenforce(1)` in v3.0 (Permissive only on the legacy `O3P_SELDIRTY=1` path);
 - KernelSU LKM loads **without** the `mov w0,#0` init patch (`KSU_CODEPATCH`
   skipped), and when KernelSU sets `enforcing=1` again the network keeps
   working (clean `policycap`);
@@ -26,7 +27,7 @@ Side effects we want at the end:
 | piece | where | evidence |
 |---|---|---|
 | B: slide + cred via static `kmem_cache_alloc` tracepoint | `experiments/tp_slide.c` | `SLIDE 0x1db3000000` matched payload `SLIDE_CALC`, `CREDSITE match=1` |
-| A: unaligned `selinux_state-7` zero write | `O3P_SELZERO=1` | `SEL_OK state=0x0100000101010100`, KSU loaded, Enforcing + network OK |
+| A: unaligned `selinux_state-7` zero write | v3.0 default (`O3P_SELDIRTY=1` = old dirty write) | `SEL_OK state=0x100000101010100`, KSU loaded, Enforcing + network OK |
 | C: PFN-verified reclaim (AIO rings) | `experiments/tp_reclaim.c` | clean boot single run: 65/152 node pages captured, `MATCH ring=492 node_page=1` |
 | D: three trees, three writes in one reap | `O3P_D3=1` | `D3PAGE slot2 0`, `slot3 0xdeadbeef -> 0`, `SEL_OK` |
 
@@ -128,5 +129,13 @@ has no `o3p/` probe lines).
 
 ## Rollback
 
-`O3P_D3V3` unset → v2.1 behaviour, byte-identical tile path. The branch stays
-off `main` until v3a/v3b acceptance passes on at least three cold boots.
+`O3P_D3V3` unset → v3.0 two-reap default (the shipped path).
+
+## Outcome (2026-10-25)
+
+v3a/v3b/v3c crashed right after `D3ADDR` in three consecutive cold boots; the
+single-reap design was abandoned. v3.0 instead ships a **two-reap** variant on
+`main` (`dc06899`, tag `v3.0`): A (enforcing-only zero) in stage 0 and the
+proven `task_cred` swap in stage 1, with KernelSU loaded without the init patch.
+Experiments B (`tp_slide`) and C (`tp_reclaim`) remain validated prototypes; see
+`experiments/README.md`.

@@ -227,10 +227,11 @@ alive for the rest of the boot:
    the relink fallback (the default kallsyms path needs no table).
 5. Update the static addresses and constants in `payload/o3p.c`
    (`INIT_USER_NS_STATIC`, `SELINUX_STATE_STATIC`, probe offsets).
-6. The KernelSU instruction patch is located at runtime from
-   `.rela.init.text` (the `setenforce` relocation minus 4 bytes), so no
-   per-build constant is required; the unique-scan fallback logs
-   `KSU_CODEPATCH … -2` if it cannot find the sequence.
+6. Only the legacy `O3P_CODEPATCH=1` path patches KernelSU: the instruction is
+   located at runtime from `.rela.init.text` (the `setenforce` relocation minus
+   4 bytes), so no per-build constant is required; the unique-scan fallback logs
+   `KSU_CODEPATCH … -2` if it cannot find the sequence. The v3 default skips
+   the patch entirely.
 7. Update the firmware gate (`Main.checkFirmware`) and rebuild the APK.
 
 KASLR itself needs no per-device work: the slide is derived at runtime.

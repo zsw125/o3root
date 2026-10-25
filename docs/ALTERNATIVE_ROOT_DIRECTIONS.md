@@ -1,5 +1,11 @@
 # yingtian（小米平板 9 Pro Max / XRING O3）替代 root 方向调研
 
+> **Historical (superseded 2026-10-25)** — written before CVE-2026-98260 was found, when an
+> unlock + Magisk route looked like the only path. It is kept for the research record only;
+> the current mainline is the in-app chain in `README.md` / `docs/ARCHITECTURE.md`
+> (release v3.0). Do not follow its unlock recommendations for this device.
+
+
 > **状态更新（2026-10-23 18:28）**：用户决定暂不走解锁路径，保留经验待后续进展；本文件仅作备查，不执行解锁。归档要点见 `notes/05_ALTERNATIVE_DIRECTIONS.md`（原工作区文件，未随仓库分发）。
 
 - 日期：2026-10-23

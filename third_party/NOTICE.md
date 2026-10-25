@@ -24,9 +24,12 @@ please consult the upstream projects for the full texts.
     32680, 13,637,206 bytes), installed by the app when no manager is present.
 - Modifications are applied **at runtime by our payload**, not to the files in
   this repository: every undefined symbol is rewritten to an absolute address
-  for the running kernel, and one instruction in `.init.text` (`mov w0,#1` at
-  `.`init.text`+0x144 or +0x178, depending on the fork) is patched to `mov w0,#0` so the module does not force SELinux back
-  to enforcing. If you redistribute a pre-patched `.ko`, keep the GPL-3.0
+  for the running kernel. v3.0 loads the module **unmodified** (no init patch):
+  because the payload keeps `policycap` clean, KernelSU's own `setenforce(1)`
+  does not break networking. The legacy `O3P_CODEPATCH=1` path (v1.7–v2.1
+  default) additionally patched one instruction in `.init.text` (`mov w0,#1` at
+  `+0x144`, or `+0x178` for SukiSU) to `mov w0,#0`; only the generated copy was
+  ever modified. If you redistribute a pre-patched `.ko`, keep the GPL-3.0
   obligations in mind.
 
 ### Shizuku

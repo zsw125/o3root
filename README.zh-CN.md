@@ -127,13 +127,14 @@ bash app/build.sh                                # -> app/build/o3root2.apk
 |---|---|
 | `docs/AGENT_HANDOFF.md` | 自动化贡献者交接：已验证状态、失败实验、待办、复现流程 |
 | `docs/AGENT_HANDOFF.zh-CN.md` | 交接说明（中文版） |
-| `docs/ARCHITECTURE.md` | 利用链、写原语、KernelSU 补丁、常量、移植 |
+| `docs/ARCHITECTURE.md` | 利用链、写原语、KernelSU 加载（运行时 kallsyms，默认不打补丁）、常量、移植 |
 | `docs/ARCHITECTURE.zh-CN.md` | 架构说明（中文版） |
 | `docs/SECURITY.md` | 威胁模型、副作用、恢复/清理 |
 | `docs/SECURITY.zh-CN.md` | 安全说明（中文版） |
 | `docs/BUILD.md` | 构建 + 安装 + 验证 |
 | `docs/BUILD.zh-CN.md` | 构建说明（中文版） |
 | `docs/APP_O3_ROOT.md` | 完整开发日志 / 验证报告（中文） |
+| `docs/V3-DESIGN.md` | v3 设计分析；单次回收方案为何被放弃 |
 | `docs/OTA_4.0.16_kernel_report.md` | OTA 提取、内核分析、KASLR 常量（中文） |
 | `docs/CVE-2026-98260_FEASIBILITY.md` | 漏洞分析与上游修复引用 |
 | `docs/CVE-2026-98260_FEASIBILITY.zh-CN.md` | 可行性报告（中文版） |

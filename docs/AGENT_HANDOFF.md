@@ -41,7 +41,7 @@ Permissive), network works, `boot_id` unchanged.
    The loader patches that immediate (`mov w0,#1`→`#0`) at the `setenforce`
    relocation in `.init.text` minus 4 (0x144 tiann/Next, 0x178 SukiSU), so KSU
    does not re-enable enforcing. Cold-boot verified: KSU Live, manager opens,
-   network OK.
+   network OK. (v3.0 no longer patches — see item 7.)
 5. **v1.8 guard (historical; removed in v3.0)**: v1.8–v2.1 warned when KSU
    was loaded and SELinux had rebounded to Enforcing, offering one-click
    `su -c setenforce 0`. v3 removes it: stage 0 clears only `enforcing`, so
@@ -50,6 +50,14 @@ Permissive), network works, `boot_id` unchanged.
    `/proc/kallsyms` at load time (fallback: 248-symbol union relink + slide),
    locates the `setenforce` patch point from `.rela.init.text`, and works with
    tiann, KernelSU-Next and SukiSU LKMs; the v1.9 APK was cold-boot verified.
+
+7. **v3.0 (current, 2026-10-25)**: two reaps instead of one. Stage 0 is an
+   unaligned 8-byte zero at `selinux_state-7` (clears only `enforcing`, keeps
+   `initialized`/`policycap`), stage 1 is the `task_cred` swap; KernelSU loads
+   through the runtime kallsyms loader with **no init patch**, so its own
+   `setenforce(1)` leaves the network healthy and the device in Enforcing. The
+   single-reap three-write variant (v3a–v3c) panicked three times and stays
+   only behind `O3P_D3V3`. See `docs/V3-DESIGN.md` and the "v3.0" section below.
 
 The full narrative with logs is in `docs/APP_O3_ROOT.md` (Chinese, original dev
 log; directory names there are historical: `work/`→`payload/`, `app5/`→`app/`).
@@ -121,7 +129,7 @@ behaviour survives only behind `O3P_SELDIRTY=1`.
 `/data/local/tmp` files created during the abandoned zero-write boot were
 `u:object_r:unlabeled:s0` and blocked shell access. With root + non-enforcing:
 `chcon -R u:object_r:shell_data_file:s0 /data/local/tmp` works (labels are
-persistent xattrs); `restorecon -R` skips the directory itself. Normal v1.7/v1.8
+persistent xattrs); `restorecon -R` skips the directory itself. Normal v1.7+ (including v3.0)
 runs create correctly labeled `shell_data_file` files.
 
 ## Environment notes (device work)
@@ -147,7 +155,7 @@ runs create correctly labeled `shell_data_file` files.
 
 ## Open work / candidates
 
-Ordered by value per effort. None are required for v1.8 to work; all are
+Ordered by value per effort. None are required for v3.0 to work; all are
 research-grade improvements.
 
 1. **Eliminate the second `timerqueue_del`** (easy → medium). Currently the

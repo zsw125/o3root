@@ -138,13 +138,14 @@ history. Detailed logs and the write-up live in
 |---|---|
 | `docs/AGENT_HANDOFF.md` | handoff for automated contributors: verified state, failed experiments, open work, repro workflow |
 | `docs/AGENT_HANDOFF.zh-CN.md` | 交接说明（中文版） |
-| `docs/ARCHITECTURE.md` | exploit chain, write primitive, KernelSU patch, constants, porting |
+| `docs/ARCHITECTURE.md` | exploit chain, write primitive, KernelSU loading (runtime kallsyms, no init patch), constants, porting |
 | `docs/ARCHITECTURE.zh-CN.md` | 架构说明（中文版） |
 | `docs/SECURITY.md` | threat model, side effects, recovery/cleanup |
 | `docs/SECURITY.zh-CN.md` | 安全说明（中文版） |
 | `docs/BUILD.md` | build + install + verification |
 | `docs/BUILD.zh-CN.md` | 构建说明（中文版） |
 | `docs/APP_O3_ROOT.md` | full development log / validation report |
+| `docs/V3-DESIGN.md` | v3 design analysis; why the single-reap variant was abandoned |
 | `docs/OTA_4.0.16_kernel_report.md` | OTA extraction, kernel analysis, KASLR constants |
 | `docs/CVE-2026-98260_FEASIBILITY.md` | vulnerability analysis and upstream fix references |
 | `docs/CVE-2026-98260_FEASIBILITY.zh-CN.md` | 可行性报告（中文版） |

@@ -39,7 +39,8 @@ Permissive）、网络可用、`boot_id` 未变。
    setenforce(1)`；与被污染的 `policycap[]` 叠加后冻结 Wi-Fi TX。加载器按
    `.init.text` 里的 `setenforce` 重定位定位到 `r_offset-4` 并改掉该立即数
    （`mov w0,#1`→`#0`；tiann/Next 0x144、SukiSU 0x178），让 KSU 不再把
-   enforcing 拉回 1。冷启动已验证：KSU Live、管理器打开、网络正常。
+   enforcing 拉回 1。冷启动已验证：KSU Live、管理器打开、网络正常。（v3.0 已不再
+   打补丁，见第 7 条。）
 5. **v1.8 守护（历史；v3.0 已移除）**：v1.8–v2.1 在 KSU 已加载且 SELinux 回弹
    到 Enforcing 时告警并提供一键 `su -c setenforce 0`；v3 不再需要——stage0 只清
    `enforcing`，Enforcing 是安全终态（见 §5 与 v3.0 说明）。
@@ -47,6 +48,13 @@ Permissive）、网络可用、`boot_id` 未变。
    （回退：248 符号并集重链接 + slide），用 `.rela.init.text` 定位 `setenforce`
    补丁点；tiann / KernelSU-Next / SukiSU 三种 LKM 均可；v1.9 APK 已冷启动
    端到端验证。
+
+7. **v3.0（当前，2026-10-25）**：两段式取代单次写入。stage 0 在
+   `selinux_state-7` 做 8 字节非对齐零写（只清 `enforcing`，保留
+   `initialized`/`policycap`），stage 1 换 `task_cred`；KernelSU 经运行时
+   kallsyms 加载、**不打 init 补丁**，其 `setenforce(1)` 不再影响网络，设备停在
+   Enforcing。单次回收三写方案（v3a–v3c）连续三次 panic，仅保留在 `O3P_D3V3`
+   后供分析。详见 `docs/V3-DESIGN.md` 与下文“v3.0”一节。
 
 完整叙述与日志见 `docs/APP_O3_ROOT.md`（中文，原始开发日志；其中的目录名是
 历史名称：`work/`→`payload/`、`app5/`→`app/`）。
@@ -114,7 +122,7 @@ KernelSU 也能加载，但 `initialized=0` 破坏 `zygote` 对新 App 的
 被废弃的零写 boot 期间在 `/data/local/tmp` 创建的文件是
 `u:object_r:unlabeled:s0`，shell 无法访问。在 root + 非 enforcing 下：
 `chcon -R u:object_r:shell_data_file:s0 /data/local/tmp` 有效（标签是持久化
-xattr）；`restorecon -R` 会跳过该目录本身。正常 v1.7/v1.8 流程创建的文件就是
+xattr）；`restorecon -R` 会跳过该目录本身。正常 v1.7+ 流程（含 v3.0）创建的文件就是
 正确的 `shell_data_file`。
 
 ## 环境笔记（设备工作）
@@ -140,7 +148,7 @@ xattr）；`restorecon -R` 会跳过该目录本身。正常 v1.7/v1.8 流程创
 
 ## 待办 / 候选
 
-按“价值/工作量”排序。v1.8 不依赖其中任何一项；都是研究级改进。
+按“价值/工作量”排序。v3.0 不依赖其中任何一项；都是研究级改进。
 
 1. **消除第二次 `timerqueue_del`**（容易 → 中等）。目前伪造的树会触发第二次
    删除，以 `WARN` 形式执行（`panic_on_warn=0` 时被容忍）。设计一种树形让第一次

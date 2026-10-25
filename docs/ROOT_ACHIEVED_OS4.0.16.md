@@ -1,5 +1,11 @@
 # CVE-2026-98260 完整 root 达成报告（HyperOS OS4.0.16.0.XBMCNXM / 内核 6.18.21）
 
+> **Historical (first-generation chain; superseded 2026-10-25)** — this is the original
+> proof-of-concept run (shell-domain t32 payload, manual command channel). The shipped flow is
+> the v3.0 app (`Shizuku shell -> two-reap v3 -> KernelSU`); keep this as the first full-root
+> evidence report, not as usage instructions.
+
+
 日期：2026-10-24（设备 boot_id 1b71aad5-73b0-4275-81a1-ce40712c2be5 未变）
 设备：Xiaomi Pad 9 Pro Max（yingtian，XRING O3），Android 17 / HyperOS 4.0.16.0.XBMCNXM
 内核：6.18.21-android17-5-g805aa6adea19-abogki565292102-4k

@@ -63,8 +63,8 @@ PAYLOAD=.../payload/build/libo3p.so           # 默认即此
 
 ```bash
 bash payload/build-payload.sh
-# build/o3p.bin      约 62 KB
-# build/libo3p.so    payload + LKM + trailer
+# build/o3p.bin      73,768 B（载荷）
+# build/libo3p.so    载荷 + 三个 LKM（blob v2 trailer）
 ```
 
 `build-payload.sh` 只需要 `NDK_CC`。KernelSU LKM 位于
