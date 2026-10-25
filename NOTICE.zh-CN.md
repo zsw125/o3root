@@ -1,0 +1,44 @@
+# NOTICE — 第三方组件（中文版）
+
+> 英文原版：[`NOTICE.md`](NOTICE.md)。若两者不一致，以英文版为准并同步本文件。
+
+本仓库是安全研究工具。请只在你本人拥有的硬件上运行。仓库内置或构建时依赖的若干
+组件属于第三方软件，各有自己的许可证与再分发条件。
+
+## KernelSU（GPL-3.0）
+
+- 项目：KernelSU — https://github.com/tiann/KernelSU
+- 使用版本：v3.3.1（内核 API 32680）
+- 本仓库中源自 KernelSU 发布产物的文件：
+  - `payload/lkm/lkm-aarch64-android17-6.18_kernelsu.ko` —— GKI
+    `android17-6.18` 的官方预编译 LKM（release 资产，aarch64）。
+  - `app/assets/ksu-manager.apk` —— 同一 release 的 KernelSU 管理器 APK。
+  - `release/o3root2-v1.8.apk` 同时内置管理器 APK 与 LKM 的*重链接*副本
+    （符号地址已按目标内核构建重定位）。
+- 重链接过程（`payload/ksu/relink_ksu.py`）只改写 ELF 符号值，不修改 KernelSU
+  源码。KernelSU 本身并未 vendored 到本仓库 —— 如需源码请从上游获取；按
+  GPL-3.0 要求，再分发二进制时应一并满足源码提供义务。
+
+## Shizuku 客户端库（Apache-2.0）
+
+- 项目：Shizuku — https://github.com/RikkaApps/Shizuku-API
+- 制品：`dev.rikka.shizuku:api`、`:provider`、`:aidl`、`:shared`（13.1.5），由
+  `scripts/fetch-toolchain.sh` 从 Maven Central 拉取。
+- 不提交到本仓库；`release/o3root2-v1.8.apk` 中内嵌了由这些 jar 编译出的类。
+
+## Android SDK（Android SDK License）
+
+- `android.jar`（platform 34）与 build-tools（`aapt2`、`d8`、`zipalign`、
+  `apksigner`）由 `scripts/fetch-toolchain.sh` 拉取，不提交到本仓库。
+
+## Python 依赖
+
+- `pyelftools`（public domain / Unlicense）为 `payload/ksu/mksymtab.py` 与
+  `payload/ksu/relink_ksu.py` 所需。
+
+---
+
+## 责任说明
+
+本仓库自有代码为 MIT（见 [`LICENSE`](../LICENSE)）。作者不对任何设备损坏、数据
+丢失或法律后果负责；请自行确认在所在司法辖区与设备保修条款下的合规性。

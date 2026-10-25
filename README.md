@@ -1,5 +1,7 @@
 # O3 Root
 
+> Chinese translation: [`README.zh-CN.md`](README.zh-CN.md) — a translation of this file; if the two disagree, this English file is authoritative.
+
 Local privilege escalation + KernelSU for the Xiaomi **yingtian** (Pad 9 Pro
 Max) and **lhasa** (Xiaomi 18 Fold) family on HyperOS 4 (Android 17, kernel
 `6.18.21`). The whole chain is delivered as a normal Android app that drives
@@ -120,13 +122,23 @@ in [`docs/APP_O3_ROOT.md`](docs/APP_O3_ROOT.md).
 | `docs/AGENT_HANDOFF.md` | handoff for automated contributors: verified state, failed experiments, open work, repro workflow |
 | `docs/AGENT_HANDOFF.zh-CN.md` | 交接说明（中文版） |
 | `docs/ARCHITECTURE.md` | exploit chain, write primitive, KernelSU patch, constants, porting |
+| `docs/ARCHITECTURE.zh-CN.md` | 架构说明（中文版） |
 | `docs/SECURITY.md` | threat model, side effects, recovery/cleanup |
+| `docs/SECURITY.zh-CN.md` | 安全说明（中文版） |
 | `docs/BUILD.md` | build + install + verification |
+| `docs/BUILD.zh-CN.md` | 构建说明（中文版） |
 | `docs/APP_O3_ROOT.md` | full development log / validation report |
 | `docs/OTA_4.0.16_kernel_report.md` | OTA extraction, kernel analysis, KASLR constants |
 | `docs/CVE-2026-98260_FEASIBILITY.md` | vulnerability analysis and upstream fix references |
+| `docs/CVE-2026-98260_FEASIBILITY.zh-CN.md` | 可行性报告（中文版） |
 | `docs/ROOT_ACHIEVED_OS4.0.16.md` | first end-to-end run notes |
 | `docs/ALTERNATIVE_ROOT_DIRECTIONS.md` | directions considered before this chain |
+| `AGENTS.zh-CN.md` | 自动化贡献者入口（中文版） |
+| `README.zh-CN.md` | 本 README 的中文版 |
+| `payload/README.md` / `payload/README.zh-CN.md` | payload internals (EN / 中文) |
+| `tools/README.md` / `tools/README.zh-CN.md` | OTA/kernel tooling (EN / 中文) |
+| `NOTICE.zh-CN.md` | 第三方组件说明（中文版） |
+| `third_party/NOTICE.zh-CN.md` | 第三方组件明细（中文版） |
 
 ## License
 

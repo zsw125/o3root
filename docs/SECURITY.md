@@ -1,5 +1,7 @@
 # Security notes and threat model
 
+> Chinese translation: [`SECURITY.zh-CN.md`](SECURITY.zh-CN.md) — a translation of this file; if the two disagree, this English file is authoritative.
+
 ## Read this first
 
 This repository contains a **working local privilege-escalation exploit** for a

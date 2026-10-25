@@ -1,5 +1,7 @@
 # Build
 
+> Chinese translation: [`BUILD.zh-CN.md`](BUILD.zh-CN.md) — a translation of this file; if the two disagree, this English file is authoritative.
+
 The project does **not** use Gradle. Everything is plain `javac` + Android SDK
 build tools + NDK, driven by shell scripts so the output is easy to inspect and
 modify.

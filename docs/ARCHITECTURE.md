@@ -1,5 +1,7 @@
 # Architecture
 
+> Chinese translation: [`ARCHITECTURE.zh-CN.md`](ARCHITECTURE.zh-CN.md) — a translation of this file; if the two disagree, this English file is authoritative.
+
 This document describes the exploit chain and the Android/KernelSU packaging.
 Everything here is specific to the target profile below; see
 [KERNEL_PROFILE](#kernel-profile) for the constants and how to port them.

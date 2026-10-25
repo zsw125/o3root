@@ -1,5 +1,7 @@
 # Third-party components
 
+> Chinese translation: [`NOTICE.zh-CN.md`](NOTICE.zh-CN.md) — a translation of this file; if the two disagree, this English file is authoritative.
+
 This repository bundles or depends on the following third-party work. All
 rights remain with their authors; the licenses below are reproduced in spirit,
 please consult the upstream projects for the full texts.

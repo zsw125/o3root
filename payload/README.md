@@ -1,5 +1,7 @@
 # payload
 
+> Chinese translation: [`README.zh-CN.md`](README.zh-CN.md) — a translation of this file; if the two disagree, this English file is authoritative.
+
 Native aarch64 exploit payload (C, NDK) that is packaged into the APK as
 `lib/arm64-v8a/libo3p.so` — an executable ELF disguised as a shared library.
 The app copies it to `/data/local/tmp` and runs it inside a Shizuku-spawned

@@ -1,5 +1,7 @@
 # NOTICE — third-party components
 
+> Chinese translation: [`NOTICE.zh-CN.md`](NOTICE.zh-CN.md) — a translation of this file; if the two disagree, this English file is authoritative.
+
 This repository is security research tooling. Run it only on hardware you own.
 Several bundled or build-time components are third-party software with their own
 licenses and redistribution terms.

@@ -1,5 +1,7 @@
 # tools
 
+> Chinese translation: [`README.zh-CN.md`](README.zh-CN.md) — a translation of this file; if the two disagree, this English file is authoritative.
+
 Helper scripts used to pull the kernel out of the OTA, recover symbols and
 verify the constants used by the payload. They are ordinary Python 3 scripts;
 each one accepts its inputs from the environment or argv (they were originally
