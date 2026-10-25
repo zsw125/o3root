@@ -508,8 +508,8 @@ features=0x3ffff`（成功）；App 域历史实测 `io_uring_setup` 被 seccomp
 - Artifacts: payload `payload/o3p.c` 51,517 B -> `build/o3p.bin` 69,568 B;
   `build/libo3p.so` 1,488,284 B
   (`sha256 98936d14b5f50b1fc4a9b35741404088a33e1a1fe68042b61e8e948c31f87dfa`);
-  APK `app/o3root2.apk` 14,222,864 B
-  (`sha256 7e900dd3ed222fb3864f4172fd0add16627466b93f69996940a94e118dba7099`).
+  APK `app/o3root2.apk` 14,218,768 B
+  (`sha256 85c3516b84010af241dc95bbca345ebf1d8ed1f2c6ebd8cc0f82161371067178`).
 - Blob v2 layout: payload + KernelSU v3.3.1 (375,328) + KernelSU-Next v3.4.2
   (473,552) + SukiSU v4.2.1-r2 (569,752) + 24-byte tag table + `O3KSKM02`/count;
   `--legacy` keeps the single-LKM `O3KSKO01` layout readable.
@@ -528,3 +528,23 @@ features=0x3ffff`（成功）；App 域历史实测 `io_uring_setup` 被 seccomp
 - The app probes the manager in `StateProbe` and passes `O3P_KSU_FORK`; it opens
   the manager via `cmd package resolve-activity --brief` followed by
   `am start -W -n`, which works for all three manager packages.
+
+
+## v2.1 — 权限感知探测（2026-10-25）
+
+lhasa（Xiaomi 18 Fold）反馈：全新设备装完内置管理器后按钮仍停在「安装 KERNELSU 管理器」，
+日志反复 `probe -> ERR java.lang.reflect.InvocationTargetException`。
+
+根因：新设备未授予 Shizuku 权限时 `StateProbe` 的 `newProcess` 抛异常；`probeApply`
+把 `ERR ...` 当正常输出解析（`mgrOk=false`），`installResult` 成功后又立即探测一次，
+失败的探测把 `mgrOk` 清回 false，形成「装完还让装」的死锁。
+
+v2.1 修复：`StateProbe` 先 `Shizuku.checkSelfPermission()`（未授权 → `probeNoPerm`）；
+管理器识别改本地 `PackageManager`；授权后由 `PermProbe` 只探测一次，KSU 已加载则只更新按钮、
+未加载才自动跑载荷；载荷复制到唯一文件名 `/data/local/tmp/o3p_<millis>.bin`（避免旧 rootd
+导致的 `cp: Text file busy`）。versionCode 12 / versionName 2.1。
+
+真机（yingtian，冷启动 boot 8d747c66）：撤销授权 → 首启只显示「需要授权」+ Continue；
+点按授权后自动跑载荷：`KSU_CODEPATCH mov_w0_zero=1 off=0x22144`、`rc=0`、`KSU_MODULE LIVE`、
+`ROOTD self=…/o3p_1792926817016.bin`、`UIDNOW uid=0`、Permissive、管理器前台、ping 6.7 ms。
+发布件 `release/o3root2-v2.1.apk` 14,218,768 B `sha256 85c3516b…`。

@@ -68,7 +68,7 @@ echo "== release checksum"
 "$PY" - <<'PY'
 import hashlib, sys
 want = open('release/SHA256SUMS.txt', encoding='utf-8').read().split()[0]
-got = hashlib.sha256(open('release/o3root2-v2.0.apk', 'rb').read()).hexdigest()
+got = hashlib.sha256(open('release/o3root2-v2.1.apk', 'rb').read()).hexdigest()
 print('  ok    release apk sha256 matches SHA256SUMS' if got == want else
       '  FAIL  release apk sha256 %s != %s' % (got, want))
 sys.exit(0 if got == want else 1)
@@ -118,7 +118,7 @@ if [ -n "${ANDROID_JAR:-}" ] && [ -n "${BUILD_TOOLS:-}" ] && [ -n "${SHIZUKU_JAR
     if [ -x "$BUILD_TOOLS/aapt2" ] || [ -x "$BUILD_TOOLS/aapt2.exe" ]; then
       AAPT2="$BUILD_TOOLS/aapt2"; [ -x "$AAPT2" ] || AAPT2="$BUILD_TOOLS/aapt2.exe"
       v=$("$AAPT2" dump badging app/o3root2.apk 2>/dev/null | grep -o "versionName='[^']*'" | head -1)
-      case "$v" in *"'2.0'"*) ok "APK rebuilt ($v)";; *) bad "APK version $v (expected 2.0)";; esac
+      case "$v" in *"'2.1'"*) ok "APK rebuilt ($v)";; *) bad "APK version $v (expected 2.1)";; esac
     else
       note "APK rebuilt (aapt2 not found to verify version)"
     fi

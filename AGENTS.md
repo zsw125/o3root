@@ -10,10 +10,12 @@ and leaves a root daemon for the current boot. Read this file first, then
 
 ## State
 
-- Release **v2.0**, `release/o3root2-v2.0.apk`
-  (`14,222,864 B`, `sha256 7e900dd3ed222fb3864f4172fd0add16627466b93f69996940a94e118dba7099`).
-  v2.0 adds the multi-LKM blob (KernelSU / KernelSU-Next / SukiSU) with
-  manager-based selection; v1.8 (relink-only) and v1.9 remain in the git history.
+- Release **v2.1**, `release/o3root2-v2.1.apk`
+  (`14,218,768 B`, `sha256 85c3516b84010af241dc95bbca345ebf1d8ed1f2c6ebd8cc0f82161371067178`).
+  v2.0 added the multi-LKM blob (KernelSU / KernelSU-Next / SukiSU) with
+  manager-based selection; v2.1 makes the probe permission-aware (local manager
+  detection, probe-then-payload after granting, unique payload path); v1.8
+  (relink-only) and v1.9 remain in the git history.
 - Hardware-verified on `yingtian` / `OS4.0.16.0.XBMCNXM` (cold boot, end-to-end).
 - `lhasa` / `OS4.0.26.0.XPNCNXM` ships the **bit-identical kernel**
   (`sha256 cde87cd7…`); not device-tested.
@@ -95,7 +97,7 @@ KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
 
 Verified on hardware: full cold-boot chain, `uid=0` + full caps, KernelSU
 `Live`, manager auto-open, Enforcing-rebound guard and one-click recovery,
-network health while Permissive. The v2.0 release APK was cold-boot tested
+network health while Permissive. The v2.0 release APK was cold-boot tested; v2.1 was cold-boot tested with a revoked Shizuku permission (grant → probe → automatic payload)
 end-to-end on three images (only the tiann manager, only KernelSU-Next, only
 SukiSU): each time the app detected the manager, the payload selected the
 matching embedded LKM and the matching manager came to the foreground;
@@ -133,7 +135,7 @@ Negative results — don't repeat without a new idea (details in
 
 1. Shizuku running in shell mode: `ps -A -o UID,LABEL,ARGS | grep shizuku_plus_server`
    → `2000 u:r:shell:s0`.
-2. Install: `adb install -r release/o3root2-v2.0.apk`; if MIUI says
+2. Install: `adb install -r release/o3root2-v2.1.apk`; if MIUI says
    `INSTALL_FAILED_USER_RESTRICTED`, allow install-via-USB or, with root,
    `pm install -r -d`.
 3. Open the app, grant Shizuku permission, press Continue; wait 20–120 s.

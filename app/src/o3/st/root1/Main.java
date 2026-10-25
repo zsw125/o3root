@@ -84,7 +84,7 @@ public class Main extends Activity implements PayloadSink {
         lastNight = isNight();
         setContentView(buildUi());
         applyWindowTheme();
-        append("O3 Root v2.0 · CVE-2026-98260");
+        append("O3 Root v2.1 · CVE-2026-98260");
         append("payload=" + payloadPath);
         checkFirmware();
         Shizuku.addBinderReceivedListenerSticky(new BindListener(this));
@@ -96,6 +96,7 @@ public class Main extends Activity implements PayloadSink {
     protected void onResume() {
         super.onResume();
         if (!running) {
+            adoptManager(detectManager());
             probeState();
         }
     }
@@ -224,7 +225,7 @@ public class Main extends Activity implements PayloadSink {
         titleView = title;
         root.addView(title);
 
-        TextView sub = text("v2.0 · CVE-2026-98260 · OS4", 12, MUTED, false);
+        TextView sub = text("v2.1 · CVE-2026-98260 · OS4", 12, MUTED, false);
         subView = sub;
         sub.setPadding(0, dp(4), 0, 0);
         root.addView(sub);
@@ -405,6 +406,7 @@ public class Main extends Activity implements PayloadSink {
             btn.setEnabled(!running);
             append("binder uid=" + uid + " ctx=" + ctx);
             if (!running) {
+                adoptManager(detectManager());
                 probeState();
             }
         } else {
@@ -482,11 +484,14 @@ public class Main extends Activity implements PayloadSink {
     void installResult(int status, String msg) {
         append("installer status=" + status + " msg=" + msg);
         if (status == 0) {
-            mgrOk = true;
-            mgrFork = "tiann";
-            mgrPkg = "me.weishu.kernelsu";
-            btn.setText(ksuOk ? "打开 KernelSU" : "Continue to UID 0");
+            adoptManager(detectManager());
+            if (!mgrOk) {
+                mgrOk = true;
+                mgrFork = "tiann";
+                mgrPkg = "me.weishu.kernelsu";
+            }
             append("KernelSU 管理器安装完成");
+            applyButton();
         } else {
             btn.setText("安装 KernelSU 管理器");
             append("管理器安装未完成：可重试，或用文件管理器手动安装 APK 内 assets/ksu-manager.apk");
@@ -499,7 +504,94 @@ public class Main extends Activity implements PayloadSink {
         if (!Shizuku.pingBinder()) {
             return;
         }
+        if (!mgrOk) {
+            adoptManager(detectManager());
+        }
+        try {
+            if (Shizuku.checkSelfPermission() != 0) {
+                probeNoPerm();
+                return;
+            }
+        } catch (Throwable t) {
+            probeNoPerm();
+            return;
+        }
         new Thread(new StateProbe(this), "probe").start();
+    }
+
+    void probeNoPerm() {
+        append("probe: 需要 Shizuku 授权（点按钮可授权）");
+        if (!mgrOk) {
+            adoptManager(detectManager());
+        }
+        tvKsu.setText("未知");
+        tvKsu.setTextColor(MUTED);
+        tvSelinux.setText("未知");
+        tvSelinux.setTextColor(MUTED);
+        applyButton();
+    }
+
+    void probeFailed(String raw) {
+        append("probe -> " + raw);
+        adoptManager(detectManager());
+        tvKsu.setText("未知");
+        tvKsu.setTextColor(MUTED);
+        tvSelinux.setText("未知");
+        tvSelinux.setTextColor(MUTED);
+        applyButton();
+        append("probe 失败：若 Shizuku 权限未授予，点按钮授权；否则导出日志反馈");
+    }
+
+    private String detectManager() {
+        try {
+            String[] forks = {"tiann", "next", "sukisu"};
+            String[] pkgs = {"me.weishu.kernelsu", "com.rifsxd.ksunext", "com.sukisu.ultra"};
+            for (int i = 0; i < 3; i++) {
+                try {
+                    getPackageManager().getPackageInfo(pkgs[i], 0);
+                    return forks[i];
+                } catch (Throwable ignored) {
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return null;
+    }
+
+    private void adoptManager(String fork) {
+        if (fork == null) {
+            return;
+        }
+        mgrOk = true;
+        mgrFork = fork;
+        if (fork.equals("tiann")) {
+            mgrPkg = "me.weishu.kernelsu";
+        } else if (fork.equals("next")) {
+            mgrPkg = "com.rifsxd.ksunext";
+        } else {
+            mgrPkg = "com.sukisu.ultra";
+        }
+    }
+
+    private void applyButton() {
+        if (running) {
+            return;
+        }
+        if (!fwOk) {
+            btn.setEnabled(false);
+        } else if (!mgrOk) {
+            btn.setText("安装 KernelSU 管理器");
+            btn.setEnabled(true);
+        } else if (netRisk) {
+            btn.setText("恢复 SELinux 宽容模式");
+            btn.setEnabled(Shizuku.pingBinder());
+        } else if (ksuOk) {
+            btn.setText("打开 KernelSU");
+            btn.setEnabled(true);
+        } else {
+            btn.setText("Continue to UID 0");
+            btn.setEnabled(Shizuku.pingBinder());
+        }
     }
 
     public void probeNow(String out) {
@@ -510,7 +602,12 @@ public class Main extends Activity implements PayloadSink {
         if (s == null) {
             s = "";
         }
-        String[] parts = s.trim().split("\n");
+        String raw = s.trim();
+        if (raw.startsWith("ERR")) {
+            probeFailed(raw);
+            return;
+        }
+        String[] parts = raw.split("\n");
         int cnt = -1;
         if (parts.length > 0) {
             try {
@@ -527,25 +624,18 @@ public class Main extends Activity implements PayloadSink {
             pd.append(parts[i].trim());
         }
         append("probe -> " + pd);
-        mgrFork = null;
-        mgrPkg = null;
+        String fork = null;
         for (int i = 2; i < parts.length; i++) {
             String f = parts[i].trim();
-            if (f.equals("tiann")) {
-                mgrFork = f;
-                mgrPkg = "me.weishu.kernelsu";
-            } else if (f.equals("next")) {
-                mgrFork = f;
-                mgrPkg = "com.rifsxd.ksunext";
-            } else if (f.equals("sukisu")) {
-                mgrFork = f;
-                mgrPkg = "com.sukisu.ultra";
-            }
-            if (mgrFork != null) {
+            if (f.equals("tiann") || f.equals("next") || f.equals("sukisu")) {
+                fork = f;
                 break;
             }
         }
-        mgrOk = mgrFork != null;
+        if (fork == null) {
+            fork = detectManager();
+        }
+        adoptManager(fork);
         if (mgrOk) {
             append("manager -> fork=" + mgrFork + " pkg=" + mgrPkg);
         }
@@ -583,23 +673,7 @@ public class Main extends Activity implements PayloadSink {
                 warnView.setTextColor(WARN);
             }
         }
-        if (!running) {
-            if (!fwOk) {
-                btn.setEnabled(false);
-            } else if (!mgrOk) {
-                btn.setText("安装 KernelSU 管理器");
-                btn.setEnabled(true);
-            } else if (risk) {
-                btn.setText("恢复 SELinux 宽容模式");
-                btn.setEnabled(Shizuku.pingBinder());
-            } else if (ksuOk) {
-                btn.setText("打开 KernelSU");
-                btn.setEnabled(true);
-            } else {
-                btn.setText("Continue to UID 0");
-                btn.setEnabled(Shizuku.pingBinder());
-            }
-        }
+        applyButton();
     }
 
     public void uiPermission(int grant) {
@@ -609,14 +683,26 @@ public class Main extends Activity implements PayloadSink {
     void permNow(int grant) {
         append("permission result=" + grant);
         if (grant == 0) {
-            startPayload();
+            adoptManager(detectManager());
+            new Thread(new PermProbe(this), "permprobe").start();
         }
+    }
+
+    void startAfterGrant() {
+        if (running || netRisk) {
+            return;
+        }
+        append("已授权：KSU 未加载，开始执行载荷");
+        startPayload();
     }
 
     public void onStartClicked() {
         if (!fwOk) {
             append("固件不受支持，已阻止执行");
             return;
+        }
+        if (!mgrOk) {
+            adoptManager(detectManager());
         }
         if (!mgrOk) {
             append("KernelSU 管理器未安装：开始安装内置管理器…");

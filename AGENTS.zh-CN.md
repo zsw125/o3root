@@ -12,10 +12,11 @@
 
 ## 状态
 
-- 发布 **v2.0**：`release/o3root2-v2.0.apk`
-  （`14,222,864 B`，`sha256 7e900dd3ed222fb3864f4172fd0add16627466b93f69996940a94e118dba7099`）；
+- 发布 **v2.1**：`release/o3root2-v2.1.apk`
+  （`14,218,768 B`，`sha256 85c3516b84010af241dc95bbca345ebf1d8ed1f2c6ebd8cc0f82161371067178`）；
   载荷内置 tiann / KernelSU-Next / SukiSU 三种 LKM，按已安装的管理器自动选择（`O3P_KSU_FORK` 可覆盖），
-并默认运行时解析符号（kallsyms）；v1.8/v1.9 保留在 git 历史里。
+并默认运行时解析符号（kallsyms）；v2.1 让探测先检查 Shizuku 授权、用本地包管理器识别管理器、
+授权后先探测再决定是否跑载荷，并使用唯一载荷文件名；v1.8/v1.9 保留在 git 历史里。
 - 已在 `yingtian` / `OS4.0.16.0.XBMCNXM` 实机验证（冷启动，端到端）。
 - `lhasa` / `OS4.0.26.0.XPNCNXM` 携带**逐位相同的内核**
   （`sha256 cde87cd7…`）；未实机测试。
@@ -80,7 +81,7 @@ KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
 ## 已验证 / 未验证
 
 实机已验证：完整冷启动链、`uid=0` + full caps、KernelSU `Live`、管理器自动
-打开、Enforcing 回弹守护与一键恢复、Permissive 期间网络正常；v2.0 发布 APK
+打开、Enforcing 回弹守护与一键恢复、Permissive 期间网络正常；v2.1 发布 APK（权限感知探测：先查授权、本地识别管理器、授权后先探测再跑载荷）
 已在三种管理器镜像上冷启动验证（仅 tiann / 仅 KernelSU-Next / 仅 SukiSU）：
 应用识别管理器、载荷从内置 LKM 中选对应版本、对应管理器被拉到前台。
 
@@ -114,7 +115,7 @@ root 请求后才出现。
 
 1. 确认 Shizuku 以 shell 模式运行：
    `ps -A -o UID,LABEL,ARGS | grep shizuku_plus_server` → `2000 u:r:shell:s0`。
-2. 安装：`adb install -r release/o3root2-v2.0.apk`；MIUI 若报
+2. 安装：`adb install -r release/o3root2-v2.1.apk`；MIUI 若报
    `INSTALL_FAILED_USER_RESTRICTED`，允许“USB 安装”或用 root 执行
    `pm install -r -d`。
 3. 打开 App，授予 Shizuku 权限，点 Continue；等待 20–120 秒。

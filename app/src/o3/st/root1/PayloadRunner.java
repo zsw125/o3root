@@ -22,10 +22,11 @@ public class PayloadRunner implements Runnable {
     public void run() {
         try {
             String env = fork == null ? "" : ("export O3P_KSU_FORK=" + fork + "; ");
-            String cmd = env + "cp '" + payloadPath + "' /data/local/tmp/o3p.bin"
-                    + " && chmod 755 /data/local/tmp/o3p.bin"
+            String bin = "/data/local/tmp/o3p_" + System.currentTimeMillis() + ".bin";
+            String cmd = env + "cp '" + payloadPath + "' " + bin
+                    + " && chmod 755 " + bin
                     + " && cd /data/local/tmp"
-                    + " && ./o3p.bin 10000 14000 300 1 6 1 8000 800";
+                    + " && " + bin + " 10000 14000 300 1 6 1 8000 800";
             sink.onLine("payload=" + payloadPath + " fork=" + (fork == null ? "auto" : fork));
             Process p = newProcess(new String[]{"/system/bin/sh", "-c", cmd},
                     new String[]{}, "/data/local/tmp");
@@ -64,7 +65,11 @@ public class PayloadRunner implements Runnable {
             p.waitFor();
             return new String(bos.toByteArray(), "UTF-8");
         } catch (Throwable t) {
-            return "ERR " + t;
+            Throwable c = t;
+            while (c.getCause() != null) {
+                c = c.getCause();
+            }
+            return "ERR " + t.getClass().getSimpleName() + ": " + c;
         }
     }
 }
