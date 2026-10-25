@@ -1,5 +1,7 @@
 # AGENTS.md — entry point for automated contributors
 
+> 中文版：[`AGENTS.zh-CN.md`](AGENTS.zh-CN.md)。若中英文不一致，以英文版为准。
+
 This repository delivers **O3 Root**: a Shizuku-driven Android app that
 exploits `CVE-2026-98260` on Xiaomi `yingtian` (Pad 9 Pro Max) / `lhasa`
 (Xiaomi 18 Fold, HyperOS 4.0.26) with kernel `6.18.21`, loads a KernelSU LKM,

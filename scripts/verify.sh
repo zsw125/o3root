@@ -37,12 +37,13 @@ done < <(find app payload scripts tools -name '*.py' -type f -not -path '*/build
 
 echo "== required files"
 for f in \
-  AGENTS.md README.md LICENSE NOTICE.md \
+  AGENTS.md AGENTS.zh-CN.md README.md LICENSE NOTICE.md \
   app/AndroidManifest.xml app/build.sh app/src/o3/st/root1/Main.java \
   payload/o3p.c payload/mk_payload.py payload/build-payload.sh \
   payload/ksu/ksu_symtab.h payload/ksu/mksymtab.py payload/ksu/relink_ksu.py \
   payload/lkm/lkm-aarch64-android17-6.18_kernelsu.ko \
   docs/ARCHITECTURE.md docs/SECURITY.md docs/BUILD.md docs/AGENT_HANDOFF.md \
+  docs/AGENT_HANDOFF.zh-CN.md \
   docs/APP_O3_ROOT.md
 do
   if [ -f "$f" ]; then ok "$f"; else bad "missing $f"; fi

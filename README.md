@@ -17,6 +17,9 @@ point: invariants, build/test recipes, traps, hygiene), then
 experiments, open work). Run `bash scripts/verify.sh` before committing; it also
 rebuilds the payload/APK when the toolchain environment is set.
 
+中文版： [`AGENTS.zh-CN.md`](AGENTS.zh-CN.md) /
+[`docs/AGENT_HANDOFF.zh-CN.md`](docs/AGENT_HANDOFF.zh-CN.md)
+
 ## Status
 
 | | |
@@ -115,6 +118,7 @@ in [`docs/APP_O3_ROOT.md`](docs/APP_O3_ROOT.md).
 | file | content |
 |---|---|
 | `docs/AGENT_HANDOFF.md` | handoff for automated contributors: verified state, failed experiments, open work, repro workflow |
+| `docs/AGENT_HANDOFF.zh-CN.md` | 交接说明（中文版） |
 | `docs/ARCHITECTURE.md` | exploit chain, write primitive, KernelSU patch, constants, porting |
 | `docs/SECURITY.md` | threat model, side effects, recovery/cleanup |
 | `docs/BUILD.md` | build + install + verification |

@@ -1,5 +1,7 @@
 # Agent handoff — state, history, and open work
 
+> 中文版：[`AGENT_HANDOFF.zh-CN.md`](AGENT_HANDOFF.zh-CN.md)。若中英文不一致，以英文版为准。
+
 This is the second document an automated contributor should read after
 `AGENTS.md`. It records what has actually been verified on hardware, the
 experiments that already failed (so they are not repeated), and the remaining
