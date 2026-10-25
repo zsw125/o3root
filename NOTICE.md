@@ -1,0 +1,54 @@
+# NOTICE — third-party components
+
+This repository is security research tooling. Run it only on hardware you own.
+Several bundled or build-time components are third-party software with their own
+licenses and redistribution terms.
+
+## KernelSU (GPL-3.0)
+
+- Project: KernelSU — https://github.com/tiann/KernelSU
+- Version used: v3.3.1 (kernel API 32680)
+- Files in this repository derived from KernelSU release artifacts:
+  - `payload/lkm/lkm-aarch64-android17-6.18_kernelsu.ko` — official prebuilt LKM
+    for GKI `android17-6.18` (release asset, aarch64).
+  - `app/assets/ksu-manager.apk` — KernelSU manager APK from the same release.
+  - `release/o3root2-v1.8.apk` embeds both the manager APK and a *relinked*
+    copy of the LKM (symbol addresses rebased for the target kernel build).
+- The relink process (`payload/ksu/relink_ksu.py`) only rewrites ELF symbol
+  values; it does not modify KernelSU source code. KernelSU itself is not
+  vendored here — fetch it from the project if you need the sources, as
+  required by GPL-3.0 when redistributing binaries.
+
+## Shizuku client libraries (Apache-2.0)
+
+- Project: Shizuku — https://github.com/RikkaApps/Shizuku-API
+- Artifacts: `dev.rikka.shizuku:api`, `:provider`, `:aidl`, `:shared` (13.1.5),
+  fetched from Maven Central by `scripts/fetch-toolchain.sh`.
+- Not committed to this repository; compiled classes from these jars are
+  embedded in `release/o3root2-v1.8.apk`.
+
+## Android SDK (Android SDK License)
+
+- `android.jar` (platform 34) and build-tools (`aapt2`, `d8`, `zipalign`,
+  `apksigner`) are fetched by `scripts/fetch-toolchain.sh` and are not
+  committed here.
+
+## Python dependencies
+
+- `pyelftools` (public domain / Unlicense) is required by
+  `payload/ksu/mksymtab.py` and `payload/ksu/relink_ksu.py`.
+
+---
+
+# 中文说明
+
+本仓库是安全研究工具，仅可用于你本人拥有的设备。
+
+- 内置的 KernelSU LKM 与管理器 APK 来自 KernelSU v3.3.1 官方发布物，遵循
+  GPL-3.0；本仓库不包含 KernelSU 源码，再分发二进制时请自行遵守 GPL 条款
+  （提供对应源码或指向官方仓库）。
+- Shizuku 客户端库（Apache-2.0）由构建脚本从 Maven Central 拉取，不随仓库分发；
+  发布 APK 中内含其编译产物。
+- Android SDK 组件（android.jar、build-tools）由脚本拉取，不随仓库分发。
+- 本仓库自有代码为 MIT（见 LICENSE）。作者不对任何设备损坏、数据丢失或
+  法律后果负责。

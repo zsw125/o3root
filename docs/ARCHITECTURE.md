@@ -1,0 +1,194 @@
+# Architecture
+
+This document describes the exploit chain and the Android/KernelSU packaging.
+Everything here is specific to the target profile below; see
+[KERNEL_PROFILE](#kernel-profile) for the constants and how to port them.
+
+## Target profile
+
+| item | value |
+|---|---|
+| device | Xiaomi `yingtian` (Pad 9 Pro Max, M367FC); `lhasa` (Xiaomi 18 Fold) shares the same kernel |
+| firmware | HyperOS `OS4.0.16.0.XBMCNXM` (yingtian) / `OS4.0.26.0.XPNCNXM` (lhasa), Android 17 |
+| kernel | `6.18.21-android17-5-g805aa6adea19-abogki565292102-4k`, arm64, 4 KB pages |
+| bootloader | locked, verified boot green |
+| entry point | Shizuku server in **shell mode** (`uid=2000`, `u:r:shell:s0`), driven by the app |
+
+The kernel image hashes to
+`cde87cd70206f21db4359aa1148f5f68e693ffefb11108dffde99c07c8c5ad88`
+(identical on both firmwares). See `docs/OTA_4.0.16_kernel_report.md`.
+
+## Vulnerability: CVE-2026-98260
+
+Missing upstream fix `acb03d388181` ("exec: Cleanup POSIX timers right after
+de_thread()"). In this kernel the POSIX-timer cleanup in `begin_new_exec()`
+still happens **after** `exec_task_namespaces()` instead of right after
+`de_thread()`.
+
+Trigger:
+
+1. A **non-leader** thread `B` creates a `CLOCK_THREAD_CPUTIME_ID` POSIX timer
+   (`timer_create` + `timer_settime`).
+2. `B` calls `execve()`; `de_thread()` swaps the PIDs (`exchange_tids`) and
+   releases the old leader, then the timer is unhashed while its RB node stays
+   linked in the (now stale) `timerqueue`.
+3. The exec path is interrupted before `exit_itimers()`/`posix_cpu_timers_exit()`
+   completes, so the `k_itimer` is freed (`kfree_rcu`) but the node remains.
+4. The parent catches `B` as a zombie (`waitid(P_PID, ..., WEXITED|WNOWAIT)`)
+   and reclaims the freed order-1 slab page with user-controlled content.
+5. Reaping the zombie (`release_task` → `posix_cpu_timers_exit` →
+   `cleanup_timerqueue` → `timerqueue_del` → `rb_erase`) performs the second
+   `timerqueue_del` on a node inside the reclaimed page.
+
+## Write primitive
+
+`rb_erase()` case "left child exists, right child does not":
+
+```
+ldr  x9, [x0]        ; pc = node->__rb_parent_color
+ands x8, x9, #-4     ; parent = pc & ~3
+str  x9, [x10]       ; *(node->rb_left) = pc        <-- arbitrary 8-byte write
+...
+ldr  x9, [x8, #0x10] ; dereference parent->rb_left
+```
+
+The forged node gives:
+
+- `[N]      = V`  (the value to write)
+- `[N+0x08] = 0`  (no right child → case above)
+- `[N+0x10] = S`  (the target address)
+
+Constraints:
+
+- `parent = V & ~3` is dereferenced. To stay alive, `V` must be `0` (parent 0 →
+  early return) or a readable address under our control (e.g. the perf page VA).
+  Therefore the primitive can write **0** or **a pointer into a controlled page
+  safely** — not an arbitrary constant such as `0x100`.
+- The first erase also updates `rb_next`/`head->rb_leftmost`; `[N+8] = 0` and
+  `[N+0x10] = S` make the second deletion land on the fake node with a
+  tolerable `WARN` (requires `panic_on_warn=0`).
+
+## Two stages
+
+The payload repeats the whole UAF/reclaim cycle per stage (`g_ntg = 2`):
+
+### Stage 0 — SELinux state
+
+- `S = SELINUX_STATE_STATIC + slide`, `V = fakekva | 0x100`
+- writes `enforcing = 0`, keeps `initialized = 1`, but the high 6 bytes (the
+  `policycap[]` array) become garbage address bytes.
+- Result: SELinux **Permissive**; the garbage `policycap` is inert while
+  permissive but breaks socket checks if enforcing is re-enabled.
+
+### Stage 1 — credentials
+
+- `S = task_struct.cred (PTASK + 0x908)`, `V = perf_page_va`
+- the perf page contains a fake `struct cred`: uid/gid/euid/fsuid = 0, full
+  caps (`0x1ffffffffff`), `security` = the process's original SELinux blob
+  (keeping `u:r:shell:s0`), valid `user_ns`, `group_info`, `ucounts`.
+- After the reap, the payload repairs the page (`repair_fake_cred`) and becomes
+  root with full capabilities.
+
+`real_cred` (0x900) is **not** replaced. Any in-process `commit_creds()` would
+BUG (`task->cred != task->real_cred`), which is why the module is loaded by a
+**forked `sh`** running `insmod` (a fresh exec gives consistent creds) instead
+of `finit_module` in-process.
+
+## KASLR slide
+
+A kretprobe on `__arm64_sys_getpid` reads the parent's `task_struct.cred`
+pointer; from the cred it reads `user_ns`, and:
+
+```
+slide = leaked_user_ns - 0xffffffc0826d10d8   (INIT_USER_NS_STATIC)
+```
+
+The slide is validated against the alignment of kernel VAs and reused for all
+static addresses, including the embedded KernelSU LKM.
+
+## KernelSU loading
+
+1. The official prebuilt LKM for `android17-6.18` is embedded after the payload
+   with a 24-byte trailer (`O3KSKO01`, payload_len, lkm_len).
+2. `ksu_patch()` walks the LKM's `.symtab` and rewrites every undefined symbol
+   (225 of them) to `SHN_ABS` with `vmlinux_addr + slide`. This bypasses module
+   symbol-namespace checks, `TRIM_UNUSED_KSYMS` exports, protected symbols and
+   CRCs.
+3. `ksu_patch()` also patches one instruction: `.init.text+0x144`
+   `mov w0,#1` → `mov w0,#0` (file offset `0x22144`, bytes `52 80 00 20` →
+   `52 80 00 00`), so the module does **not** call `setenforce(1)` during init.
+   (Patching the `bl setenforce` call site instead is not possible: the CALL26
+   relocation rewrites those 4 bytes at load time, causing an undefined
+   instruction / module stuck in `coming`.)
+4. Write the patched LKM to `/data/local/tmp/o3p_ksu.ko`, then
+   `fork()` + `exec("/system/bin/sh","-c","insmod ...")`, wait, and verify
+   `/proc/modules` contains `kernelsu`.
+
+## rootd
+
+After success the payload forks a detached daemon (`o3p --rootd`) and keeps it
+alive for the rest of the boot:
+
+- abstract unix socket `@o3p_rootd`; no files in `/data/local/tmp`
+- `SO_PEERCRED` check: only `uid 0` or `uid 2000` may connect
+- protocol: one command per connection, executed via `/system/bin/sh -c`, the
+  combined stdout/stderr streamed back, terminated by `__EXIT=<code>`
+- client: `./o3p.bin --shell "<command>"`
+
+## App packaging
+
+- The app (`o3root2.apk`, package `o3.st.root1`) is a normal Android app that
+  talks to Shizuku through `dev.rikka.shizuku:api/provider/aidl/shared`.
+- The payload is shipped as `lib/arm64-v8a/libo3p.so` (an executable ELF — the
+  `extractNativeLibs` path keeps it executable after install). On "Continue",
+  the app spawns `sh` via `Shizuku.newProcess`, copies the file to
+  `/data/local/tmp/o3p.bin`, and executes it.
+- Status probing: `grep -c kernelsu /proc/modules; getenforce; pm path
+  me.weishu.kernelsu`.
+- When KernelSU is loaded but SELinux has been set back to Enforcing, the app
+  shows a warning and offers a one-click recovery (`su -c setenforce 0`).
+- Firmware gate: the kernel release string must match
+  `6.18.21-android17-5-g805aa6adea19-abogki565292102-4k`, and the device build
+  fingerprint must contain `/yingtian/` or `/lhasa/`.
+
+## Kernel profile
+
+### Constants (this kernel)
+
+| symbol / field | value |
+|---|---|
+| `init_user_ns` | `0xffffffc0826d10d8` |
+| `selinux_state` | `0xffffffc082959630` |
+| `begin_new_exec` | `0xffffffc0802cf910` |
+| `posix_cpu_timers_exit` | `0xffffffc08014bfbc` |
+| `exit_itimers` | `0xffffffc0802a603c` |
+| `timerqueue_del` | `0xffffffc080149ec0` |
+| `rb_erase` | `0xffffffc080149f34` |
+| `task_struct.cred` | `0x908` |
+| `task_struct.real_cred` | `0x900` |
+| `task_struct.posix_cputimers` | `0x868` |
+| `task_struct.signal` / `sighand` | `0x960` / `0x968` |
+| `cred` size / uid / euid / fsuid | `0xb8` / `0x08` / `0x18` / `0x20` |
+| `cred.cap_*` | `0x30`..`0x50` |
+| `cred.security` / `user_ns` / `group_info` | `0x80` / `0x90` / `0xa0` |
+| `cred_security_struct` (osid, sid, …) | `0x18`, sid at `+0x04` |
+| `k_itimer` size / `it` / `elist` / `handling` | `0x180` / `0xe0` / `0x110` / `0x128` |
+| `selinux_state` (enforcing, initialized, policycap, policy) | `0` / `1` / `2` / `0x40` |
+| page constants | `PAGE_OFFSET=0xffffff8000000000`, `VMEMAP_BASE=0xfffffffec0000000`, `struct page=0x40` |
+
+### Porting to another kernel
+
+1. Get the boot image from the matching OTA and extract the kernel
+   (`tools/extract_payload.py`, `tools/unpack_boot.py`).
+2. Convert the raw `Image` with `vmlinux-to-elf` to recover symbols.
+3. Dump BTF (`tools/kernel_cfg_btf.py` or `bpftool btf dump`) to confirm the
+   `task_struct`, `cred`, `k_itimer`, `selinux_state` offsets above.
+4. Regenerate `payload/ksu/ksu_symtab.h` with `mksymtab.py` (`VMLINUX=...`).
+5. Update the static addresses and constants in `payload/o3p.c`
+   (`INIT_USER_NS_STATIC`, `SELINUX_STATE_STATIC`, probe offsets).
+6. Re-check the instruction patched in the KernelSU LKM (search for
+   `mov w0,#1` before the `setenforce` call in `.init.text`) — the offset
+   `0x144` is build-specific.
+7. Update the firmware gate (`Main.checkFirmware`) and rebuild the APK.
+
+KASLR itself needs no per-device work: the slide is derived at runtime.

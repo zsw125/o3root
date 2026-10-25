@@ -1,0 +1,32 @@
+# build outputs
+app/build/
+payload/build/
+*.idsig
+*.log
+
+# local toolchain / caches (fetched by scripts, not committed)
+tools/android/
+tools/shizuku/
+tools/pylib/
+.venv/
+
+# secrets: never commit signing keys or credentials
+*.p12
+*.jks
+*.keystore
+env.sh
+scripts/env.sh
+
+# extracted firmware / large blobs
+ota/
+ota_extract/
+*.img
+*.bin
+!payload/lkm/*.ko
+
+# misc
+.DS_Store
+Thumbs.db
+
+# local app output
+app/o3root2.apk
