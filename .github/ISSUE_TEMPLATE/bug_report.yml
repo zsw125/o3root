@@ -1,0 +1,90 @@
+name: Bug report
+description: Something does not work (app, exploit, KernelSU loading, rootd)
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. **Redact** serial numbers, Wi-Fi SSID/BSSID and
+        any credentials before pasting logs. For security problems in this
+        project itself, use the Security tab instead (see `SECURITY.md`).
+  - type: dropdown
+    id: device
+    attributes:
+      label: Device
+      options:
+        - Xiaomi Pad 9 Pro Max (yingtian)
+        - Xiaomi 18 Fold (lhasa)
+        - other / unknown
+    validations:
+      required: true
+  - type: input
+    id: firmware
+    attributes:
+      label: Firmware build
+      description: Settings -> About phone -> OS version
+      placeholder: OS4.0.16.0.XBMCNXM
+    validations:
+      required: true
+  - type: input
+    id: kernel
+    attributes:
+      label: Kernel version
+      description: output of `uname -r`
+      placeholder: 6.18.21-android17-5-g805aa6adea19-abogki565292102-4k
+    validations:
+      required: true
+  - type: input
+    id: appver
+    attributes:
+      label: O3 Root version
+      placeholder: v2.1 (versionCode 12)
+    validations:
+      required: true
+  - type: input
+    id: shizuku
+    attributes:
+      label: Shizuku version and mode
+      description: e.g. ShizukuX 13.7, shell mode (uid=2000, u:r:shell:s0)
+    validations:
+      required: true
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Where does it fail?
+      options:
+        - App install / launch
+        - Shizuku permission / manager detection
+        - Firmware gate
+        - Exploit (NO_RECLAIM / NO_UAF_TRIGGER / other verdict)
+        - KernelSU loading (KSU_CODEPATCH / KSU_INSMOD_OUT)
+        - Manager does not open
+        - Network / SELinux after loading
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Steps, expected vs actual
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Exported log (redacted)
+      description: In the app tap "导出日志" and paste the important lines (or attach the file).
+      render: text
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: Shizuku runs in shell mode (not root mode)
+          required: true
+        - label: I redacted serial numbers, SSIDs and credentials
+          required: true

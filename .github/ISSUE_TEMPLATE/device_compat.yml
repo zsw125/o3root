@@ -1,0 +1,67 @@
+name: Device / firmware support request
+description: Ask for a port to another Xiaomi device or kernel build
+title: "[port] "
+labels: ["port-request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ports are per **exact kernel build** — the exploit offsets, BTF layouts
+        and the KernelSU symbol table are compiled into the payload. Fill in as
+        much as you can; see `docs/ARCHITECTURE.md` (Porting).
+  - type: input
+    id: device
+    attributes:
+      label: Device codename and model
+      placeholder: lhasa / Xiaomi 18 Fold
+    validations:
+      required: true
+  - type: input
+    id: firmware
+    attributes:
+      label: Firmware build
+      placeholder: OS4.0.26.0.XPNCNXM
+    validations:
+      required: true
+  - type: input
+    id: kernel
+    attributes:
+      label: Kernel version
+      description: output of `uname -r`
+    validations:
+      required: true
+  - type: input
+    id: kernel_sha
+    attributes:
+      label: Kernel image sha256 (optional)
+      description: If you already extracted the kernel from the boot image
+    validations:
+      required: false
+  - type: input
+    id: ota
+    attributes:
+      label: OTA package name / link (optional)
+      placeholder: xxxx-ota_full-OS...-user-17.0-xxxx.zip
+    validations:
+      required: false
+  - type: dropdown
+    id: provide
+    attributes:
+      label: What can you provide for the profile?
+      multiple: true
+      options:
+        - Full OTA zip
+        - boot.img
+        - /proc/config.gz
+        - Kernel BTF (/sys/kernel/btf/vmlinux)
+        - Logs from a test run
+        - Nothing (request only)
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Android version, SELinux state, bootloader state, anything unusual
+    validations:
+      required: false

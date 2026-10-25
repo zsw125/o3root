@@ -1,5 +1,11 @@
 # O3 Root
 
+[![verify](https://github.com/zsw125/o3root/actions/workflows/verify.yml/badge.svg)](https://github.com/zsw125/o3root/actions/workflows/verify.yml)
+[![release](https://img.shields.io/github/v/release/zsw125/o3root?display_name=tag)](https://github.com/zsw125/o3root/releases)
+[![license](https://img.shields.io/github/license/zsw125/o3root)](LICENSE)
+[![platform](https://img.shields.io/badge/Android%2017-kernel%206.18.21-3DDC84)](docs/ARCHITECTURE.md)
+[![devices](https://img.shields.io/badge/devices-yingtian%20%7C%20lhasa-3DDC84)](docs/ARCHITECTURE.md)
+
 > Chinese translation: [`README.zh-CN.md`](README.zh-CN.md) — a translation of this file; if the two disagree, this English file is authoritative.
 
 Local privilege escalation + KernelSU for the Xiaomi **yingtian** (Pad 9 Pro
@@ -161,3 +167,7 @@ This project is published for **security research and education** only.
 MIT — see [`LICENSE`](LICENSE). Bundled third-party components keep their own
 licenses; see [`NOTICE.md`](NOTICE.md) and
 [`third_party/NOTICE.md`](third_party/NOTICE.md).
+
+---
+
+[![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)

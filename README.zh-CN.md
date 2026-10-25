@@ -1,5 +1,11 @@
 # O3 Root（中文版）
 
+[![verify](https://github.com/zsw125/o3root/actions/workflows/verify.yml/badge.svg)](https://github.com/zsw125/o3root/actions/workflows/verify.yml)
+[![release](https://img.shields.io/github/v/release/zsw125/o3root?display_name=tag)](https://github.com/zsw125/o3root/releases)
+[![license](https://img.shields.io/github/license/zsw125/o3root)](LICENSE)
+[![platform](https://img.shields.io/badge/Android%2017-kernel%206.18.21-3DDC84)](docs/ARCHITECTURE.md)
+[![devices](https://img.shields.io/badge/devices-yingtian%20%7C%20lhasa-3DDC84)](docs/ARCHITECTURE.md)
+
 > 英文原版：[`README.md`](README.md)。若两者不一致，以英文版为准并同步本文件。
 
 针对 HyperOS 4（Android 17，内核 `6.18.21`）上的小米 **yingtian**（Pad 9 Pro
@@ -151,3 +157,7 @@ bash app/build.sh                                # -> app/build/o3root2.apk
 MIT —— 见 [`LICENSE`](LICENSE)。内置第三方组件保留各自许可证；见
 [`NOTICE.md`](NOTICE.md) 与 [`third_party/NOTICE.md`](third_party/NOTICE.md)
 （中文说明见 [`NOTICE.zh-CN.md`](NOTICE.zh-CN.md)）。
+
+---
+
+[![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)
