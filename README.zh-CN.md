@@ -135,6 +135,8 @@ bash app/build.sh                                # -> app/build/o3root2.apk
 | `docs/BUILD.zh-CN.md` | 构建说明（中文版） |
 | `docs/APP_O3_ROOT.md` | 完整开发日志 / 验证报告（中文） |
 | `docs/V3-DESIGN.md` | v3 设计分析；单次回收方案为何被放弃 |
+| `docs/PRIOR-ART.md` | 先前工作、致谢与采用矩阵（来源 + 提交） |
+| `docs/PRIOR-ART.zh-CN.md` | 先前工作与致谢（中文版） |
 | `docs/history/README.md` | 历史报告索引（日期与过时原因） |
 | `docs/history/OTA_4.0.16_kernel_report.md` | OTA 提取、内核分析、KASLR 常量（中文） |
 | `docs/history/CVE-2026-98260_FEASIBILITY.md` | 漏洞分析与上游修复引用 |

@@ -1,5 +1,7 @@
 # Prior art, credits, and what we adopted
 
+> 中文版：[`PRIOR-ART.zh-CN.md`](PRIOR-ART.zh-CN.md) — 中文翻译；若两者不一致，以本文件为准。
+
 This file records the external work this project builds on **and** what we
 verified ourselves. It is deliberately concrete: every claim that shaped the
 design is tied to a constant, a file in this repository, or a commit, so a

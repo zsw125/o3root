@@ -212,6 +212,12 @@ KernelSU 用运行时 kallsyms 加载器、**不打 init 补丁**。`policycap` 
    写偏移、各探针偏移）。v3 stage 0 从 `selinux_state - 7` 起写 8 字节；换镜像前
    先 dump `selinux_state` 前 8 字节，确认被覆盖的对象（本机为
    `avc_latest_notif_update.notif_lock` 尾部）为 0/未加锁，并记入上面的常量表。
+   还要确认对象的**身份**而不只是值：
+   `PYELFTOOLS=... python3 tools/neighbor_lookup.py selinux_state --delta -7
+   --elf vmlinux.elf --require avc_latest_notif_update.notif_lock`
+   会打印相邻符号，最近符号不匹配时以非零退出。只读到 0 不能证明身份——别的
+   对象也可能为 0。若相邻对象或锁的大小/字段布局不同，应按新镜像重新推导写
+   偏移，不要沿用 `-7`。
 6. 只有旧 `O3P_CODEPATCH=1` 路径才打 KernelSU 指令补丁：位置由
    `.rela.init.text`（`setenforce` 重定位往前 4 字节）在运行时定位，不需要按
    构建写死常量；唯一扫描也找不到时会打印 `KSU_CODEPATCH … -2`。v3 默认完全

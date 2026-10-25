@@ -146,6 +146,8 @@ history. Detailed logs and the write-up live in
 | `docs/BUILD.zh-CN.md` | 构建说明（中文版） |
 | `docs/APP_O3_ROOT.md` | full development log / validation report |
 | `docs/V3-DESIGN.md` | v3 design analysis; why the single-reap variant was abandoned |
+| `docs/PRIOR-ART.md` | prior art, credits, adoption matrix (sources + commits) |
+| `docs/PRIOR-ART.zh-CN.md` | 先前工作与致谢（中文版） |
 | `docs/history/README.md` | index of superseded reports (dates + why they are historical) |
 | `docs/history/OTA_4.0.16_kernel_report.md` | OTA extraction, kernel analysis, KASLR constants |
 | `docs/history/CVE-2026-98260_FEASIBILITY.md` | vulnerability analysis and upstream fix references |

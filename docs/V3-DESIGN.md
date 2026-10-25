@@ -161,11 +161,20 @@ active — exactly the untested combination called out under Risks.
   `flush_itimer_signals`, `security_task_kill`, an AVC notify taking
   `notif_lock`) then runs with the fake cred and a half-cleared SELinux state.
   D never exercised this combination.
-- **H2: the unaligned write races `notif_lock`.** `selinux_state - 7` zeroes
-  bytes 1..3 of `avc_latest_notif_update.notif_lock`; if the lock is held by
-  another CPU at that instant, corrupting its tail can corrupt the qspinlock
-  wait state. The lock reads 0 (unlocked) in sampled builds, so this needs a
-  race.
+- **H2: the unaligned write races `notif_lock`.** In this image the symbol is
+  `avc_latest_notif_update.notif_lock` at `0xffffffc082959628`; `spinlock_t`
+  resolves through `struct spinlock` -> `struct raw_spinlock` ->
+  `arch_spinlock_t`/`struct qspinlock` to **4 bytes** (BTF: `spinlock_t` size
+  0x4). The 8-byte write starts at `selinux_state - 7` = `0xffffffc082959629`,
+  so it covers lock bytes **1..3** (`0x…9629..962b`) — the low byte carrying
+  `locked`/`pending` is untouched — plus the four bytes `0x…962c..0x…962f`
+  (tail of the same static object; no separate symbol or BTF type in this
+  build) and finally the `enforcing` byte (`0x…9630`). A qspinlock's upper
+  three bytes are the MCS tail (waiter/queue state), so a contended lock can
+  have its queue corrupted without the locked bit being set; the lock reads 0
+  (unlocked) in sampled builds, so this needs a race.
+  `python3 tools/neighbor_lookup.py selinux_state --delta -7` reproduces the
+  neighbouring-symbol claim.
 - **H3: a wrong `rb_erase` branch near live data.** Tile1's erase writes next to
   `selinux_state`, whose neighbouring `status_lock`/`policy` are live kernel
   pointers; a Case-1/Case-2 branch taken differently than modelled could follow

@@ -233,7 +233,14 @@ alive for the rest of the boot:
    bytes starting at `selinux_state - 7`; before trusting it, dump the 8 bytes
    before `selinux_state` in the new image and confirm the overlapped object
    (here the tail of `avc_latest_notif_update.notif_lock`) is zero/unlocked,
-   then record it in the profile table above.
+   then record it in the profile table above. Confirm the object's *identity*,
+   not only its value:
+   `PYELFTOOLS=... python3 tools/neighbor_lookup.py selinux_state --delta -7
+   --elf vmlinux.elf --require avc_latest_notif_update.notif_lock`
+   prints the owning symbols and exits non-zero if the nearest symbol is not
+   the expected one. A zero read alone proves nothing — another object can be
+   zero too. If the neighbour or the lock's size/field layout differs, re-derive
+   the write offset from the new image instead of reusing `-7`.
 6. Only the legacy `O3P_CODEPATCH=1` path patches KernelSU: the instruction is
    located at runtime from `.rela.init.text` (the `setenforce` relocation minus
    4 bytes), so no per-build constant is required; the unique-scan fallback logs
