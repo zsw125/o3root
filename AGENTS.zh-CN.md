@@ -131,6 +131,10 @@ root 请求后才出现。
    `★ KSU_MODULE LIVE`、管理器在前台（`am start` 日志 + `top ->`）。
 5. 健康检查：`getenforce` = Enforcing（v3；旧的脏写路径会停在 Permissive）、`ping <gateway>`、
    `nc 223.5.5.5 443`、`cat /proc/sys/kernel/random/boot_id` 未变。
+5.5 若本轮失败需重跑：先确认 `shizuku_plus_server` 仍是 `2000 u:r:shell:s0`。
+   KSU 授权后 ShizukuX 可能以 root 模式（`u:r:ksu:s0`）重启，该域是 bounded
+   transition，会拒绝 exec 载荷 —— 需重启 Shizuku server（或重启设备）回到
+   shell 模式后再点 Continue。
 6. 回滚：重启；可选 `rm -f /data/local/tmp/o3p*` 并卸载 App。
 
 | 症状 | 含义 / 处理 |

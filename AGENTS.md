@@ -151,6 +151,11 @@ Negative results — don't repeat without a new idea (details in
    `★ KSU_MODULE LIVE`, manager in foreground (`am start` log + `top ->`).
 5. Health: `getenforce` = Enforcing (v3; legacy dirty write ends Permissive), `ping <gateway>`, `nc 223.5.5.5 443`,
    `cat /proc/sys/kernel/random/boot_id` unchanged.
+5.5 If the run failed and you want to retry: check `shizuku_plus_server` is
+   still `2000 u:r:shell:s0`. After any KernelSU grant ShizukuX may restart in
+   root mode (`u:r:ksu:s0`), whose bounded-transition domain refuses to exec the
+   payload — restart the Shizuku server (or reboot) back to shell mode before
+   pressing Continue again.
 6. Rollback: reboot; optional `rm -f /data/local/tmp/o3p*` and uninstall.
 
 | symptom | meaning / action |

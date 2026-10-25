@@ -27,7 +27,10 @@ Side effects we want at the end:
 | piece | where | evidence |
 |---|---|---|
 | B: slide + cred via static `kmem_cache_alloc` tracepoint | `experiments/tp_slide.c` | `SLIDE 0x1db3000000` matched payload `SLIDE_CALC`, `CREDSITE match=1` |
-| A: unaligned `selinux_state-7` zero write | v3.0 default (`O3P_SELDIRTY=1` = old dirty write) | `SEL_OK state=0x100000101010100`, KSU loaded, Enforcing + network OK |
+| A: unaligned `selinux_state-7` zero write | v3.0 default (`O3P_SELDIRTY=1` = old dirty write) | `SEL_OK state=0x0100000101010100`, KSU loaded, Enforcing + network OK |
+
+`printf` uses `%llx`, which drops the leading zero: raw logs may show
+`0x100000101010100` for the same value.
 | C: PFN-verified reclaim (AIO rings) | `experiments/tp_reclaim.c` | clean boot single run: 65/152 node pages captured, `MATCH ring=492 node_page=1` |
 | D: three trees, three writes in one reap | `O3P_D3=1` | `D3PAGE slot2 0`, `slot3 0xdeadbeef -> 0`, `SEL_OK` |
 
@@ -139,3 +142,49 @@ single-reap design was abandoned. v3.0 instead ships a **two-reap** variant on
 proven `task_cred` swap in stage 1, with KernelSU loaded without the init patch.
 Experiments B (`tp_slide`) and C (`tp_reclaim`) remain validated prototypes; see
 `experiments/README.md`.
+
+### Root-cause hypotheses (single-reap panic)
+
+Evidence, three independent cold boots: the last durable `sdlog` line is always
+`D3ADDR` (printed right after `d3_setup`), never `REAP`, and each boot reboots
+within seconds. `/sys/fs/pstore` was empty on the next boot, so no PC, registers
+or stack were captured — the mechanism below is **inference, not proof**.
+
+What differs from experiment D (which passed): D wrote tile0 to a scratch slot
+of the perf page, while v3a writes tile0 = `task->cred` **first**, so the VIRT
+and SCHED `rb_erase` calls and the rest of the exit path run with a fake cred
+active — exactly the untested combination called out under Risks.
+
+- **H1 (most likely): mixed state during exit.** Tile0 swaps `cred` (uid 0, full
+  caps, `security` pointing at the real blob), then tile1 clears `enforcing`;
+  any security hook on the exit path (signal delivery from
+  `flush_itimer_signals`, `security_task_kill`, an AVC notify taking
+  `notif_lock`) then runs with the fake cred and a half-cleared SELinux state.
+  D never exercised this combination.
+- **H2: the unaligned write races `notif_lock`.** `selinux_state - 7` zeroes
+  bytes 1..3 of `avc_latest_notif_update.notif_lock`; if the lock is held by
+  another CPU at that instant, corrupting its tail can corrupt the qspinlock
+  wait state. The lock reads 0 (unlocked) in sampled builds, so this needs a
+  race.
+- **H3: a wrong `rb_erase` branch near live data.** Tile1's erase writes next to
+  `selinux_state`, whose neighbouring `status_lock`/`policy` are live kernel
+  pointers; a Case-1/Case-2 branch taken differently than modelled could follow
+  live data instead of our pattern. D's tile1 was also `selinux_state-7` and
+  passed, so only ordering plus fake-cred activity differs.
+
+How to prove it next time:
+
+1. Capture a dump: keep `panic_on_oops=1`, make sure `ramoops`/pstore actually
+   retains the console, and read `/sys/fs/pstore/console-ramoops*` after the
+   reboot (this device's pstore was empty — fix that before retrying).
+2. Bisect the tiles with single-reap runs: (a) `{cred, scratch, scratch}`,
+   (b) `{scratch, selinux-7, scratch}`, (c) `{cred, selinux-7, scratch}`.
+   Whichever pair first panics names the interaction.
+3. Add kprobes on `posix_cpu_timers_exit` and `rb_erase` entry/return with
+   `trace_printk` of node/target (or ftrace function graph), so the last kernel
+   call is visible even without pstore.
+4. Optionally arm only two timers (PROF + VIRT) to see whether the SCHED step is
+   required for the crash.
+
+None of this is on the v3.0 path: v3.0 ships two independent reaps (A, then the
+cred swap), as tagged in `v3.0`.

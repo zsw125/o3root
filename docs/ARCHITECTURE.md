@@ -215,6 +215,7 @@ alive for the rest of the boot:
 | `cred_security_struct` (osid, sid, …) | `0x18`, sid at `+0x04` |
 | `k_itimer` size / `it` / `elist` / `handling` | `0x180` / `0xe0` / `0x110` / `0x128` |
 | `selinux_state` (enforcing, initialized, policycap, policy) | `0` / `1` / `2` / `0x40` |
+| `selinux_state - 7` adjacent object | tail of `avc_latest_notif_update.notif_lock` (`0xffffffc082959628..2f`), 0 (unlocked) here — re-verify per kernel image |
 | page constants | `PAGE_OFFSET=0xffffff8000000000`, `VMEMAP_BASE=0xfffffffec0000000`, `struct page=0x40` |
 
 ### Porting to another kernel
@@ -227,7 +228,12 @@ alive for the rest of the boot:
 4. Regenerate `payload/ksu/ksu_symtab.h` with `mksymtab.py` (`VMLINUX=...`) for
    the relink fallback (the default kallsyms path needs no table).
 5. Update the static addresses and constants in `payload/o3p.c`
-   (`INIT_USER_NS_STATIC`, `SELINUX_STATE_STATIC`, probe offsets).
+   (`INIT_USER_NS_STATIC`, `SELINUX_STATE_STATIC`, the `selinux_state - 7`
+   stage-0 write offset, probe offsets). The v3 stage-0 primitive writes 8
+   bytes starting at `selinux_state - 7`; before trusting it, dump the 8 bytes
+   before `selinux_state` in the new image and confirm the overlapped object
+   (here the tail of `avc_latest_notif_update.notif_lock`) is zero/unlocked,
+   then record it in the profile table above.
 6. Only the legacy `O3P_CODEPATCH=1` path patches KernelSU: the instruction is
    located at runtime from `.rela.init.text` (the `setenforce` relocation minus
    4 bytes), so no per-build constant is required; the unique-scan fallback logs

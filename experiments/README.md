@@ -228,6 +228,8 @@ D3PAGE slot0=0x100000 slot1=0x0 slot2=0x0 slot3=0x0
 ```
 
 `state=0x0100000101010100` proves the unaligned write cleared only byte 0
+(`%llx` drops the leading zero: the log line above shows `0x100000101010100`
+for the same value)
 (`enforcing`), leaving `initialized=1` and `policycap` untouched. `slot2`
 went from the timer object pointer to 0 and `slot3` from `0xdeadbeef` to 0,
 so the same reap performed the SELinux zero and two controlled zero writes

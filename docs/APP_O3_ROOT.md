@@ -186,7 +186,9 @@ Linux version 6.18.21-android17-5-g805aa6adea19-abogki565292102-4k   （两边�
 lhasa OTA 元数据（`META-INF/com/android/metadata`）：`pre-device=lhasa`、`post-build=Xiaomi/lhasa/lhasa:17/CP2A.260605.016/17OS4.0.261012.100316399.XRPECN.S:user/release-keys`、SDK 37、安全补丁 2026-09-01、显示版本 `OS4.0.26.0.XPNCNXM`。
 
 ### lhasa 上仍需实测确认的差异（内核以外）
-- **SELinux 策略**：已尝试从 lhasa OTA 静态核对，但 `system`/`vendor` 分区是 **EROFS**（magic `e2e1f5e0`，system 943 MB / vendor 795 MB），策略文件（`*/etc/selinux/*.cil`）在镜像内为压缩存放，主机没有 erofs 解包工具，**静态结论拿不到**。因此：首次在 lhasa 上跑时若 shell 域写 tracefs/`kprobe_events` 被拒，载荷会在 probe 阶段报错（日志里能看到 `kprobe_events` / `KPROBE` 字样的失败），届时导出日志即可定位。
+- **SELinux 策略**：已尝试从 lhasa OTA 静态核对，但 `system`/`vendor` 分区是 **EROFS**（magic `e2e1f5e0`，system 943 MB / vendor 795 MB），策略文件（`*/etc/selinux/*.cil`）在镜像内为压缩存放，主机没有 erofs 解包工具，**静态结论拿不到**（可用 `erofs-utils` 的
+`fsck.erofs --extract` / `dump.erofs`，或在支持 erofs 的 Linux 内核上 loop
+挂载后直接读）。因此：首次在 lhasa 上跑时若 shell 域写 tracefs/`kprobe_events` 被拒，载荷会在 probe 阶段报错（日志里能看到 `kprobe_events` / `KPROBE` 字样的失败），届时导出日志即可定位。
 - **Shizuku 可用性**：lhasa 上能否同样用「无线调试 + 配对」冷启 shell 模式 server。
 - **安装限制**：MIUI 的 `INSTALL_FAILED_USER_RESTRICTED` 行为、内置管理器安装时的三个系统弹窗。
 - 这些都不影响门禁判断，但首次在 lhasa 上跑时建议把「导出日志」保存，便于按日志定位。
