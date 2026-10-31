@@ -10,7 +10,8 @@
 
 | 项 | 值 |
 |---|---|
-| 发布 | v3.1.1，`release/o3root2-v3.1.1.apk`（14,239,248 B，sha256 `a013cbff…`） |
+| 发布 | v3.2，`release/o3root2-v3.2.apk`（14,239,248 B，sha256 `64bbc654…`） |
+| 测试构建 | v3.2-beta1，`release/beta/o3root2-v3.2-beta1.apk`（14,243,344 B，sha256 `4f8845fc…`；隐藏 root 控制台） |
 | 已验证设备 | 小米 Pad 9 Pro Max `yingtian`，HyperOS `OS4.0.16.0.XBMCNXM`，内核 `6.18.21-android17-5-g805aa6adea19-abogki565292102-4k` |
 | 第二目标 | `lhasa`（Xiaomi 18 Fold）`OS4.0.26.0.XPNCNXM` —— 同内核 sha256 `cde87cd7…`（boot header/ramdisk 不同）；**未实机测试** |
 | 持久化 | 无（仅当前 boot） |
@@ -288,3 +289,30 @@ adb shell 'tail -f /data/data/o3.st.root1/files/run.log'   # 仅 debuggable 构�
   `librish.so` 不在 `base.apk!/lib/arm64-v8a`）；可用命令是在 `app_process ...
   rikka.shizuku.server.ShizukuService` 前设置 `CLASSPATH=<apk>/lib/arm64:<apk>`
   与 `LD_LIBRARY_PATH=<apk>/lib/arm64`。这是设备侧 workaround，与应用无关。
+
+
+## v3.2 —— 可选中/可复制日志框与测试版 root 控制台（2026-11-01）
+
+- 正式版（versionCode 17 / versionName 3.2）：`Main` 调用
+  `logView.setTextIsSelectable(true)`，日志头新增 复制 链接（`ClickCopyLog`），
+  复制全部日志；剪贴板不可用时提示用户手动拖选复制。`scrollBottomNow()` 只在
+  接近底部时自动滚动。
+- 测试版 `BETA=1`（versionCode 16 / versionName 3.2-beta1，
+  `release/beta/o3root2-v3.2-beta1.apk`）：root 控制台入口藏在版本行长按
+  （`ConsoleEntry` 反射调用 `ConsoleGate.start`；正式版排除
+  `ConsoleGate`/`ConsoleActivity`，只链接 `ConsoleEntry`）。三道不可跳过确认
+  （不可取消的风险框、复选框、输入恰好 `I ACCEPT ROOT RISK`）后传一次性 token；
+  `ConsoleActivity` 无 token 直接结束。`ConsoleTask` 经
+  `PayloadRunner.newProcess`（uid 2000）执行 `o3p --shell <cmd>`，
+  `@o3p_rootd` 返回输出加 `__EXIT=n`，界面显示 `[exit n]`；需要同一 boot 内已
+  跑过载荷，不新增提权路径。
+- 真机（yingtian，2026-11-01）：正式版长按无控制台；beta 连过三道确认，经 rootd
+  执行 `id` 得 uid 0（`[exit 0]`）；控制台输出复制/粘贴验证通过；正式版
+  LogBox 选择、复制与条件自动滚动也验证过。
+- 构建：`build.sh` 增加 `BETA` 开关（见 `docs/BUILD.md`）；`scripts/verify.sh`
+  增加 `VERIFY_BETA=1`。发布物：正式版 14,239,248 B sha256 `64bbc654…`；beta
+  14,243,344 B sha256 `4f8845fc…`。APK 重建非逐位可复现（zip 时间戳 + 重签），
+  应比较 dex/资源/`libo3p.so`。
+- 测试环境备注：默认讯飞输入法会吞 `adb shell input text` 的字母，先
+  `ime set com.dsharnessmobile.shell/.AdbKeyboardService`，测完恢复
+  `com.iflytek.inputmethod.miui/.FlyIME`；键盘弹出时对话框上移，需重新 dump 坐标。

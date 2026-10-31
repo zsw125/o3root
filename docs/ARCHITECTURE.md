@@ -196,6 +196,28 @@ validates (unless it was forced), and clears both on a long press of the row
 The module name must stay `kernelsu` (all three forks use it). The check is
 about compatibility, not a security boundary — see `docs/SECURITY.md`.
 
+### v3.2 — log box and the beta root console
+
+`Main` calls `logView.setTextIsSelectable(true)` and adds a 复制 link
+(`ClickCopyLog`) that copies the whole accumulated log to the clipboard;
+`scrollBottomNow()` only auto-scrolls while the reader is within about one
+screen of the bottom, so reading older output is not interrupted.
+
+The test build (`BETA=1`) compiles a terminal and hides its entry behind a long
+press of the version row (`ConsoleEntry` -> `ConsoleGate.start` via reflection,
+so the stable build never links the gate). `ConsoleGate` runs three
+non-skippable dialogs — a non-cancelable risk dialog, a checkbox dialog, and a
+dialog that only enables its button when the text is exactly
+`I ACCEPT ROOT RISK` — then passes a one-shot token in the intent;
+`ConsoleActivity` finishes immediately without it. `ConsoleTask` sends each
+command through `PayloadRunner.newProcess` (Shizuku shell, uid 2000):
+`o3p --shell <cmd>` reaches `@o3p_rootd` (which accepts uid 0/2000), and the
+output plus `__EXIT=<n>` comes back; the activity strips the marker and shows
+`[exit n]`. The console therefore requires a successful payload run earlier in
+the same boot and opens no new privilege path — it is a thin client of rootd.
+The stable build contains no console classes and its manifest has no
+`ConsoleActivity`.
+
 ## rootd
 
 After success the payload forks a detached daemon (`o3p --rootd`) and keeps it

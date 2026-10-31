@@ -8,6 +8,8 @@
 # Optional builds (only when their environment is configured):
 #   NDK_CC=...                                  rebuild payload, compare sha256
 #   ANDROID_JAR/BUILD_TOOLS/SHIZUKU_JARS/...    rebuild APK, check version
+#   VERIFY_BETA=1                               also build the beta variant and
+#                                               check version 3.2-beta1
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 
@@ -40,7 +42,9 @@ for f in \
   AGENTS.md AGENTS.zh-CN.md README.md README.zh-CN.md LICENSE NOTICE.md NOTICE.zh-CN.md \
   third_party/NOTICE.zh-CN.md \
   app/AndroidManifest.xml app/build.sh app/src/o3/st/root1/Main.java \
-  app/src/o3/st/root1/LongClearKo.java \
+  app/src/o3/st/root1/LongClearKo.java app/src/o3/st/root1/BuildInfo.java \
+  app/src/o3/st/root1/ClickCopyLog.java app/src/o3/st/root1/ConsoleEntry.java \
+  app/src/o3/st/root1/ConsoleGate.java app/src/o3/st/root1/ConsoleActivity.java \
   payload/o3p.c payload/mk_payload.py payload/build-payload.sh \
   payload/ksu/ksu_symtab.h payload/ksu/mksymtab.py payload/ksu/relink_ksu.py \
   payload/lkm/lkm-aarch64-android17-6.18_kernelsu.ko \
@@ -65,20 +69,37 @@ PY
 )
 if [ "$cnt" = "248" ]; then ok "ksu_symtab.h has 248 entries"; else bad "ksu_symtab.h entries: ${cnt:-?} (expected 248)"; fi
 
-echo "== release checksum"
+echo "== release checksums"
 "$PY" - <<'PY'
 import glob, hashlib, os, sys
-sums = open('release/SHA256SUMS.txt', encoding='utf-8').read().split()
-want, name = sums[0], sums[1].lstrip('*')
-apks = sorted(glob.glob('release/*.apk'))
-if len(apks) != 1:
-    print('  FAIL  expected exactly one release/*.apk, found %d' % len(apks))
-    sys.exit(1)
-got = hashlib.sha256(open(apks[0], 'rb').read()).hexdigest()
-ok = (got == want) and (os.path.basename(apks[0]) == name)
-print('  ok    release apk sha256 matches SHA256SUMS' if ok else
-      '  FAIL  release apk sha256 %s != %s (or name mismatch)' % (got, want))
-sys.exit(0 if ok else 1)
+bad = 0
+for d in ('release', 'release/beta'):
+    sums_path = os.path.join(d, 'SHA256SUMS.txt')
+    if not os.path.exists(sums_path):
+        continue
+    entries = []
+    for line in open(sums_path, encoding='utf-8'):
+        line = line.strip()
+        if not line:
+            continue
+        want, name = line.split()
+        entries.append((want, name.lstrip('*')))
+    apks = sorted(os.path.basename(p) for p in glob.glob(os.path.join(d, '*.apk')))
+    names = sorted(n for _, n in entries)
+    if apks != names:
+        print('  FAIL  %s: apk files %s do not match SHA256SUMS %s' % (d, apks, names))
+        bad = 1
+        continue
+    for want, name in entries:
+        path = os.path.join(d, name)
+        got = hashlib.sha256(open(path, 'rb').read()).hexdigest()
+        if got == want:
+            print('  ok    %s sha256 matches SHA256SUMS' % path)
+        else:
+            print('  FAIL  %s sha256 %s != %s' % (path, got, want))
+            bad = 1
+print('  ok    release checksums' if not bad else '  FAIL  release checksums')
+sys.exit(1 if bad else 0)
 PY
 [ $? -eq 0 ] || fail=1
 
@@ -125,7 +146,7 @@ if [ -n "${ANDROID_JAR:-}" ] && [ -n "${BUILD_TOOLS:-}" ] && [ -n "${SHIZUKU_JAR
     if [ -x "$BUILD_TOOLS/aapt2" ] || [ -x "$BUILD_TOOLS/aapt2.exe" ]; then
       AAPT2="$BUILD_TOOLS/aapt2"; [ -x "$AAPT2" ] || AAPT2="$BUILD_TOOLS/aapt2.exe"
       v=$("$AAPT2" dump badging app/o3root2.apk 2>/dev/null | grep -o "versionName='[^']*'" | head -1)
-      case "$v" in *"'3.1.1'"*) ok "APK rebuilt ($v)";; *) bad "APK version $v (expected 3.1.1)";; esac
+      case "$v" in *"'3.2'"*) ok "APK rebuilt ($v)";; *) bad "APK version $v (expected 3.2)";; esac
     else
       note "APK rebuilt (aapt2 not found to verify version)"
     fi
@@ -133,6 +154,22 @@ if [ -n "${ANDROID_JAR:-}" ] && [ -n "${BUILD_TOOLS:-}" ] && [ -n "${SHIZUKU_JAR
     bad "app build failed"; tail -20 "$log" | sed 's/^/        /'
   fi
   rm -f "$log"
+  if [ "${VERIFY_BETA:-0}" = "1" ]; then
+    log=$(mktemp)
+    if BETA=1 bash app/build.sh >"$log" 2>&1; then
+      if [ -x "$BUILD_TOOLS/aapt2" ] || [ -x "$BUILD_TOOLS/aapt2.exe" ]; then
+        v=$("$AAPT2" dump badging app/o3root2.apk 2>/dev/null | grep -o "versionName='[^']*'" | head -1)
+        case "$v" in *"'3.2-beta1'"*) ok "beta APK rebuilt ($v)";; *) bad "beta APK version $v (expected 3.2-beta1)";; esac
+      else
+        note "beta APK rebuilt (aapt2 not found to verify version)"
+      fi
+      # Leave the stable APK in app/, not the beta one.
+      bash app/build.sh >/dev/null 2>&1 || bad "stable rebuild after beta failed"
+    else
+      bad "beta app build failed"; tail -20 "$log" | sed 's/^/        /'
+    fi
+    rm -f "$log"
+  fi
 else
   note "app build env incomplete; skipping app rebuild"
 fi

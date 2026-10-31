@@ -11,6 +11,7 @@
 #   D8_JAR         override path to d8.jar
 #   PAYLOAD        path to libo3p.so (default ../payload/build/libo3p.so)
 #   PY             python interpreter (default python3)
+#   BETA=1         build the test variant: hidden root console, version 3.2-beta1
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -19,6 +20,7 @@ cd "$(dirname "$0")"
 : "${KS_PASS:?set KS_PASS}"              ; : "${KEY_ALIAS:?set KEY_ALIAS}"
 : "${KEY_PASS:?set KEY_PASS}"
 PY=${PY:-python3}
+BETA=${BETA:-0}
 PAYLOAD=${PAYLOAD:-$PWD/../payload/build/libo3p.so}
 D8_JAR=${D8_JAR:-$BUILD_TOOLS/lib/d8.jar}
 JBIN=${JAVA_HOME:+$JAVA_HOME/bin/}
@@ -32,19 +34,62 @@ ZIPALIGN=$(pick "$BUILD_TOOLS/zipalign")
 [ -f "$D8_JAR" ] || { echo "d8.jar not found: $D8_JAR" >&2; exit 2; }
 
 rm -rf build
-mkdir -p build/cp build/classes build/dex build/lib/arm64-v8a
+mkdir -p build/cp build/classes build/dex build/lib/arm64-v8a build/gen
 cp "$ANDROID_JAR" build/cp/android.jar
 for a in api provider aidl shared; do cp "$SHIZUKU_JARS/$a-classes.jar" "build/cp/$a.jar"; done
 cp "$PAYLOAD" build/lib/arm64-v8a/libo3p.so
 
-"$JAVAC" -J-Duser.language=en --release 17 -classpath "build/cp/*" -d build/classes src/o3/st/root1/*.java
+SRCS=(src/o3/st/root1/*.java)
+if [ "$BETA" = "1" ]; then
+  echo "variant: beta (root console, 3.2-beta1)"
+  cat > build/gen/BuildInfo.java <<'JAVA'
+package o3.st.root1;
+
+final class BuildInfo {
+    static final boolean CONSOLE = true;
+    static final String VERSION = "3.2-beta1";
+}
+JAVA
+  KEEP=()
+  for f in "${SRCS[@]}"; do
+    [ "$f" = "src/o3/st/root1/BuildInfo.java" ] && continue
+    KEEP+=("$f")
+  done
+  SRCS=("${KEEP[@]}" "build/gen/BuildInfo.java")
+  MANIFEST="$PWD/build/AndroidManifest.xml"
+  "$PY" - "$MANIFEST" <<'PY'
+import sys
+src = open('AndroidManifest.xml', encoding='utf-8').read()
+out = src.replace('android:versionCode="17"', 'android:versionCode="16"')
+out = out.replace('android:versionName="3.2"', 'android:versionName="3.2-beta1"')
+act = ('        <activity\n'
+       '            android:name=".ConsoleActivity"\n'
+       '            android:exported="false"\n'
+       '            android:configChanges="orientation|screenSize|keyboardHidden" />\n\n')
+out = out.replace('</application>', act + '</application>')
+open(sys.argv[1], 'w', encoding='utf-8').write(out)
+PY
+else
+  echo "variant: stable (no console, 3.2)"
+  KEEP=()
+  for f in "${SRCS[@]}"; do
+    case "$f" in
+      src/o3/st/root1/ConsoleActivity.java|src/o3/st/root1/ConsoleGate.java) continue;;
+    esac
+    KEEP+=("$f")
+  done
+  SRCS=("${KEEP[@]}")
+  MANIFEST="$PWD/AndroidManifest.xml"
+fi
+
+"$JAVAC" -J-Duser.language=en --release 17 -classpath "build/cp/*" -d build/classes "${SRCS[@]}"
 
 "$JAVA" -cp "$D8_JAR" com.android.tools.r8.D8 \
   --release --min-api 31 --lib build/cp/android.jar --output build/dex \
   build/classes/o3/st/root1/*.class build/cp/api.jar build/cp/provider.jar build/cp/aidl.jar build/cp/shared.jar
 
 "$AAPT2" compile --dir res -o build/res.zip
-"$AAPT2" link --manifest AndroidManifest.xml -I build/cp/android.jar \
+"$AAPT2" link --manifest "$MANIFEST" -I build/cp/android.jar \
   --min-sdk-version 31 --target-sdk-version 34 -o build/base.apk -A assets build/res.zip
 
 BASE="$PWD/build" "$PY" - <<'PY'

@@ -10,8 +10,10 @@ and leaves a root daemon for the current boot. Read this file first, then
 
 ## State
 
-- Release **v3.1.1**, `release/o3root2-v3.1.1.apk`
-  (`14,239,248 B`, `sha256 a013cbffbe43036e4b7ba3a55554332ab02d23e444103bd043d9e9ef4b9289d0`).
+- Release **v3.2**, `release/o3root2-v3.2.apk`
+  (`14,239,248 B`, `sha256 64bbc65420181babd69b826de7b86be99409963dd29253b72a2930d7a7ff6cfd`),
+  plus the **test build** `release/beta/o3root2-v3.2-beta1.apk`
+  (`14,243,344 B`, `sha256 4f8845fc3b03836e78dc237924da5f77eebd10e2b23bdaf6b36a6b1f26994a05`).
   v2.0 added the multi-LKM blob (KernelSU / KernelSU-Next / SukiSU) with
   manager-based selection; v2.1 makes the probe permission-aware (local manager
   detection, probe-then-payload after granting, unique payload path); v3.0
@@ -24,7 +26,15 @@ and leaves a root daemon for the current boot. Read this file first, then
   re-validates and automatically falls back when the file is unreadable or the
   load fails. v3.1.1 persists that choice in the app files dir (`custom-ko.ko` +
   `custom-ko.meta`), restores it on launch, drops a stale file that no longer
-  validates, and clears it on a long press of the module row. The three built-in LKMs are unchanged (all were the latest
+  validates, and clears it on a long press of the module row. v3.2 makes the
+  LogBox selectable and copyable (a "复制" link copies the whole log; the output
+  view is selectable, and it only auto-scrolls while the reader is already at
+  the bottom). The test build v3.2-beta1 additionally hides a root console
+  behind a long press of the version row: three non-skippable confirmations
+  (risk dialog, checkbox, then typing `I ACCEPT ROOT RISK`) plus a one-shot
+  token guard the activity, and each command goes through the rootd socket
+  (uid 0/2000 accepted) after the payload has started. The stable build does
+  not compile the console classes at all. The three built-in LKMs are unchanged (all were the latest
   upstream on 2026-10-29 except SukiSU, which has v4.3.0 — see
   `python3 tools/check_lkm_updates.py`).
   v1.8 (relink-only) and v1.9 remain in the git history.
@@ -47,6 +57,11 @@ NDK_CC=/path/to/ndk/.../aarch64-linux-android35-clang bash payload/build-payload
 # app (needs SDK + Shizuku jars + your keystore; see docs/BUILD.md)
 ANDROID_JAR=... BUILD_TOOLS=... SHIZUKU_JARS=... \
 KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
+
+# beta test build (hidden root console: versionCode 16, versionName 3.2-beta1)
+ANDROID_JAR=... BUILD_TOOLS=... SHIZUKU_JARS=... \
+KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... \
+PAYLOAD=... BETA=1 bash app/build.sh
 ```
 
 ## Map
@@ -56,7 +71,7 @@ KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
 | `payload/o3p.c` | the exploit payload (C): UAF trigger, page reclaim, RB write primitive, two stages, KASLR slide, KernelSU runtime loader (kallsyms first, relink fallback), legacy init patch (`O3P_CODEPATCH=1`), rootd |
 | `payload/ksu/` | `ksu_symtab.h` (union of 248 KernelSU symbols from upstream forks), `mksymtab.py` (regen single-LKM table), `relink_ksu.py` (offline relinker reference) |
 | `payload/lkm/` | official `android17-6.18` LKMs (GPL-3.0, unmodified): KernelSU v3.3.1, KernelSU-Next v3.4.2, SukiSU-Ultra v4.2.1-r2 |
-| `app/src/o3/st/root1/` | Java: `Main` (UI/state machine), `PayloadRunner` (also stages a custom `.ko`), `CustomKo`+`KoResult` (ELF/.modinfo validation), `LongClearKo` (long-press clear), `StateProbe`, `RecoverRunner` (legacy guard; disabled in v3), `ManagerInstaller`, listeners |
+| `app/src/o3/st/root1/` | Java: `Main` (UI/state machine), `PayloadRunner` (also stages a custom `.ko`), `CustomKo`+`KoResult` (ELF/.modinfo validation), `LongClearKo` (long-press clear), `StateProbe`, `RecoverRunner` (legacy guard; disabled in v3), `ManagerInstaller`, listeners; `BuildInfo` (version + console switch), `ClickCopyLog`; beta-only `ConsoleEntry` (reflective entry), `ConsoleGate` (three-step gate), `ConsoleActivity`+`ConsoleTask` (terminal) |
 | `app/build.sh`, `payload/build-payload.sh`, `scripts/*` | build entry points |
 | `docs/` | ARCHITECTURE (design + porting), SECURITY (risks/cleanup), BUILD, APP_O3_ROOT (dev log), OTA/kernel report, CVE feasibility, evidence PNGs |
 | `tools/` | OTA extraction / boot image unpack / BTF+disasm checks / `check_lkm_updates.py` |
@@ -124,7 +139,13 @@ with healthy network (`ping`/`nc`) and unchanged `boot_id`. v3.1 and v3.1.1 were
 `KSU_MODULE LIVE`), custom tiann v3.3.1 picker (warning accepted, persisted
 across force-stop/restart), forced 6.6.000-vermagic module (`CUSTOM_KO force
 reason=kernel_series_mismatch` -> relink -> `KSU_MODULE LIVE`), and long-press
-clear. The automatic fallback branch was not exercised on hardware (the forced
+clear. v3.2 and v3.2-beta1 were verified on the same device on 2026-11-01:
+the stable build shows the selectable LogBox with the 复制 action and no
+console entry on a long press, while the beta build passed all three gate
+steps, opened the console with its one-shot token, and ran `id` as uid 0
+through the rootd socket (`[exit 0]`); copying the console output into the
+clipboard was verified by pasting it back. The automatic fallback branch was
+not exercised on hardware (the forced
 module still loaded) and remains desktop-tested. v1.8–v2.1 had
 additionally verified the old guard/recovery UI and network health while
 Permissive (both removed in v3.0). The v2.0 release APK was cold-boot tested; v2.1 was cold-boot tested with a revoked Shizuku permission (grant → probe → automatic payload)
@@ -160,12 +181,22 @@ Negative results — don't repeat without a new idea (details in
 - `aapt2 link` needs a prior `aapt2 compile --dir res`; `-A assets` ships the
   bundled KernelSU manager.
 - Don't commit CRLF churn for `payload/*.c`; the index normalizes to LF.
+- `BETA=1` writes `build/gen/BuildInfo.java` (`CONSOLE=true`,
+  `VERSION="3.2-beta1"`) and a generated `build/AndroidManifest.xml`
+  (versionCode 16, `ConsoleActivity` entry). The stable build compiles the
+  tracked `BuildInfo.java` (`CONSOLE=false`, `3.2`) and excludes
+  `ConsoleActivity.java`/`ConsoleGate.java`; `Main` reaches the gate only
+  via `ConsoleEntry` reflection, so never link `ConsoleGate` from stable
+  code.
+- Keep the log box selectable and copyable: don't drop
+  `setTextIsSelectable(true)`; auto-scroll must stay conditional on being
+  near the bottom.
 
 ## Device testing checklist
 
 1. Shizuku running in shell mode: `ps -A -o UID,LABEL,ARGS | grep shizuku_plus_server`
    → `2000 u:r:shell:s0`.
-2. Install: `adb install -r release/o3root2-v3.1.1.apk`; if MIUI says
+2. Install: `adb install -r release/o3root2-v3.2.apk`; if MIUI says
    `INSTALL_FAILED_USER_RESTRICTED`, allow install-via-USB or, with root,
    `pm install -r -d`.
 3. Open the app, grant Shizuku permission, press Continue; wait 20–120 s.
@@ -179,6 +210,11 @@ Negative results — don't repeat without a new idea (details in
    payload — restart the Shizuku server (or reboot) back to shell mode before
    pressing Continue again.
 6. Rollback: reboot; optional `rm -f /data/local/tmp/o3p*` and uninstall.
+7. Beta console (test build only):
+   `adb install -r -d release/beta/o3root2-v3.2-beta1.apk` (its versionCode
+   16 is lower than stable 17); start the payload once so rootd is running,
+   long-press the version row, and pass the three confirmations; `id` must
+   print `uid=0`. Stable must show no console entry on the same long press.
 
 | symptom | meaning / action |
 |---|---|

@@ -69,7 +69,7 @@ bash payload/build-payload.sh
 
 `build-payload.sh` 只需要 `NDK_CC`。KernelSU LKM 位于
 `payload/lkm/lkm-aarch64-android17-6.18_kernelsu.ko`；默认输出与
-`release/o3root2-v3.1.1.apk` 里的参考构建一致（`libo3p.so` 的
+`release/o3root2-v3.2.apk` 里的参考构建一致（`libo3p.so` 的
 `sha256 e479e539…`）。
 
 你也可以直接在设备上（root/shell）运行载荷：
@@ -140,10 +140,10 @@ App 的 LogBox 会显示载荷每个阶段；用 **导出日志** 写到
 
 ## 可复现性
 
-参考构建（v3.1.1，release/o3root2-v3.1.1.apk）：
+参考构建（v3.2，release/o3root2-v3.2.apk）：
 
 - APK `14,239,248` 字节
-- `sha256 a013cbffbe43036e4b7ba3a55554332ab02d23e444103bd043d9e9ef4b9289d0`
+- `sha256 64bbc65420181babd69b826de7b86be99409963dd29253b72a2930d7a7ff6cfd`
 - payload `libo3p.so` `1,496,044` 字节（配官方 LKM），
   `sha256 e479e539bf812f7fe0dc18734ec6f47727fc6f650b4a8d9fd45751a9c6500a2b`
 
@@ -153,4 +153,10 @@ App 的 LogBox 会显示载荷每个阶段；用 **导出日志** 写到
 
 v3.1/v3.1.1 只新增 Java 源文件（`CustomKo`、`KoResult`、`KoChoice`、`KoReadTask`、
 `KoApplyTask`、`ClickPickKo`、`LongClearKo`）与载荷里的
-`ko_validate()`/`O3P_CUSTOM_KO`；上面两条构建命令不变。
+`ko_validate()`/`O3P_CUSTOM_KO`；上面两条构建命令不变。v3.2 新增 `BuildInfo`
+（版本 + 控制台开关）与 `ClickCopyLog`，并让 LogBox 可选中/复制。测试变体用
+`BETA=1` 构建（versionCode 16、versionName `3.2-beta1`，生成
+`build/gen/BuildInfo.java` 与带隐藏 `ConsoleActivity` 的
+`build/AndroidManifest.xml`）；正式版编译跟踪的 `BuildInfo.java`
+（`CONSOLE=false`、`3.2`）并排除 `ConsoleActivity.java`/`ConsoleGate.java`。
+`VERIFY_BETA=1 bash scripts/verify.sh` 会同时构建并检查两个变体。

@@ -6,17 +6,18 @@ secrets or device identifiers — the script scans both text and binaries.
 
 ## Current publication state (2026-11-01)
 
-- `main` head: a docs-only commit on top of the v3.1.1 release commit
-  (`93618ac`); tag `v3.1.1` → `93618ac`. The earlier `v3.1` tag stays on its
-  own commit (`db24088`).
-- Releases (both created 2026-11-01): `v3.1`
-  (<https://github.com/zsw125/o3root/releases/tag/v3.1>, notes only — the APK
-  stays in git history at tag `v3.1`) and `v3.1.1`, marked **Latest**
-  (<https://github.com/zsw125/o3root/releases/tag/v3.1.1>), with
-  `o3root2-v3.1.1.apk` (14,239,248 B, sha256 `a013cbff…`) and `SHA256SUMS.txt`.
-- v3.0 remains published as history, with its APK attached to the release and
-  in git history (`git show v3.0:release/o3root2-v3.0.apk`), not in the tree.
-- `scripts/verify.sh` is green locally for the v3.1.1 tree.
+- `main` head: the v3.2 release commit (tag `v3.2`); the test build is tagged
+  `v3.2-beta1` on the same tree. Earlier tags `v3.1.1` (`93618ac`) and `v3.1`
+  (`db24088`) stay where they are.
+- Releases: `v3.1` (notes only) and `v3.1.1` remain as history; **v3.2** is
+  marked **Latest** with `o3root2-v3.2.apk` (14,239,248 B, sha256
+  `64bbc654…`) and `SHA256SUMS.txt`; **v3.2-beta1** is a **pre-release** with
+  `release/beta/o3root2-v3.2-beta1.apk` (14,243,344 B, sha256 `4f8845fc…`)
+  and `release/beta/SHA256SUMS.txt`.
+- The v3.1.1 APK moved out of the tree (it stays in git history at tag
+  `v3.1.1`); v3.0 and v2.1 keep their APKs attached to their releases.
+- `scripts/verify.sh` is green locally for the v3.2 tree; with
+  `VERIFY_BETA=1` it also builds and checks the beta variant.
 
 ## 1. Create an empty repository
 
@@ -37,25 +38,33 @@ git push https://<user>:<token>@github.com/<user>/o3root.git main
 
 ## 2. Publish the release
 
-The built APK is committed at `release/o3root2-v3.1.1.apk` next to
-`release/SHA256SUMS.txt`. Also attach it to a GitHub Release:
+The built APKs are committed at `release/o3root2-v3.2.apk` and
+`release/beta/o3root2-v3.2-beta1.apk`, each next to its own `SHA256SUMS.txt`.
+Tag and push first:
 
 ```bash
-git tag -a v3.1.1 -m "v3.1.1: persist the user-selected .ko across app restarts"
-git push origin v3.1.1
+git tag -a v3.2 -m "v3.2: selectable/copyable log box; beta root console"
+git tag -a v3.2-beta1 -m "v3.2-beta1: hidden root console test build"
+git push origin main v3.2 v3.2-beta1
 ```
 
-Then create the release in the web UI, or with `gh` (files are positional):
+Then create the releases in the web UI, or with `gh` (files are positional;
+`--latest`/`--prerelease` set the channel):
 
 ```bash
-gh release create v3.1.1 --title "v3.1.1" --notes-file notes.md \
-  --verify-tag --latest release/o3root2-v3.1.1.apk release/SHA256SUMS.txt
+gh release create v3.2 --title "v3.2" --notes-file notes.md \
+  --verify-tag --latest release/o3root2-v3.2.apk release/SHA256SUMS.txt
+
+gh release create v3.2-beta1 --title "v3.2-beta1" --notes-file beta-notes.md \
+  --verify-tag --prerelease release/beta/o3root2-v3.2-beta1.apk \
+  release/beta/SHA256SUMS.txt
 ```
 
-Keeping the committed copy makes `scripts/verify.sh` reproducible; if you
-prefer Releases-only, delete the `release/*.apk` files from git and relax that
-check first. Older releases: `v3.0` and `v2.1` have their APKs attached; `v3.1`
-has notes only (its APK remains in git history at the tag).
+The beta APK has versionCode 16, below the stable 17, so installing it over a
+stable install needs `adb install -r -d`. Keeping the committed copies makes
+`scripts/verify.sh` reproducible; if you prefer Releases-only, delete the
+`release/**/*.apk` files from git and relax that check first. Older releases:
+`v3.1.1`, `v3.0` and `v2.1` have their APKs attached; `v3.1` has notes only.
 
 ## 3. Repository settings
 
@@ -85,8 +94,11 @@ Use it only on devices you own. The CVE is public; the README and
 
 1. 在 GitHub 建**空**仓库 `o3root`（不要初始化 README）。
 2. `git remote add origin <url>` → `git push -u origin main`。
-3. `git tag v3.1.1 && git push origin v3.1.1`，在 Releases 上传
-   `release/o3root2-v3.1.1.apk` 与 `SHA256SUMS.txt`。
+3. `git tag v3.2 && git tag v3.2-beta1 && git push origin v3.2 v3.2-beta1`；
+   在 Releases 上传 `release/o3root2-v3.2.apk` + `release/SHA256SUMS.txt`
+   （勾选 Latest），以及 `release/beta/o3root2-v3.2-beta1.apk` +
+   `release/beta/SHA256SUMS.txt`（勾选 Pre-release）。beta 的 versionCode 16
+   低于正式版 17，覆盖安装需 `adb install -r -d`。
 4. 许可证：本项目 MIT；内置 LKM/管理器为 GPL-3.0（`NOTICE.md` 已列上游源码
    链接）；Shizuku 库 Apache-2.0。不要删除这些声明。
 5. 仅供自有设备的安全研究；仓库已通过 `scripts/verify.sh` 的脱敏检查。

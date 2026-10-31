@@ -2,6 +2,9 @@ package o3.st.root1;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
@@ -102,7 +105,7 @@ public class Main extends Activity implements PayloadSink {
         lastNight = isNight();
         setContentView(buildUi());
         applyWindowTheme();
-        append("O3 Root v3.1.1 · CVE-2026-98260");
+        append("O3 Root v" + BuildInfo.VERSION + " · CVE-2026-98260");
         append("payload=" + payloadPath);
         restoreCustomKo();
         checkFirmware();
@@ -247,9 +250,12 @@ public class Main extends Activity implements PayloadSink {
         titleView = title;
         root.addView(title);
 
-        TextView sub = text("v3.1.1 · CVE-2026-98260 · OS4", 12, MUTED, false);
+        TextView sub = text("v" + BuildInfo.VERSION + " · CVE-2026-98260 · OS4", 12, MUTED, false);
         subView = sub;
         sub.setPadding(0, dp(4), 0, 0);
+        if (BuildInfo.CONSOLE) {
+            sub.setOnLongClickListener(new ConsoleEntry(this));
+        }
         root.addView(sub);
 
         String dev = Build.MODEL + " · " + System.getProperty("os.version");
@@ -313,6 +319,10 @@ public class Main extends Activity implements PayloadSink {
         lh.setGravity(Gravity.CENTER_VERTICAL);
         lh.setPadding(0, dp(16), 0, dp(6));
         lh.addView(lt, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView cp = text("复制", 11, ACCENT, false);
+        cp.setPadding(0, 0, dp(14), 0);
+        cp.setOnClickListener(new ClickCopyLog(this));
+        lh.addView(cp);
         TextView ex = text("导出日志", 11, ACCENT, false);
         ex.setOnClickListener(new ClickExport(this));
         lh.addView(ex);
@@ -329,6 +339,7 @@ public class Main extends Activity implements PayloadSink {
         logView.setTextColor(LOG);
         logView.setTypeface(Typeface.MONOSPACE);
         logView.setPadding(dp(10), dp(10), dp(10), dp(10));
+        logView.setTextIsSelectable(true);
         logScroll.addView(logView);
         return root;
     }
@@ -408,7 +419,17 @@ public class Main extends Activity implements PayloadSink {
     }
 
     void scrollBottomNow() {
-        logScroll.fullScroll(ScrollView.FOCUS_DOWN);
+        if (nearBottom()) {
+            logScroll.fullScroll(ScrollView.FOCUS_DOWN);
+        }
+    }
+
+    boolean nearBottom() {
+        if (logView.getHeight() <= logScroll.getHeight() + dp(24)) {
+            return true;
+        }
+        int y = logScroll.getScrollY();
+        return y + logScroll.getHeight() >= logView.getBottom() - dp(24);
     }
 
     void writeFile(String line) {
@@ -905,6 +926,20 @@ public class Main extends Activity implements PayloadSink {
         } catch (Throwable ignored) {
         }
         return null;
+    }
+
+    void copyLog() {
+        try {
+            ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+            if (cm == null) {
+                append("复制失败: 剪贴板不可用");
+                return;
+            }
+            cm.setPrimaryClip(ClipData.newPlainText("O3 Root log", logBuf.toString()));
+            Toast.makeText(this, "日志已复制", Toast.LENGTH_SHORT).show();
+        } catch (Throwable t) {
+            append("复制失败: " + t);
+        }
     }
 
     void exportLog() {

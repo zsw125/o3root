@@ -7,8 +7,10 @@
 
 ## 产物（v1.8，历史）
 
-> 当前发布件是 **v3.0**：`release/o3root2-v3.0.apk`（14,218,768 B，sha256
-> `c80f499a6b06ddf92241aa8cb0aa8874767eccdd960e631b28dcff98e7c141dd`）。下表的
+> 当前发布件是 **v3.2**：`release/o3root2-v3.2.apk`（14,239,248 B，sha256
+> `64bbc65420181babd69b826de7b86be99409963dd29253b72a2930d7a7ff6cfd`）；测试构建
+> `release/beta/o3root2-v3.2-beta1.apk`（14,243,344 B，sha256
+> `4f8845fc3b03836e78dc237924da5f77eebd10e2b23bdaf6b36a6b1f26994a05`）。下表的
 > 13,973,008 B/`0d7c5ea8…` 仅指 v1.8 的 APK，保留作历史记录。
 
 | 文件 | 大小 | sha256 |
@@ -637,3 +639,33 @@ after the first `D3ADDR`; it stays behind `O3P_D3V3` for analysis only.
   `UnsatisfiedLinkError ... librish.so not found`（从 `base.apk!/lib/arm64-v8a`）；
   手动以 `CLASSPATH=<apk>/lib/arm64:<apk>` + `LD_LIBRARY_PATH=<apk>/lib/arm64`
   启动 `app_process ... ShizukuService` 后恢复，adb 显示 `已连接 uid=2000 u:r:shell:s0`。
+
+
+## v3.2（2026-11-01）—— LogBox 可选中/复制 + 测试版隐藏 root 控制台
+
+- 正式版（versionCode 17 / versionName 3.2）：日志框 `setTextIsSelectable(true)`，
+  头部新增“复制”链接（`ClickCopyLog`；剪贴板不可用时提示手动拖选复制并给出原因）；
+  `scrollBottomNow()` 改为仅在距底部约一屏内自动滚动，用户往上翻时不再被拽回底部。
+- 测试版（`BETA=1`，versionCode 16 / versionName 3.2-beta1，发布为
+  `release/beta/o3root2-v3.2-beta1.apk`）：入口藏在版本行长按
+  （`ConsoleEntry` → 反射 `ConsoleGate.start`，正式版不链接该类）。三道不可跳过
+  确认：不可取消的风险对话框、“我已知悉”复选框、只有输入 `I ACCEPT ROOT RISK`
+  才启用按钮；最后传入一次性 token，`ConsoleActivity` 无 token 直接结束。
+- 控制台命令经 `ConsoleTask` → `PayloadRunner.newProcess`（Shizuku shell，uid 2000）
+  执行 `o3p --shell <cmd>`，由本次 boot 已运行的 rootd（`@o3p_rootd`，接受
+  uid 0/2000）返回输出与 `__EXIT=n`，界面显示 `[exit n]`。没有新提权路径，只是
+  rootd 的瘦客户端；因此必须在本次 boot 先成功跑过一次载荷。
+- 控制台 UI 沿用日志风格：可选中输出、输入框、执行/复制全部/清空，关闭按钮 +
+  BACK 退出。
+- 真机（yingtian，2026-11-01）：正式版长按版本行无任何入口；beta 长按后连续通过
+  三道确认，控制台执行 `id` → `uid=0(root) ... context=u:r:shell:s0` + `[exit 0]`；
+  “复制全部”后用系统粘贴把输出贴回输入框，验证剪贴板内容正确。
+- 坑：默认讯飞拼音 IME 会吞 `adb shell input text` 注入的字母，测试前需
+  `ime set com.dsharnessmobile.shell/.AdbKeyboardService`，测完恢复
+  `ime set com.iflytek.inputmethod.miui/.FlyIME`；键盘弹出时确认框会上移，坐标需
+  重新 dump。
+- 构建/校验：`scripts/verify.sh` 新增 `VERIFY_BETA=1`（构建并检查两个变体）；
+  正式版构建排除 `ConsoleActivity.java`/`ConsoleGate.java` 并编译跟踪的
+  `BuildInfo.java`（`CONSOLE=false`），beta 生成 `build/gen/BuildInfo.java`
+  （`CONSOLE=true`）与 `build/AndroidManifest.xml`（versionCode 16 + 控制台
+  activity）。APK 重建哈希不可复现（重新打包时间戳 + 重签），发布件哈希是产物指纹。

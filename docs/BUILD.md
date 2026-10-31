@@ -71,13 +71,19 @@ bash payload/build-payload.sh
 
 `build-payload.sh` only needs `NDK_CC`. The KernelSU LKM is in
 `payload/lkm/lkm-aarch64-android17-6.18_kernelsu.ko`; the default output matches
-the reference build in `release/o3root2-v3.1.1.apk`
+the reference build in `release/o3root2-v3.2.apk`
 (`sha256 e479e539…` for `libo3p.so`).
 
 v3.1/v3.1.1 only add Java sources (`CustomKo`, `KoResult`, `KoChoice`,
 `KoReadTask`, `KoApplyTask`, `ClickPickKo`, `LongClearKo`) plus
 `ko_validate()`/`O3P_CUSTOM_KO` in the payload; the two build commands above
-are unchanged.
+are unchanged. v3.2 adds `BuildInfo` (version + console switch) and
+`ClickCopyLog`, and makes the LogBox selectable/copyable. The test variant is
+built with `BETA=1` (versionCode 16, versionName `3.2-beta1`, generated
+`build/gen/BuildInfo.java` and `build/AndroidManifest.xml` with a hidden
+`ConsoleActivity`); the stable build compiles the tracked `BuildInfo.java`
+(`CONSOLE=false`, `3.2`) and excludes `ConsoleActivity.java`/`ConsoleGate.java`.
+`VERIFY_BETA=1 bash scripts/verify.sh` builds and checks both variants.
 
 You can run the payload directly on the device (root/shell):
 
@@ -152,10 +158,10 @@ The app's LogBox shows every payload stage; use **Export log** to write
 
 ## Reproducibility
 
-Reference build (v3.1.1, release/o3root2-v3.1.1.apk):
+Reference build (v3.2, release/o3root2-v3.2.apk):
 
 - APK `14,239,248` bytes
-- `sha256 a013cbffbe43036e4b7ba3a55554332ab02d23e444103bd043d9e9ef4b9289d0`
+- `sha256 64bbc65420181babd69b826de7b86be99409963dd29253b72a2930d7a7ff6cfd`
 - payload `libo3p.so` `1,496,044` bytes (with the stock LKM),
   `sha256 e479e539bf812f7fe0dc18734ec6f47727fc6f650b4a8d9fd45751a9c6500a2b`
 

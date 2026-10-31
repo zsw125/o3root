@@ -33,7 +33,8 @@ rebuilds the payload/APK when the toolchain environment is set.
 
 | | |
 |---|---|
-| release | **v3.1.1** (`release/o3root2-v3.1.1.apk`, sha256 `a013cbff…`) |
+| release | **v3.2** (`release/o3root2-v3.2.apk`, 14,239,248 B, sha256 `64bbc654…`) |
+| test build | **v3.2-beta1** (`release/beta/o3root2-v3.2-beta1.apk`, 14,243,344 B, sha256 `4f8845fc…`): stable v3.2 plus a hidden root console (long-press the version row; three confirmations) |
 | custom LKM | optional user-supplied KernelSU-family .ko (basic compatibility check; falls back to the built-in adaptive module; the choice is saved and restored on launch — long-press the row to clear) |
 | chain | Shizuku shell → CVE-2026-98260 → `uid=0` + full caps → matching KernelSU LKM (KernelSU / KernelSU-Next / SukiSU) → rootd |
 | persistence | none (current boot only) |
@@ -65,7 +66,13 @@ rebuilds the payload/APK when the toolchain environment is set.
    LKM when it is rejected or fails to load). Since v3.1.1 that selection is
    persisted (`files/custom-ko.ko` + `custom-ko.meta`) and restored on launch;
    a stale file that no longer validates is dropped, and a long press on the
-   module row clears it.
+   module row clears it. Since v3.2 the log box is selectable and has a
+   **复制** action that copies the whole log; it only auto-scrolls while you
+   are already near the bottom. The test build additionally hides a root
+   console behind a long press of the version row: three non-skippable
+   confirmations, then commands run as root through the `rootd` socket
+   (requires one payload run in the current boot). The stable build does not
+   contain the console classes.
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for offsets, the write
 primitive, the KernelSU patch and the porting guide.
@@ -75,7 +82,7 @@ primitive, the KernelSU patch and the porting guide.
 1. On the device: enable Developer options → Wireless debugging (or ADB).
    Install **Shizuku** / ShizukuX and start it in **shell mode**:
    `shizuku_plus_server` must run as `uid=2000`, `u:r:shell:s0`.
-2. Install `release/o3root2-v3.1.1.apk` (MIUI may need "Install via USB" allowed).
+2. Install `release/o3root2-v3.2.apk` (MIUI may need "Install via USB" allowed).
 3. Open **O3 Root**, grant the Shizuku permission, press
    **Continue to UID 0**. The log shows `★ UIDNOW uid=0`,
    `★ KSU_MODULE LIVE`, and the KernelSU manager opens automatically.

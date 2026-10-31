@@ -134,7 +134,7 @@ public class PayloadRunner implements Runnable {
         }
     }
 
-    private static Process newProcess(String[] cmd, String[] env, String dir) throws Exception {
+    public static Process newProcess(String[] cmd, String[] env, String dir) throws Exception {
         Method m = Shizuku.class.getDeclaredMethod("newProcess",
                 String[].class, String[].class, String.class);
         m.setAccessible(true);

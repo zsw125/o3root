@@ -173,6 +173,23 @@ v3.1.1 起选择会持久化：`Main` 把字节写到 `<files>/custom-ko.ko`，�
 模块名必须是 `kernelsu`（三个 fork 都用这个名字）。该检查只针对兼容性，不是
 安全边界——见 `docs/SECURITY.md`。
 
+### v3.2 —— 日志框与测试版 root 控制台
+
+`Main` 调用 `logView.setTextIsSelectable(true)`，并加了一个 复制 链接
+（`ClickCopyLog`），把积累的日志整体复制到剪贴板；`scrollBottomNow()` 只在读者
+距底部约一屏以内时自动滚动，因此不会打断阅读旧输出。
+
+测试版（`BETA=1`）会编译一个终端界面，入口藏在版本行的长按里
+（`ConsoleEntry` 经反射调用 `ConsoleGate.start`，正式版不会链接门禁类）。
+`ConsoleGate` 依次弹出三个不可跳过的确认框——不可取消的风险框、复选框确认框、
+以及只有输入恰好为 `I ACCEPT ROOT RISK` 才启用按钮的确认框——然后把一次性
+token 放进 intent；`ConsoleActivity` 没有 token 会立刻结束。`ConsoleTask` 通过
+`PayloadRunner.newProcess`（Shizuku shell，uid 2000）执行
+`o3p --shell <cmd>`，它连到 `@o3p_rootd`（接受 uid 0/2000），返回 shell 输出加
+`__EXIT=<n>`；Activity 去掉标记并显示 `[exit n]`。因此控制台依赖同一 boot 内
+已经成功跑过载荷，本身不新开提权路径——只是 rootd 的瘦客户端。正式版不含控制台
+类，manifest 里也没有 `ConsoleActivity`。
+
 ## rootd
 
 成功后载荷 fork 一个脱离的守护进程（`o3p --rootd`），并在本次 boot 的剩余时间里
