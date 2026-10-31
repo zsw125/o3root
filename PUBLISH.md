@@ -6,8 +6,9 @@ secrets or device identifiers — the script scans both text and binaries.
 
 ## Current publication state (2026-11-01)
 
-- `main` head: the v3.1.1 release commit (`git log -1`); tag `v3.1.1` → that
-  commit. The earlier `v3.1` tag stays on its own commit (`db24088`).
+- `main` head: a docs-only commit on top of the v3.1.1 release commit
+  (`93618ac`); tag `v3.1.1` → `93618ac`. The earlier `v3.1` tag stays on its
+  own commit (`db24088`).
 - Releases (both created 2026-11-01): `v3.1`
   (<https://github.com/zsw125/o3root/releases/tag/v3.1>, notes only — the APK
   stays in git history at tag `v3.1`) and `v3.1.1`, marked **Latest**
