@@ -8,12 +8,13 @@ secrets or device identifiers — the script scans both text and binaries.
 
 - `main` head: the v3.1.1 release commit (`git log -1`); tag `v3.1.1` → that
   commit. The earlier `v3.1` tag stays on its own commit (`db24088`).
-- Releases: <https://github.com/zsw125/o3root/releases/tag/v3.1>
-  (pushed 2026-11-01; its APK is only in git history) and
-  <https://github.com/zsw125/o3root/releases/tag/v3.1.1> with
+- Releases (both created 2026-11-01): `v3.1`
+  (<https://github.com/zsw125/o3root/releases/tag/v3.1>, notes only — the APK
+  stays in git history at tag `v3.1`) and `v3.1.1`, marked **Latest**
+  (<https://github.com/zsw125/o3root/releases/tag/v3.1.1>), with
   `o3root2-v3.1.1.apk` (14,239,248 B, sha256 `a013cbff…`) and `SHA256SUMS.txt`.
-- v3.0 remains published as history; its APK is in git history
-  (`git show v3.0:release/o3root2-v3.0.apk`), not in the tree.
+- v3.0 remains published as history, with its APK attached to the release and
+  in git history (`git show v3.0:release/o3root2-v3.0.apk`), not in the tree.
 - `scripts/verify.sh` is green locally for the v3.1.1 tree.
 
 ## 1. Create an empty repository
@@ -43,10 +44,17 @@ git tag -a v3.1.1 -m "v3.1.1: persist the user-selected .ko across app restarts"
 git push origin v3.1.1
 ```
 
-Then create the release in the web UI (or `gh release create v3.1.1 ...`) and
-attach `release/o3root2-v3.1.1.apk`. Keeping the committed copy makes
-`scripts/verify.sh` reproducible; if you prefer Releases-only, delete the
-`release/*.apk` files from git and relax that check first.
+Then create the release in the web UI, or with `gh` (files are positional):
+
+```bash
+gh release create v3.1.1 --title "v3.1.1" --notes-file notes.md \
+  --verify-tag --latest release/o3root2-v3.1.1.apk release/SHA256SUMS.txt
+```
+
+Keeping the committed copy makes `scripts/verify.sh` reproducible; if you
+prefer Releases-only, delete the `release/*.apk` files from git and relax that
+check first. Older releases: `v3.0` and `v2.1` have their APKs attached; `v3.1`
+has notes only (its APK remains in git history at the tag).
 
 ## 3. Repository settings
 
