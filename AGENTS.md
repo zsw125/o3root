@@ -10,8 +10,8 @@ and leaves a root daemon for the current boot. Read this file first, then
 
 ## State
 
-- Release **v3.1**, `release/o3root2-v3.1.apk`
-  (`14,235,152 B`, `sha256 6d9041a97bb1ea6811b6cc512f3d98bb0504be2b8db1e375b73f56e9879e4d73`).
+- Release **v3.1.1**, `release/o3root2-v3.1.1.apk`
+  (`14,239,248 B`, `sha256 a013cbffbe43036e4b7ba3a55554332ab02d23e444103bd043d9e9ef4b9289d0`).
   v2.0 added the multi-LKM blob (KernelSU / KernelSU-Next / SukiSU) with
   manager-based selection; v2.1 makes the probe permission-aware (local manager
   detection, probe-then-payload after granting, unique payload path); v3.0
@@ -22,7 +22,9 @@ and leaves a root daemon for the current boot. Read this file first, then
   `.modinfo` (AArch64 `ET_REL`, `name=kernelsu`, same 6.18 series) before the
   run, warns and offers a fallback to the adaptive built-in LKM, and the payload
   re-validates and automatically falls back when the file is unreadable or the
-  load fails. The three built-in LKMs are unchanged (all were the latest
+  load fails. v3.1.1 persists that choice in the app files dir (`custom-ko.ko` +
+  `custom-ko.meta`), restores it on launch, drops a stale file that no longer
+  validates, and clears it on a long press of the module row. The three built-in LKMs are unchanged (all were the latest
   upstream on 2026-10-29 except SukiSU, which has v4.3.0 — see
   `python3 tools/check_lkm_updates.py`).
   v1.8 (relink-only) and v1.9 remain in the git history.
@@ -54,7 +56,7 @@ KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
 | `payload/o3p.c` | the exploit payload (C): UAF trigger, page reclaim, RB write primitive, two stages, KASLR slide, KernelSU runtime loader (kallsyms first, relink fallback), legacy init patch (`O3P_CODEPATCH=1`), rootd |
 | `payload/ksu/` | `ksu_symtab.h` (union of 248 KernelSU symbols from upstream forks), `mksymtab.py` (regen single-LKM table), `relink_ksu.py` (offline relinker reference) |
 | `payload/lkm/` | official `android17-6.18` LKMs (GPL-3.0, unmodified): KernelSU v3.3.1, KernelSU-Next v3.4.2, SukiSU-Ultra v4.2.1-r2 |
-| `app/src/o3/st/root1/` | Java: `Main` (UI/state machine), `PayloadRunner` (also stages a custom `.ko`), `CustomKo`+`KoResult` (ELF/.modinfo validation), `StateProbe`, `RecoverRunner` (legacy guard; disabled in v3), `ManagerInstaller`, listeners |
+| `app/src/o3/st/root1/` | Java: `Main` (UI/state machine), `PayloadRunner` (also stages a custom `.ko`), `CustomKo`+`KoResult` (ELF/.modinfo validation), `LongClearKo` (long-press clear), `StateProbe`, `RecoverRunner` (legacy guard; disabled in v3), `ManagerInstaller`, listeners |
 | `app/build.sh`, `payload/build-payload.sh`, `scripts/*` | build entry points |
 | `docs/` | ARCHITECTURE (design + porting), SECURITY (risks/cleanup), BUILD, APP_O3_ROOT (dev log), OTA/kernel report, CVE feasibility, evidence PNGs |
 | `tools/` | OTA extraction / boot image unpack / BTF+disasm checks / `check_lkm_updates.py` |
@@ -117,7 +119,13 @@ KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
 
 Verified on hardware (v3.0): full cold-boot chain (`uid=0` + full caps),
 KernelSU `Live` with **no init patch**, manager auto-open, Enforcing end state
-with healthy network (`ping`/`nc`) and unchanged `boot_id`. v1.8–v2.1 had
+with healthy network (`ping`/`nc`) and unchanged `boot_id`. v3.1 and v3.1.1 were re-verified on the same device on
+2026-11-01: adaptive cold boot (`KSU_BLOB v2 tag=3 matched=1`,
+`KSU_MODULE LIVE`), custom tiann v3.3.1 picker (warning accepted, persisted
+across force-stop/restart), forced 6.6.000-vermagic module (`CUSTOM_KO force
+reason=kernel_series_mismatch` -> relink -> `KSU_MODULE LIVE`), and long-press
+clear. The automatic fallback branch was not exercised on hardware (the forced
+module still loaded) and remains desktop-tested. v1.8–v2.1 had
 additionally verified the old guard/recovery UI and network health while
 Permissive (both removed in v3.0). The v2.0 release APK was cold-boot tested; v2.1 was cold-boot tested with a revoked Shizuku permission (grant → probe → automatic payload)
 end-to-end on three images (only the tiann manager, only KernelSU-Next, only
@@ -157,7 +165,7 @@ Negative results — don't repeat without a new idea (details in
 
 1. Shizuku running in shell mode: `ps -A -o UID,LABEL,ARGS | grep shizuku_plus_server`
    → `2000 u:r:shell:s0`.
-2. Install: `adb install -r release/o3root2-v3.1.apk`; if MIUI says
+2. Install: `adb install -r release/o3root2-v3.1.1.apk`; if MIUI says
    `INSTALL_FAILED_USER_RESTRICTED`, allow install-via-USB or, with root,
    `pm install -r -d`.
 3. Open the app, grant Shizuku permission, press Continue; wait 20–120 s.

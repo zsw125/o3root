@@ -69,7 +69,7 @@ bash payload/build-payload.sh
 
 `build-payload.sh` 只需要 `NDK_CC`。KernelSU LKM 位于
 `payload/lkm/lkm-aarch64-android17-6.18_kernelsu.ko`；默认输出与
-`release/o3root2-v3.1.apk` 里的参考构建一致（`libo3p.so` 的
+`release/o3root2-v3.1.1.apk` 里的参考构建一致（`libo3p.so` 的
 `sha256 e479e539…`）。
 
 你也可以直接在设备上（root/shell）运行载荷：
@@ -140,13 +140,17 @@ App 的 LogBox 会显示载荷每个阶段；用 **导出日志** 写到
 
 ## 可复现性
 
-参考构建（v3.0，release/o3root2-v3.1.apk）：
+参考构建（v3.1.1，release/o3root2-v3.1.1.apk）：
 
-- APK `14,235,152` 字节
-- `sha256 6d9041a97bb1ea6811b6cc512f3d98bb0504be2b8db1e375b73f56e9879e4d73`
+- APK `14,239,248` 字节
+- `sha256 a013cbffbe43036e4b7ba3a55554332ab02d23e444103bd043d9e9ef4b9289d0`
 - payload `libo3p.so` `1,496,044` 字节（配官方 LKM），
   `sha256 e479e539bf812f7fe0dc18734ec6f47727fc6f650b4a8d9fd45751a9c6500a2b`
 
-v3.1 只新增 Java 源文件（`CustomKo`、`KoResult`、`KoChoice`、`KoReadTask`、
-`KoApplyTask`、`ClickPickKo`）与载荷里的 `ko_validate()`/`O3P_CUSTOM_KO`；上面两条
-构建命令不变。
+上面的 APK 哈希是提交进仓库产物的指纹。`app/build.sh` 每次会重新打包（新时间戳）
+并重新签名，所以用相同源码重建会得到不同的 APK 哈希，但 dex、资源与 `libo3p.so`
+不变；核对重建时应比较这些内容。
+
+v3.1/v3.1.1 只新增 Java 源文件（`CustomKo`、`KoResult`、`KoChoice`、`KoReadTask`、
+`KoApplyTask`、`ClickPickKo`、`LongClearKo`）与载荷里的
+`ko_validate()`/`O3P_CUSTOM_KO`；上面两条构建命令不变。

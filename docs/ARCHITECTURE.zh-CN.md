@@ -165,6 +165,11 @@ KernelSU 用运行时 kallsyms 加载器、**不打 init 补丁**。`policycap` 
    relink/`insmod` 流程。文件不可读、被拒绝或模块没有出现在 `/proc/modules`
    时，打印 `CUSTOM_KO fallback` 并改为加载内置自适应 LKM。
 
+v3.1.1 起选择会持久化：`Main` 把字节写到 `<files>/custom-ko.ko`，另写两行的
+`<files>/custom-ko.meta`（强制标志 + 显示名），`onCreate` 时恢复；不再通过校验且
+未强制的文件会被删除，长按模块行（`LongClearKo`）清除这两个文件。留在选择里的
+`.ko` 下次运行仍会被执行。
+
 模块名必须是 `kernelsu`（三个 fork 都用这个名字）。该检查只针对兼容性，不是
 安全边界——见 `docs/SECURITY.md`。
 

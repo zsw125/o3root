@@ -6,14 +6,15 @@ secrets or device identifiers — the script scans both text and binaries.
 
 ## Current publication state (2026-11-01)
 
-- `main` head: the v3.1 release commit (`git log -1`); tag `v3.1` → that commit.
-- Release: <https://github.com/zsw125/o3root/releases/tag/v3.1> with
-  `o3root2-v3.1.apk` (14,235,152 B, sha256 `6d9041a9…`) and `SHA256SUMS.txt`.
-- v3.0 remains the last release published on GitHub; its APK is in git history
+- `main` head: the v3.1.1 release commit (`git log -1`); tag `v3.1.1` → that
+  commit. The earlier `v3.1` tag stays on its own commit (`db24088`).
+- Releases: <https://github.com/zsw125/o3root/releases/tag/v3.1>
+  (pushed 2026-11-01; its APK is only in git history) and
+  <https://github.com/zsw125/o3root/releases/tag/v3.1.1> with
+  `o3root2-v3.1.1.apk` (14,239,248 B, sha256 `a013cbff…`) and `SHA256SUMS.txt`.
+- v3.0 remains published as history; its APK is in git history
   (`git show v3.0:release/o3root2-v3.0.apk`), not in the tree.
-- The tag and release above still have to be pushed/created: GitHub was
-  unreachable from the build host (`Connection was reset`); `scripts/verify.sh`
-  is green locally.
+- `scripts/verify.sh` is green locally for the v3.1.1 tree.
 
 ## 1. Create an empty repository
 
@@ -34,16 +35,16 @@ git push https://<user>:<token>@github.com/<user>/o3root.git main
 
 ## 2. Publish the release
 
-The built APK is committed at `release/o3root2-v3.1.apk` next to
+The built APK is committed at `release/o3root2-v3.1.1.apk` next to
 `release/SHA256SUMS.txt`. Also attach it to a GitHub Release:
 
 ```bash
-git tag -a v3.1 -m "v3.1: user-selected .ko with compatibility check + adaptive fallback"
-git push origin v3.1
+git tag -a v3.1.1 -m "v3.1.1: persist the user-selected .ko across app restarts"
+git push origin v3.1.1
 ```
 
-Then create the release in the web UI (or `gh release create v3.1 ...`) and
-attach `release/o3root2-v3.1.apk`. Keeping the committed copy makes
+Then create the release in the web UI (or `gh release create v3.1.1 ...`) and
+attach `release/o3root2-v3.1.1.apk`. Keeping the committed copy makes
 `scripts/verify.sh` reproducible; if you prefer Releases-only, delete the
 `release/*.apk` files from git and relax that check first.
 
@@ -75,8 +76,8 @@ Use it only on devices you own. The CVE is public; the README and
 
 1. 在 GitHub 建**空**仓库 `o3root`（不要初始化 README）。
 2. `git remote add origin <url>` → `git push -u origin main`。
-3. `git tag v3.1 && git push origin v3.1`，在 Releases 上传
-   `release/o3root2-v3.1.apk` 与 `SHA256SUMS.txt`。
+3. `git tag v3.1.1 && git push origin v3.1.1`，在 Releases 上传
+   `release/o3root2-v3.1.1.apk` 与 `SHA256SUMS.txt`。
 4. 许可证：本项目 MIT；内置 LKM/管理器为 GPL-3.0（`NOTICE.md` 已列上游源码
    链接）；Shizuku 库 Apache-2.0。不要删除这些声明。
 5. 仅供自有设备的安全研究；仓库已通过 `scripts/verify.sh` 的脱敏检查。

@@ -26,9 +26,13 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 
 import rikka.shizuku.Shizuku;
@@ -81,6 +85,8 @@ public class Main extends Activity implements PayloadSink {
             "需要 Shizuku 以 shell 模式运行（无线调试启动，无需电脑）";
 
     private static final int REQ_KO = 1002;
+    static final String KO_FILE = "custom-ko.ko";
+    static final String KO_META = "custom-ko.meta";
 
     private static Main INSTANCE;
 
@@ -96,8 +102,9 @@ public class Main extends Activity implements PayloadSink {
         lastNight = isNight();
         setContentView(buildUi());
         applyWindowTheme();
-        append("O3 Root v3.1 · CVE-2026-98260");
+        append("O3 Root v3.1.1 · CVE-2026-98260");
         append("payload=" + payloadPath);
+        restoreCustomKo();
         checkFirmware();
         Shizuku.addBinderReceivedListenerSticky(new BindListener(this));
         Shizuku.addBinderDeadListener(new BindListener(this));
@@ -240,7 +247,7 @@ public class Main extends Activity implements PayloadSink {
         titleView = title;
         root.addView(title);
 
-        TextView sub = text("v3.1 · CVE-2026-98260 · OS4", 12, MUTED, false);
+        TextView sub = text("v3.1.1 · CVE-2026-98260 · OS4", 12, MUTED, false);
         subView = sub;
         sub.setPadding(0, dp(4), 0, 0);
         root.addView(sub);
@@ -296,6 +303,7 @@ public class Main extends Activity implements PayloadSink {
         TextView koPick = text("选择 .ko", 11, ACCENT, false);
         koPick.setOnClickListener(new ClickPickKo(this));
         koRow.addView(koPick);
+        koRow.setOnLongClickListener(new LongClearKo(this));
         root.addView(koRow);
 
         TextView lt = text("LogBox", 11, MUTED, false);
@@ -1088,10 +1096,10 @@ public class Main extends Activity implements PayloadSink {
         customKoLabel = label;
         customKoCheck = r;
         customKoForced = forced;
-        customKoExtPath = writeExtKo(data);
+        customKoExtPath = persistKo(data, label, forced);
         updateKoView();
         append("custom ko: 已采用 " + label + (forced ? "（未通过验证，强制使用）" : "")
-                + "；加载失败时载荷会自动退回内置模块");
+                + "；加载失败时载荷会自动退回内置模块；下次启动自动沿用");
     }
 
     void clearCustomKo(String why) {
@@ -1100,25 +1108,138 @@ public class Main extends Activity implements PayloadSink {
         customKoCheck = null;
         customKoForced = false;
         customKoExtPath = null;
+        deleteKoFiles();
         updateKoView();
         append("custom ko: " + why);
     }
 
-    private String writeExtKo(byte[] data) {
+    void clearKoFromLongPress() {
+        if (customKoBytes == null) {
+            append("custom ko: 当前为自适应模式，无需清除");
+            return;
+        }
+        clearCustomKo("已清除自定义模块，恢复自适应（内置模块）");
         try {
-            File dir = getExternalFilesDir(null);
-            if (dir == null) {
+            Toast.makeText(this, "已恢复自适应（内置模块）", Toast.LENGTH_SHORT).show();
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private File koDir() {
+        return getExternalFilesDir(null);
+    }
+
+    private File koFile() {
+        File d = koDir();
+        return d == null ? null : new File(d, KO_FILE);
+    }
+
+    private File koMeta() {
+        File d = koDir();
+        return d == null ? null : new File(d, KO_META);
+    }
+
+    private void deleteKoFiles() {
+        try {
+            File f = koFile();
+            if (f != null && f.exists()) {
+                f.delete();
+            }
+            File m = koMeta();
+            if (m != null && m.exists()) {
+                m.delete();
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private String persistKo(byte[] data, String label, boolean forced) {
+        try {
+            File f = koFile();
+            File m = koMeta();
+            if (f == null || m == null) {
                 return null;
             }
-            File f = new File(dir, "custom-ko.ko");
             FileOutputStream out = new FileOutputStream(f);
             out.write(data);
             out.close();
+            OutputStreamWriter w = new OutputStreamWriter(new FileOutputStream(m), "UTF-8");
+            w.write((forced ? "1" : "0") + "\n"
+                    + (label == null || label.length() == 0 ? "custom.ko" : label) + "\n");
+            w.close();
             return f.getAbsolutePath();
         } catch (Throwable t) {
             append("custom ko: 外部暂存失败 " + t);
             return null;
         }
+    }
+
+    void restoreCustomKo() {
+        File f = koFile();
+        if (f == null || !f.exists()) {
+            return;
+        }
+        boolean forced = false;
+        String label = "custom.ko";
+        try {
+            File m = koMeta();
+            if (m != null && m.exists()) {
+                BufferedReader r = new BufferedReader(
+                        new InputStreamReader(new FileInputStream(m), "UTF-8"));
+                String l1 = r.readLine();
+                String l2 = r.readLine();
+                r.close();
+                forced = "1".equals(l1 == null ? "" : l1.trim());
+                if (l2 != null && l2.trim().length() > 0) {
+                    label = l2.trim();
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        long len = f.length();
+        if (len <= 0 || len > CustomKo.MAX_BYTES) {
+            deleteKoFiles();
+            append("custom ko: 上次选择的文件已失效，已清除");
+            return;
+        }
+        byte[] data = null;
+        try {
+            FileInputStream in = new FileInputStream(f);
+            data = new byte[(int) len];
+            int off = 0;
+            while (off < data.length) {
+                int n = in.read(data, off, data.length - off);
+                if (n <= 0) {
+                    break;
+                }
+                off += n;
+            }
+            in.close();
+            if (off != data.length) {
+                data = null;
+            }
+        } catch (Throwable t) {
+            data = null;
+        }
+        if (data == null) {
+            deleteKoFiles();
+            append("custom ko: 上次选择的文件读取失败，已清除");
+            return;
+        }
+        KoResult r = CustomKo.validate(data, System.getProperty("os.version", ""));
+        if (r.level == CustomKo.FAIL && !forced) {
+            deleteKoFiles();
+            append("custom ko: 上次选择的文件未通过验证（" + r.reason + "），已清除");
+            return;
+        }
+        customKoBytes = data;
+        customKoLabel = label;
+        customKoCheck = r;
+        customKoForced = forced;
+        customKoExtPath = f.getAbsolutePath();
+        updateKoView();
+        append("custom ko: 已恢复上次选择 " + label
+                + (forced ? "（强制）" : "") + " name=" + r.name);
     }
 
     void updateKoView() {

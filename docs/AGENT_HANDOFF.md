@@ -11,7 +11,7 @@ work with rough effort estimates.
 
 | item | value |
 |---|---|
-| release | v3.1, `release/o3root2-v3.1.apk` (14,235,152 B, sha256 `6d9041a9…`) |
+| release | v3.1.1, `release/o3root2-v3.1.1.apk` (14,239,248 B, sha256 `a013cbff…`) |
 | verified device | Xiaomi Pad 9 Pro Max `yingtian`, HyperOS `OS4.0.16.0.XBMCNXM`, kernel `6.18.21-android17-5-g805aa6adea19-abogki565292102-4k` |
 | second target | `lhasa` (Xiaomi 18 Fold) `OS4.0.26.0.XPNCNXM` — same kernel sha256 `cde87cd7…` (boot header/ramdisk differ); **not device-tested** |
 | persistence | none (current boot only) |
@@ -285,10 +285,38 @@ The payload can be tested standalone (root or shell): push `libo3p.so` as
   without a device run the SukiSU path would lose its verified status. To try
   v4.3.0, use the new custom-.ko path (same `android17-6.18` build/vermagic as
   the bundled module).
-- Release: `release/o3root2-v3.1.apk` (14,235,152 B, sha256 `6d9041a9…`);
-  payload `libo3p.so` 1,496,044 B sha256 `e479e539…`; versionCode 14 /
-  versionName 3.1.
-- Not verified on hardware yet (no device attached at build time): the picker
-  flow, staging paths and fallback branches are compiled and desktop-tested
-  only (`CustomKo` against the three bundled LKMs, a copy with a 6.18.21
-  vermagic, plus wrong-arch / wrong-type / truncated / non-ELF files).
+- Release: `release/o3root2-v3.1.apk` (14,235,152 B, sha256 `6d9041a9…`;
+  superseded the same day by v3.1.1); payload `libo3p.so` 1,496,044 B sha256
+  `e479e539…`; versionCode 14 / versionName 3.1.
+- Verified on hardware (2026-11-01, yingtian): adaptive cold boot loads the
+  embedded SukiSU blob (`KSU_BLOB v2 tag=3 matched=1`, `KSU_MODULE LIVE`) and
+  opens the manager; picking a tiann v3.3.1 `.ko` (same 6.18 series, different
+  build) warns, persists and survives force-stop/restart; a patched
+  6.6.000-vermagic copy triggers the validation dialog and, after the force
+  button, logs `CUSTOM_KO force reason=kernel_series_mismatch`, relinks the
+  module and reaches `KSU_MODULE LIVE`. The automatic fallback branch was not
+  exercised on hardware because the forced module still loaded; it remains
+  desktop-tested (`CustomKo` against the three bundled LKMs, a 6.18.21
+  vermagic copy, wrong-arch / wrong-type / truncated / non-ELF files).
+
+## v3.1.1 — persist the custom .ko choice (2026-11-01)
+
+- `Main` saves the selected module as `<files>/custom-ko.ko` plus
+  `<files>/custom-ko.meta` (`forced` flag + display name) and restores it in
+  `onCreate`; a file that no longer validates (and was not forced) is deleted
+  with a log line, and a forced selection is restored as such.
+- Long-pressing the module row (`LongClearKo`, a top-level class because `d8`
+  rejects anonymous/inner classes) clears the choice and deletes both files.
+- versionCode 15 / versionName 3.1.1; payload unchanged (`libo3p.so` sha256
+  `e479e539…`). APK `release/o3root2-v3.1.1.apk`, 14,239,248 B, sha256
+  `a013cbff…`. Built-in LKM decision unchanged (SukiSU v4.3.0 not swapped).
+- Hardware-verified: stale-file cleanup on first launch, warning accepted and
+  restored after force-stop, long-press clear, forced selection surviving a
+  reboot, and a clean-boot adaptive run (`KSU_BLOB v2 tag=3 matched=1`,
+  `KSU_MODULE LIVE`, manager opened, Enforcing).
+- Device-side note: after that reboot the Shizuku server had to be started by
+  hand (the bundled starter fails with `librish.so` not found from
+  `base.apk!/lib/arm64-v8a`); the working command sets
+  `CLASSPATH=<apk>/lib/arm64:<apk>` and `LD_LIBRARY_PATH=<apk>/lib/arm64`
+  before `app_process ... rikka.shizuku.server.ShizukuService`. This is a
+  device workaround, not an app change.

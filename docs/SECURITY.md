@@ -2,7 +2,7 @@
 
 > Chinese translation: [`SECURITY.zh-CN.md`](SECURITY.zh-CN.md) — a translation of this file; if the two disagree, this English file is authoritative.
 
-**Scope:** v3.1 (2026-11-01); legacy v1.7–v2.1 behaviour is called out explicitly.
+**Scope:** v3.1.1 (2026-11-01); legacy v1.7–v2.1 behaviour is called out explicitly.
 
 ## Read this first
 
@@ -32,6 +32,11 @@ the kernel**, so treat it as code, not data:
 - When the custom module is rejected, unreadable or fails to load, the payload
   automatically falls back to the adaptive built-in LKM; the app also offers
   the fallback before the run.
+- Since v3.1.1 the selected module is persisted in the app-specific files
+  directory (`custom-ko.ko` + `custom-ko.meta`，external storage under
+  `Android/data/o3.st.root1/files`) and restored on the next
+  launch, so a module you once selected is executed again — clear the row
+  (long press) after trying an untrusted build.
 
 ## Threat model
 

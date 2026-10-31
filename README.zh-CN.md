@@ -31,8 +31,8 @@ Max）与 **lhasa**（Xiaomi 18 Fold）系列，做本地提权 + KernelSU。整
 
 | | |
 |---|---|
-| 发布 | **v3.1**（`release/o3root2-v3.1.apk`，sha256 `6d9041a9…`） |
-| 自定义 LKM | 可选：任意 KernelSU 系列 .ko（基础兼容性检查；未通过可退回自适应内置模块） |
+| 发布 | **v3.1.1**（`release/o3root2-v3.1.1.apk`，sha256 `a013cbff…`） |
+| 自定义 LKM | 可选：任意 KernelSU 系列 .ko（基础兼容性检查；未通过可退回自适应内置模块；选择会保存并在下次启动恢复，长按该行可清除） |
 | 链路 | Shizuku shell → CVE-2026-98260 → `uid=0` + full caps → 对应 KernelSU LKM（KernelSU / KernelSU-Next / SukiSU）→ rootd |
 | 持久化 | 无（仅当前 boot） |
 | 已验证设备 | 小米 Pad 9 Pro Max `yingtian`，HyperOS `OS4.0.16.0.XBMCNXM` |
@@ -56,7 +56,9 @@ Max）与 **lhasa**（Xiaomi 18 Fold）系列，做本地提权 + KernelSU。整
    然后 `insmod` 并留下一个 `rootd` 守护进程（抽象 socket `@o3p_rootd`，
    peer-uid 0/2000）。上游 KernelSU、KernelSU-Next、SukiSU 三种 LKM 都可加载
    （旧行为：`O3P_CODEPATCH=1` 才会去改 `setenforce` 立即数）。v3.1 起也可以在 App
-   里自选 `.ko`（基础 ELF/.modinfo 兼容性检查；被拒绝或加载失败时自动退回内置 LKM）。
+   里自选 `.ko`（基础 ELF/.modinfo 兼容性检查；被拒绝或加载失败时自动退回内置 LKM）。v3.1.1 起选择会持久化到
+   `files/custom-ko.ko` + `custom-ko.meta`，启动时恢复；失效文件会被丢弃，长按
+   模块行可清除。
 
 偏移、写原语、KernelSU 补丁与移植指南见
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)（中文版
@@ -67,7 +69,7 @@ Max）与 **lhasa**（Xiaomi 18 Fold）系列，做本地提权 + KernelSU。整
 1. 设备上：开启开发者选项 → 无线调试（或 ADB）。安装 **Shizuku** / ShizukuX，
    并以 **shell 模式** 启动：`shizuku_plus_server` 必须是 `uid=2000`、
    `u:r:shell:s0`。
-2. 安装 `release/o3root2-v3.1.apk`（MIUI 可能需要允许“USB 安装”）。
+2. 安装 `release/o3root2-v3.1.1.apk`（MIUI 可能需要允许“USB 安装”）。
 3. 打开 **O3 Root**，授予 Shizuku 权限，点 **Continue to UID 0**。日志会显示
    `★ UIDNOW uid=0`、`★ KSU_MODULE LIVE`，随后 KernelSU 管理器自动打开。
 

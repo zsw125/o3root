@@ -608,7 +608,32 @@ after the first `D3ADDR`; it stays behind `O3P_D3V3` for analysis only.
   （`0faa3268…`），上游已有 v4.3.0（`df3b52b2…`，612,448 B）。未替换：无真机
   验证，保留已验证状态；用户可用新功能自选 4.3.0 试。
 - 构建：payload 77,328 B；libo3p.so 1,496,044 B sha256 `e479e539…`；APK
-  14,235,152 B sha256 `6d9041a9…`；`bash scripts/verify.sh` 全绿。
-- 未真机验证：选择器流程与回退分支（构建时无设备）。桌面单测：三个内置 LKM →
-  WARN；把 vermagic 改成 6.18.21 的副本 → OK；错架构/错类型/截断/非 ELF →
-  FAIL；缺 vermagic → WARN；`name=Kernelsu` → FAIL。
+  14,239,248 B sha256 `a013cbff…`；`bash scripts/verify.sh` 全绿。
+- 桌面单测：三个内置 LKM → WARN；把 vermagic 改成 6.18.21 的副本 → OK；错架构/
+  错类型/截断/非 ELF → FAIL；缺 vermagic → WARN；`name=Kernelsu` → FAIL。
+
+## v3.1.1（2026-11-01）—— 持久化自定义 .ko + 真机验证
+
+- 缺陷：v3.1 的自定义 .ko 只存在内存里，进程死亡或重启后丢失。v3.1.1 在
+  `Main.onCreate` 增加 `restoreCustomKo()`，选择时 `persistKo()` 写
+  `<files>/custom-ko.ko` 与 `<files>/custom-ko.meta`（首行 forced 0/1，次行显示名）；
+  失效且未强制的文件自动删除。长按模块行（`LongClearKo`）清除并删文件。
+  versionCode 15 / versionName 3.1.1；载荷未变。
+- 真机（yingtian，2026-11-01）：v3.1 基线自适应成功（SukiSU v4.2.1-r2，越狱模式
+  工作中）；v3.1.1 安装后自动清掉 v3.1 遗留的 badseries 文件；选 o3-good.ko
+  （tiann v3.3.1，vermagic 6.18.32 vs 设备 6.18.21）→ WARN 接受，重启/force-stop
+  后恢复；选改过 vermagic 的 o3-badseries.ko（6.6.000）→ 弹窗，点“仍然尝试”→
+  状态“⚠ 未通过验证”，重启后仍保留 forced 位；长按清除成功。
+- 强制路径实测：冷启动后点 CONTINUE，日志
+  `· CUSTOM_KO force reason=kernel_series_mismatch name=kernelsu` →
+  `CUSTOM_KO ok ... vermagic=6.6.000-...` → `KSU_BLOB ... origin=custom` →
+  relink 后 `KSU_INSMOD_OUT:[rc=0]`、`★ KSU_MODULE LIVE`（载荷会重写 vermagic，
+  所以 6.6 系列模块在 6.18.21 上仍能 insmod）。随后 SukiSU 管理器显示“未安装/
+  点击安装”（因为加载的是 tiann 模块，管理器不认），说明自定义模块确实生效。
+- 自动回退（custom 失败 → 内置）仍未在真机触发：强制模块总能加载成功。该分支只有
+  桌面/代码测试。清除自定义模块后重新冷启动，自适应内置 SukiSU 路径复测通过
+  （`KSU_BLOB v2 tag=3 matched=1`、`KSU_MODULE LIVE`、管理器打开、Enforcing）。
+- 设备侧坑：重启后 ShizukuX 的 server 没起来，自带 starter 报
+  `UnsatisfiedLinkError ... librish.so not found`（从 `base.apk!/lib/arm64-v8a`）；
+  手动以 `CLASSPATH=<apk>/lib/arm64:<apk>` + `LD_LIBRARY_PATH=<apk>/lib/arm64`
+  启动 `app_process ... ShizukuService` 后恢复，adb 显示 `已连接 uid=2000 u:r:shell:s0`。

@@ -40,6 +40,7 @@ for f in \
   AGENTS.md AGENTS.zh-CN.md README.md README.zh-CN.md LICENSE NOTICE.md NOTICE.zh-CN.md \
   third_party/NOTICE.zh-CN.md \
   app/AndroidManifest.xml app/build.sh app/src/o3/st/root1/Main.java \
+  app/src/o3/st/root1/LongClearKo.java \
   payload/o3p.c payload/mk_payload.py payload/build-payload.sh \
   payload/ksu/ksu_symtab.h payload/ksu/mksymtab.py payload/ksu/relink_ksu.py \
   payload/lkm/lkm-aarch64-android17-6.18_kernelsu.ko \
@@ -124,7 +125,7 @@ if [ -n "${ANDROID_JAR:-}" ] && [ -n "${BUILD_TOOLS:-}" ] && [ -n "${SHIZUKU_JAR
     if [ -x "$BUILD_TOOLS/aapt2" ] || [ -x "$BUILD_TOOLS/aapt2.exe" ]; then
       AAPT2="$BUILD_TOOLS/aapt2"; [ -x "$AAPT2" ] || AAPT2="$BUILD_TOOLS/aapt2.exe"
       v=$("$AAPT2" dump badging app/o3root2.apk 2>/dev/null | grep -o "versionName='[^']*'" | head -1)
-      case "$v" in *"'3.1'"*) ok "APK rebuilt ($v)";; *) bad "APK version $v (expected 3.1)";; esac
+      case "$v" in *"'3.1.1'"*) ok "APK rebuilt ($v)";; *) bad "APK version $v (expected 3.1.1)";; esac
     else
       note "APK rebuilt (aapt2 not found to verify version)"
     fi

@@ -10,7 +10,7 @@
 
 | 项 | 值 |
 |---|---|
-| 发布 | v3.1，`release/o3root2-v3.1.apk`（14,235,152 B，sha256 `6d9041a9…`） |
+| 发布 | v3.1.1，`release/o3root2-v3.1.1.apk`（14,239,248 B，sha256 `a013cbff…`） |
 | 已验证设备 | 小米 Pad 9 Pro Max `yingtian`，HyperOS `OS4.0.16.0.XBMCNXM`，内核 `6.18.21-android17-5-g805aa6adea19-abogki565292102-4k` |
 | 第二目标 | `lhasa`（Xiaomi 18 Fold）`OS4.0.26.0.XPNCNXM` —— 同内核 sha256 `cde87cd7…`（boot header/ramdisk 不同）；**未实机测试** |
 | 持久化 | 无（仅当前 boot） |
@@ -260,8 +260,31 @@ adb shell 'tail -f /data/data/o3.st.root1/files/run.log'   # 仅 debuggable 构�
   v4.2.1-r2 新。**没有**替换内置文件：没有真机验证的话 SukiSU 路径会失去已验证
   状态。想试 v4.3.0 可以用新的自定义 .ko 通道（与内置同属
   `android17-6.18` 构建，vermagic 相同）。
-- 发布件：`release/o3root2-v3.1.apk`（14,235,152 B，sha256 `6d9041a9…`）；载荷
-  `libo3p.so` 1,496,044 B，sha256 `e479e539…`；versionCode 14 / versionName 3.1。
-- 尚未真机验证（构建时没有连接设备）：选择器流程、推送路径与回退分支只做了编译
-  与桌面测试（`CustomKo` 对三个内置 LKM、一个改成 6.18.21 vermagic 的副本，以及
-  错误架构/类型/截断/非 ELF 文件）。
+- 发布件：`release/o3root2-v3.1.apk`（14,235,152 B，sha256 `6d9041a9…`，同日被
+  v3.1.1 取代）；载荷 `libo3p.so` 1,496,044 B，sha256 `e479e539…`；versionCode 14 /
+  versionName 3.1。
+- 已真机验证（2026-11-01，yingtian）：自适应冷启动加载内置 SukiSU blob
+  （`KSU_BLOB v2 tag=3 matched=1`、`KSU_MODULE LIVE`）并打开管理器；自选 tiann
+  v3.3.1 `.ko`（同 6.18 系列、不同构建）给出警告、持久化且 force-stop 后仍恢复；
+  把 vermagic 改成 6.6.000 的副本触发校验弹窗，点“仍然尝试”后日志出现
+  `CUSTOM_KO force reason=kernel_series_mismatch`，relink 后仍到
+  `KSU_MODULE LIVE`。自动回退分支因强制模块仍能加载而未在真机触发，仍只做过桌面
+  测试（`CustomKo` 对三个内置 LKM、6.18.21 vermagic 副本、错架构/类型/截断/非 ELF）。
+
+## v3.1.1 —— 持久化自定义 .ko 选择（2026-11-01）
+
+- `Main` 把选中的模块存为 `<files>/custom-ko.ko`，另存 `<files>/custom-ko.meta`
+  （`forced` 标志 + 显示名），`onCreate` 时恢复；若文件已不再通过校验且未强制，
+  则删除并写日志；强制选择按强制状态恢复。
+- 长按模块行（`LongClearKo`，因 `d8` 不支持匿名/内部类而为顶层类）清除选择并删除
+  两个文件。
+- versionCode 15 / versionName 3.1.1；载荷未变（`libo3p.so` sha256 `e479e539…`）。
+  APK `release/o3root2-v3.1.1.apk`，14,239,248 B，sha256 `a013cbff…`。内置 LKM
+  决策不变（SukiSU v4.3.0 未替换）。
+- 真机验证：首次启动清理失效文件、警告选择 force-stop 后恢复、长按清除、强制选择
+  重启后仍保留、干净重启后的自适应运行（`KSU_BLOB v2 tag=3 matched=1`、
+  `KSU_MODULE LIVE`、管理器打开、Enforcing）。
+- 设备侧备注：该次重启后 Shizuku server 需要手动启动（自带 starter 报
+  `librish.so` 不在 `base.apk!/lib/arm64-v8a`）；可用命令是在 `app_process ...
+  rikka.shizuku.server.ShizukuService` 前设置 `CLASSPATH=<apk>/lib/arm64:<apk>`
+  与 `LD_LIBRARY_PATH=<apk>/lib/arm64`。这是设备侧 workaround，与应用无关。

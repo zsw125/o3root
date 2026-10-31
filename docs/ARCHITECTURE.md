@@ -187,6 +187,12 @@ The app can load a `.ko` chosen by the operator instead of the embedded blob:
    or the module does not appear in `/proc/modules`, it logs `CUSTOM_KO
    fallback` and loads the embedded adaptive LKM instead.
 
+Since v3.1.1 the selection is persisted: `Main` writes the bytes to
+`<files>/custom-ko.ko` and a two-line `<files>/custom-ko.meta` (force flag and
+display name), restores them in `onCreate`, deletes a file that no longer
+validates (unless it was forced), and clears both on a long press of the row
+(`LongClearKo`). A `.ko` left selected is executed again on the next run.
+
 The module name must stay `kernelsu` (all three forks use it). The check is
 about compatibility, not a security boundary — see `docs/SECURITY.md`.
 

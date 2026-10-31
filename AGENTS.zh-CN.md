@@ -12,14 +12,19 @@
 
 ## 状态
 
-- 发布 **v3.1**：`release/o3root2-v3.1.apk`
-  （`14,235,152 B`，`sha256 6d9041a97bb1ea6811b6cc512f3d98bb0504be2b8db1e375b73f56e9879e4d73`）；
+- 发布 **v3.1.1**：`release/o3root2-v3.1.1.apk`
+  （`14,239,248 B`，`sha256 a013cbffbe43036e4b7ba3a55554332ab02d23e444103bd043d9e9ef4b9289d0`）；
   载荷内置 tiann / KernelSU-Next / SukiSU 三种 LKM，按已安装的管理器自动选择（`O3P_KSU_FORK` 可覆盖），
 并默认运行时解析符号（kallsyms）；v2.1 让探测先检查 Shizuku 授权、用本地包管理器识别管理器、
 授权后先探测再决定是否跑载荷，并使用唯一载荷文件名；v3.0 改为两段式（`selinux_state-7` 只清
 enforcing + cred 写入），并默认不打 KernelSU init 补丁（`policycap` 干净，KSU 自己的
-`setenforce(1)` 无害）；v3.1 增加自定义 .ko：应用先做 ELF/.modinfo 基础校验（AArch64 ET_REL、name=kernelsu、同一 6.18 系列），未通过时提示并可退回自适应内置模块；载荷会再次校验，文件不可读或加载失败时自动回退。三个内置 LKM 未变（2026-10-29 时除 SukiSU 外均为上游最新，SukiSU 现已有 v4.3.0，见 `python3 tools/check_lkm_updates.py`）；v1.8/v1.9 保留在 git 历史里。
-- 已在 `yingtian` / `OS4.0.16.0.XBMCNXM` 实机验证（冷启动，端到端）。
+`setenforce(1)` 无害）；v3.1 增加自定义 .ko：应用先做 ELF/.modinfo 基础校验（AArch64 ET_REL、name=kernelsu、同一 6.18 系列），未通过时提示并可退回自适应内置模块；载荷会再次校验，文件不可读或加载失败时自动回退。v3.1.1 把选择持久化到应用 files 目录
+（`custom-ko.ko` + `custom-ko.meta`），启动时恢复，失效文件自动丢弃，长按模块行清除。三个内置 LKM 未变（2026-10-29 时除 SukiSU 外均为上游最新，SukiSU 现已有 v4.3.0，见 `python3 tools/check_lkm_updates.py`）；v1.8/v1.9 保留在 git 历史里。
+- 已在 `yingtian` / `OS4.0.16.0.XBMCNXM` 实机验证（冷启动、端到端）。v3.1/v3.1.1
+  于 2026-11-01 复验：自适应冷启动（`KSU_BLOB v2 tag=3 matched=1`）、自选 tiann
+  v3.3.1 `.ko`（警告接受、force-stop 后仍恢复）、强制 6.6.000 模块
+  （`CUSTOM_KO force` → relink → `KSU_MODULE LIVE`）、长按清除。自动回退分支因强制
+  模块仍能加载而未在真机触发，仍只做过桌面测试。
 - `lhasa` / `OS4.0.26.0.XPNCNXM` 携带**逐位相同的内核**
   （`sha256 cde87cd7…`）；未实机测试。
 - 仅当前 boot 有效：重启后 root 与 KernelSU 消失（旧 `O3P_SELDIRTY=1` 路径下的 Permissive 也一并消失；v3 默认终态是 Enforcing）。
@@ -124,7 +129,7 @@ root 请求后才出现。
 
 1. 确认 Shizuku 以 shell 模式运行：
    `ps -A -o UID,LABEL,ARGS | grep shizuku_plus_server` → `2000 u:r:shell:s0`。
-2. 安装：`adb install -r release/o3root2-v3.1.apk`；MIUI 若报
+2. 安装：`adb install -r release/o3root2-v3.1.1.apk`；MIUI 若报
    `INSTALL_FAILED_USER_RESTRICTED`，允许“USB 安装”或用 root 执行
    `pm install -r -d`。
 3. 打开 App，授予 Shizuku 权限，点 Continue；等待 20–120 秒。

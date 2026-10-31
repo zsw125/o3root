@@ -71,12 +71,13 @@ bash payload/build-payload.sh
 
 `build-payload.sh` only needs `NDK_CC`. The KernelSU LKM is in
 `payload/lkm/lkm-aarch64-android17-6.18_kernelsu.ko`; the default output matches
-the reference build in `release/o3root2-v3.1.apk`
+the reference build in `release/o3root2-v3.1.1.apk`
 (`sha256 e479e539…` for `libo3p.so`).
 
-v3.1 only adds Java sources (`CustomKo`, `KoResult`, `KoChoice`, `KoReadTask`,
-`KoApplyTask`, `ClickPickKo`) plus `ko_validate()`/`O3P_CUSTOM_KO` in the
-payload; the two build commands above are unchanged.
+v3.1/v3.1.1 only add Java sources (`CustomKo`, `KoResult`, `KoChoice`,
+`KoReadTask`, `KoApplyTask`, `ClickPickKo`, `LongClearKo`) plus
+`ko_validate()`/`O3P_CUSTOM_KO` in the payload; the two build commands above
+are unchanged.
 
 You can run the payload directly on the device (root/shell):
 
@@ -151,9 +152,14 @@ The app's LogBox shows every payload stage; use **Export log** to write
 
 ## Reproducibility
 
-Reference build (v3.0, release/o3root2-v3.1.apk):
+Reference build (v3.1.1, release/o3root2-v3.1.1.apk):
 
-- APK `14,235,152` bytes
-- `sha256 6d9041a97bb1ea6811b6cc512f3d98bb0504be2b8db1e375b73f56e9879e4d73`
+- APK `14,239,248` bytes
+- `sha256 a013cbffbe43036e4b7ba3a55554332ab02d23e444103bd043d9e9ef4b9289d0`
 - payload `libo3p.so` `1,496,044` bytes (with the stock LKM),
   `sha256 e479e539bf812f7fe0dc18734ec6f47727fc6f650b4a8d9fd45751a9c6500a2b`
+
+The APK hash above pins the committed artifact. `app/build.sh` re-zips with
+fresh entry timestamps and re-signs, so a rebuild from identical sources
+yields a different APK hash even though the dex, resources and `libo3p.so`
+are unchanged; compare those instead when checking a rebuild.
