@@ -14,20 +14,20 @@
 
 - 发布 **v3.2**：`release/o3root2-v3.2.apk`
   （`14,239,248 B`，`sha256 64bbc65420181babd69b826de7b86be99409963dd29253b72a2930d7a7ff6cfd`）；
-  另有测试构建 `release/beta/o3root2-v3.2-beta1.apk`
-  （`14,243,344 B`，`sha256 4f8845fc3b03836e78dc237924da5f77eebd10e2b23bdaf6b36a6b1f26994a05`）。
+  另有测试构建 `release/beta/o3root2-v3.2.1-console.apk`
+  （`14,243,344 B`，`sha256 9cba365a36344a3e6994100a6d3276b220f15bc4de7d7ce2bde74a6999674f8e`）。
   载荷内置 tiann / KernelSU-Next / SukiSU 三种 LKM，按已安装的管理器自动选择（`O3P_KSU_FORK` 可覆盖），
 并默认运行时解析符号（kallsyms）；v2.1 让探测先检查 Shizuku 授权、用本地包管理器识别管理器、
 授权后先探测再决定是否跑载荷，并使用唯一载荷文件名；v3.0 改为两段式（`selinux_state-7` 只清
 enforcing + cred 写入），并默认不打 KernelSU init 补丁（`policycap` 干净，KSU 自己的
 `setenforce(1)` 无害）；v3.1 增加自定义 .ko：应用先做 ELF/.modinfo 基础校验（AArch64 ET_REL、name=kernelsu、同一 6.18 系列），未通过时提示并可退回自适应内置模块；载荷会再次校验，文件不可读或加载失败时自动回退。v3.1.1 把选择持久化到应用 files 目录
-（`custom-ko.ko` + `custom-ko.meta`），启动时恢复，失效文件自动丢弃，长按模块行清除。v3.2 让 LogBox 可选中、可复制（LogBox 头部“复制”链接复制全部日志；输出区可选中，只有读到底部附近才自动滚动）。测试构建 v3.2-beta1 额外把 root 控制台藏在长按版本行之后：三道不可跳过的确认（风险对话框、复选框、输入 `I ACCEPT ROOT RISK`）加一次性 token 才能进入；命令在载荷启动后经 rootd socket 执行（接受 uid 0/2000）。正式版不编译控制台类。三个内置 LKM 未变（2026-10-29 时除 SukiSU 外均为上游最新，SukiSU 现已有 v4.3.0，见 `python3 tools/check_lkm_updates.py`）；v1.8/v1.9 保留在 git 历史里。
+（`custom-ko.ko` + `custom-ko.meta`），启动时恢复，失效文件自动丢弃，长按模块行清除。v3.2 让 LogBox 可选中、可复制（LogBox 头部“复制”链接复制全部日志；输出区可选中，只有读到底部附近才自动滚动）。测试构建 v3.2.1-console 额外把 root 控制台藏在长按版本行之后：三道不可跳过的确认（风险对话框、复选框、输入 `I ACCEPT ROOT RISK`）加一次性 token 才能进入；命令在载荷启动后经 rootd socket 执行（接受 uid 0/2000）。正式版不编译控制台类。三个内置 LKM 未变（2026-10-29 时除 SukiSU 外均为上游最新，SukiSU 现已有 v4.3.0，见 `python3 tools/check_lkm_updates.py`）；v1.8/v1.9 保留在 git 历史里。
 - 已在 `yingtian` / `OS4.0.16.0.XBMCNXM` 实机验证（冷启动、端到端）。v3.1/v3.1.1
   于 2026-11-01 复验：自适应冷启动（`KSU_BLOB v2 tag=3 matched=1`）、自选 tiann
   v3.3.1 `.ko`（警告接受、force-stop 后仍恢复）、强制 6.6.000 模块
   （`CUSTOM_KO force` → relink → `KSU_MODULE LIVE`）、长按清除。自动回退分支因强制
   模块仍能加载而未在真机触发，仍只做过桌面测试。
-- v3.2 / v3.2-beta1 于 2026-11-01 实机验证：正式版显示可选中 LogBox 与“复制”操作，长按版本行无控制台入口；测试版通过三道确认、用一次性 token 打开控制台，并经 rootd 以 uid=0 执行 `id`（`[exit 0]`）；把控制台输出复制到剪贴板后再粘贴回来验证通过。
+- v3.2 / v3.2.1-console 于 2026-11-01 实机验证：正式版显示可选中 LogBox 与“复制”操作，长按版本行无控制台入口；测试版通过三道确认、用一次性 token 打开控制台，并经 rootd 以 uid=0 执行 `id`（`[exit 0]`）；把控制台输出复制到剪贴板后再粘贴回来验证通过。
 - `lhasa` / `OS4.0.26.0.XPNCNXM` 携带**逐位相同的内核**
   （`sha256 cde87cd7…`）；未实机测试。
 - 仅当前 boot 有效：重启后 root 与 KernelSU 消失（旧 `O3P_SELDIRTY=1` 路径下的 Permissive 也一并消失；v3 默认终态是 Enforcing）。
@@ -46,7 +46,7 @@ NDK_CC=/path/to/ndk/.../aarch64-linux-android35-clang bash payload/build-payload
 ANDROID_JAR=... BUILD_TOOLS=... SHIZUKU_JARS=... \
 KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
 
-# 测试版构建（隐藏 root 控制台：versionCode 16，versionName 3.2-beta1）
+# 测试版构建（隐藏 root 控制台：versionCode 18，versionName 3.2.1-console）
 ANDROID_JAR=... BUILD_TOOLS=... SHIZUKU_JARS=... \
 KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... \
 PAYLOAD=... BETA=1 bash app/build.sh
@@ -132,7 +132,7 @@ root 请求后才出现。
 - `aapt2 link` 之前必须先 `aapt2 compile --dir res`；`-A assets` 用来打进
   内置的 KernelSU 管理器。
 - 不要给 `payload/*.c` 提交 CRLF 变更噪音；索引统一为 LF。
-- `BETA=1` 会写 `build/gen/BuildInfo.java`（`CONSOLE=true`、`VERSION="3.2-beta1"`）并生成 `build/AndroidManifest.xml`（versionCode 16、加入 `ConsoleActivity`）。正式版编译跟踪的 `BuildInfo.java`（`CONSOLE=false`、`3.2`）并排除 `ConsoleActivity.java`/`ConsoleGate.java`；`Main` 只经 `ConsoleEntry` 反射到达门禁，正式版代码不得直接链接 `ConsoleGate`。
+- `BETA=1` 会写 `build/gen/BuildInfo.java`（`CONSOLE=true`、`VERSION="3.2.1-console"`）并生成 `build/AndroidManifest.xml`（versionCode 18、加入 `ConsoleActivity`）。正式版编译跟踪的 `BuildInfo.java`（`CONSOLE=false`、`3.2`）并排除 `ConsoleActivity.java`/`ConsoleGate.java`；`Main` 只经 `ConsoleEntry` 反射到达门禁，正式版代码不得直接链接 `ConsoleGate`。
 - 保持 LogBox 可选中、可复制：不要删 `setTextIsSelectable(true)`；自动滚动必须只在接近底部时触发。
 
 ## 设备测试检查表
@@ -152,7 +152,7 @@ root 请求后才出现。
    transition，会拒绝 exec 载荷 —— 需重启 Shizuku server（或重启设备）回到
    shell 模式后再点 Continue。
 6. 回滚：重启；可选 `rm -f /data/local/tmp/o3p*` 并卸载 App。
-7. 测试版控制台（仅测试构建）：`adb install -r -d release/beta/o3root2-v3.2-beta1.apk`（versionCode 16 低于正式版 17）；先跑一次载荷让 rootd 在跑，长按版本行并通过三道确认；`id` 必须显示 `uid=0`。正式版做同样的长按必须没有控制台入口。
+7. 测试版控制台（仅测试构建）：`adb install -r release/beta/o3root2-v3.2.1-console.apk`（versionCode 18 高于正式版 17，可直接升级）；先跑一次载荷让 rootd 在跑，长按版本行并通过三道确认；`id` 必须显示 `uid=0`。正式版做同样的长按必须没有控制台入口。
 
 | 症状 | 含义 / 处理 |
 |---|---|

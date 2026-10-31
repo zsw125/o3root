@@ -79,7 +79,7 @@ v3.1/v3.1.1 only add Java sources (`CustomKo`, `KoResult`, `KoChoice`,
 `ko_validate()`/`O3P_CUSTOM_KO` in the payload; the two build commands above
 are unchanged. v3.2 adds `BuildInfo` (version + console switch) and
 `ClickCopyLog`, and makes the LogBox selectable/copyable. The test variant is
-built with `BETA=1` (versionCode 16, versionName `3.2-beta1`, generated
+built with `BETA=1` (versionCode 18, versionName `3.2.1-console`, generated
 `build/gen/BuildInfo.java` and `build/AndroidManifest.xml` with a hidden
 `ConsoleActivity`); the stable build compiles the tracked `BuildInfo.java`
 (`CONSOLE=false`, `3.2`) and excludes `ConsoleActivity.java`/`ConsoleGate.java`.

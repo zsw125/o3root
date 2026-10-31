@@ -12,8 +12,8 @@ and leaves a root daemon for the current boot. Read this file first, then
 
 - Release **v3.2**, `release/o3root2-v3.2.apk`
   (`14,239,248 B`, `sha256 64bbc65420181babd69b826de7b86be99409963dd29253b72a2930d7a7ff6cfd`),
-  plus the **test build** `release/beta/o3root2-v3.2-beta1.apk`
-  (`14,243,344 B`, `sha256 4f8845fc3b03836e78dc237924da5f77eebd10e2b23bdaf6b36a6b1f26994a05`).
+  plus the **test build** `release/beta/o3root2-v3.2.1-console.apk`
+  (`14,243,344 B`, `sha256 9cba365a36344a3e6994100a6d3276b220f15bc4de7d7ce2bde74a6999674f8e`).
   v2.0 added the multi-LKM blob (KernelSU / KernelSU-Next / SukiSU) with
   manager-based selection; v2.1 makes the probe permission-aware (local manager
   detection, probe-then-payload after granting, unique payload path); v3.0
@@ -29,7 +29,7 @@ and leaves a root daemon for the current boot. Read this file first, then
   validates, and clears it on a long press of the module row. v3.2 makes the
   LogBox selectable and copyable (a "复制" link copies the whole log; the output
   view is selectable, and it only auto-scrolls while the reader is already at
-  the bottom). The test build v3.2-beta1 additionally hides a root console
+  the bottom). The test build v3.2.1-console additionally hides a root console
   behind a long press of the version row: three non-skippable confirmations
   (risk dialog, checkbox, then typing `I ACCEPT ROOT RISK`) plus a one-shot
   token guard the activity, and each command goes through the rootd socket
@@ -58,7 +58,7 @@ NDK_CC=/path/to/ndk/.../aarch64-linux-android35-clang bash payload/build-payload
 ANDROID_JAR=... BUILD_TOOLS=... SHIZUKU_JARS=... \
 KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
 
-# beta test build (hidden root console: versionCode 16, versionName 3.2-beta1)
+# beta test build (hidden root console: versionCode 18, versionName 3.2.1-console)
 ANDROID_JAR=... BUILD_TOOLS=... SHIZUKU_JARS=... \
 KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... \
 PAYLOAD=... BETA=1 bash app/build.sh
@@ -139,7 +139,7 @@ with healthy network (`ping`/`nc`) and unchanged `boot_id`. v3.1 and v3.1.1 were
 `KSU_MODULE LIVE`), custom tiann v3.3.1 picker (warning accepted, persisted
 across force-stop/restart), forced 6.6.000-vermagic module (`CUSTOM_KO force
 reason=kernel_series_mismatch` -> relink -> `KSU_MODULE LIVE`), and long-press
-clear. v3.2 and v3.2-beta1 were verified on the same device on 2026-11-01:
+clear. v3.2 and v3.2.1-console were verified on the same device on 2026-11-01:
 the stable build shows the selectable LogBox with the 复制 action and no
 console entry on a long press, while the beta build passed all three gate
 steps, opened the console with its one-shot token, and ran `id` as uid 0
@@ -182,8 +182,8 @@ Negative results — don't repeat without a new idea (details in
   bundled KernelSU manager.
 - Don't commit CRLF churn for `payload/*.c`; the index normalizes to LF.
 - `BETA=1` writes `build/gen/BuildInfo.java` (`CONSOLE=true`,
-  `VERSION="3.2-beta1"`) and a generated `build/AndroidManifest.xml`
-  (versionCode 16, `ConsoleActivity` entry). The stable build compiles the
+  `VERSION="3.2.1-console"`) and a generated `build/AndroidManifest.xml`
+  (versionCode 18, `ConsoleActivity` entry). The stable build compiles the
   tracked `BuildInfo.java` (`CONSOLE=false`, `3.2`) and excludes
   `ConsoleActivity.java`/`ConsoleGate.java`; `Main` reaches the gate only
   via `ConsoleEntry` reflection, so never link `ConsoleGate` from stable
@@ -211,8 +211,8 @@ Negative results — don't repeat without a new idea (details in
    pressing Continue again.
 6. Rollback: reboot; optional `rm -f /data/local/tmp/o3p*` and uninstall.
 7. Beta console (test build only):
-   `adb install -r -d release/beta/o3root2-v3.2-beta1.apk` (its versionCode
-   16 is lower than stable 17); start the payload once so rootd is running,
+   `adb install -r release/beta/o3root2-v3.2.1-console.apk` (its versionCode
+   18 is higher than stable 17); start the payload once so rootd is running,
    long-press the version row, and pass the three confirmations; `id` must
    print `uid=0`. Stable must show no console entry on the same long press.
 

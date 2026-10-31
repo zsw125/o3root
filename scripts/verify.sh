@@ -9,7 +9,7 @@
 #   NDK_CC=...                                  rebuild payload, compare sha256
 #   ANDROID_JAR/BUILD_TOOLS/SHIZUKU_JARS/...    rebuild APK, check version
 #   VERIFY_BETA=1                               also build the beta variant and
-#                                               check version 3.2-beta1
+#                                               check version 3.2.1-console
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 
@@ -159,7 +159,7 @@ if [ -n "${ANDROID_JAR:-}" ] && [ -n "${BUILD_TOOLS:-}" ] && [ -n "${SHIZUKU_JAR
     if BETA=1 bash app/build.sh >"$log" 2>&1; then
       if [ -x "$BUILD_TOOLS/aapt2" ] || [ -x "$BUILD_TOOLS/aapt2.exe" ]; then
         v=$("$AAPT2" dump badging app/o3root2.apk 2>/dev/null | grep -o "versionName='[^']*'" | head -1)
-        case "$v" in *"'3.2-beta1'"*) ok "beta APK rebuilt ($v)";; *) bad "beta APK version $v (expected 3.2-beta1)";; esac
+        case "$v" in *"'3.2.1-console'"*) ok "beta APK rebuilt ($v)";; *) bad "beta APK version $v (expected 3.2.1-console)";; esac
       else
         note "beta APK rebuilt (aapt2 not found to verify version)"
       fi

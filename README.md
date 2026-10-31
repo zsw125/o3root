@@ -34,7 +34,7 @@ rebuilds the payload/APK when the toolchain environment is set.
 | | |
 |---|---|
 | release | **v3.2** (`release/o3root2-v3.2.apk`, 14,239,248 B, sha256 `64bbc654…`) |
-| test build | **v3.2-beta1** (`release/beta/o3root2-v3.2-beta1.apk`, 14,243,344 B, sha256 `4f8845fc…`): stable v3.2 plus a hidden root console (long-press the version row; three confirmations) |
+| test build | **v3.2.1-console** (`release/beta/o3root2-v3.2.1-console.apk`, 14,243,344 B, sha256 `9cba365a…`): stable v3.2 plus a hidden root console (long-press the version row; three confirmations) |
 | custom LKM | optional user-supplied KernelSU-family .ko (basic compatibility check; falls back to the built-in adaptive module; the choice is saved and restored on launch — long-press the row to clear) |
 | chain | Shizuku shell → CVE-2026-98260 → `uid=0` + full caps → matching KernelSU LKM (KernelSU / KernelSU-Next / SukiSU) → rootd |
 | persistence | none (current boot only) |

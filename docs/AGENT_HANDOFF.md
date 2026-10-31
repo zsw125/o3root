@@ -12,7 +12,7 @@ work with rough effort estimates.
 | item | value |
 |---|---|
 | release | v3.2, `release/o3root2-v3.2.apk` (14,239,248 B, sha256 `64bbc654…`) |
-| test build | v3.2-beta1, `release/beta/o3root2-v3.2-beta1.apk` (14,243,344 B, sha256 `4f8845fc…`; hidden root console) |
+| test build | v3.2.1-console, `release/beta/o3root2-v3.2.1-console.apk` (14,243,344 B, sha256 `9cba365a…`; hidden root console) |
 | verified device | Xiaomi Pad 9 Pro Max `yingtian`, HyperOS `OS4.0.16.0.XBMCNXM`, kernel `6.18.21-android17-5-g805aa6adea19-abogki565292102-4k` |
 | second target | `lhasa` (Xiaomi 18 Fold) `OS4.0.26.0.XPNCNXM` — same kernel sha256 `cde87cd7…` (boot header/ramdisk differ); **not device-tested** |
 | persistence | none (current boot only) |
@@ -330,8 +330,8 @@ The payload can be tested standalone (root or shell): push `libo3p.so` as
   (`ClickCopyLog`) that copies the whole log (when the clipboard is
   unavailable it says so and the user can select and copy by hand);
   `scrollBottomNow()` only auto-scrolls while the view is near the bottom.
-- Test build `BETA=1` (versionCode 16 / versionName 3.2-beta1,
-  `release/beta/o3root2-v3.2-beta1.apk`): a root console hidden behind a long
+- Test build `BETA=1` (versionCode 18 / versionName 3.2.1-console,
+  `release/beta/o3root2-v3.2.1-console.apk`): a root console hidden behind a long
   press of the version row (`ConsoleEntry` -> `ConsoleGate.start` via
   reflection; the stable build excludes `ConsoleGate`/`ConsoleActivity` and
   links only `ConsoleEntry`). Three non-skippable confirmations (non-cancelable
@@ -346,7 +346,7 @@ The payload can be tested standalone (root or shell): push `libo3p.so` as
   copy and conditional auto-scroll checked.
 - Build: `build.sh` gained the `BETA` switch (see `docs/BUILD.md`);
   `scripts/verify.sh` gained `VERIFY_BETA=1`. Artifacts: stable 14,239,248 B
-  sha256 `64bbc654…`; beta 14,243,344 B sha256 `4f8845fc…`. APK rebuilds are
+  sha256 `64bbc654…`; beta 14,243,344 B sha256 `9cba365a…`. APK rebuilds are
   not bit-reproducible (fresh zip timestamps + re-sign); compare
   dex/resources/`libo3p.so` instead.
 - Test-harness note: the default iFlytek IME swallows `adb shell input text`

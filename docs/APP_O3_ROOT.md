@@ -9,8 +9,8 @@
 
 > 当前发布件是 **v3.2**：`release/o3root2-v3.2.apk`（14,239,248 B，sha256
 > `64bbc65420181babd69b826de7b86be99409963dd29253b72a2930d7a7ff6cfd`）；测试构建
-> `release/beta/o3root2-v3.2-beta1.apk`（14,243,344 B，sha256
-> `4f8845fc3b03836e78dc237924da5f77eebd10e2b23bdaf6b36a6b1f26994a05`）。下表的
+> `release/beta/o3root2-v3.2.1-console.apk`（14,243,344 B，sha256
+> `9cba365a36344a3e6994100a6d3276b220f15bc4de7d7ce2bde74a6999674f8e`）。下表的
 > 13,973,008 B/`0d7c5ea8…` 仅指 v1.8 的 APK，保留作历史记录。
 
 | 文件 | 大小 | sha256 |
@@ -646,8 +646,8 @@ after the first `D3ADDR`; it stays behind `O3P_D3V3` for analysis only.
 - 正式版（versionCode 17 / versionName 3.2）：日志框 `setTextIsSelectable(true)`，
   头部新增“复制”链接（`ClickCopyLog`；剪贴板不可用时提示手动拖选复制并给出原因）；
   `scrollBottomNow()` 改为仅在距底部约一屏内自动滚动，用户往上翻时不再被拽回底部。
-- 测试版（`BETA=1`，versionCode 16 / versionName 3.2-beta1，发布为
-  `release/beta/o3root2-v3.2-beta1.apk`）：入口藏在版本行长按
+- 测试版（`BETA=1`，versionCode 18 / versionName 3.2.1-console，发布为
+  `release/beta/o3root2-v3.2.1-console.apk`）：入口藏在版本行长按
   （`ConsoleEntry` → 反射 `ConsoleGate.start`，正式版不链接该类）。三道不可跳过
   确认：不可取消的风险对话框、“我已知悉”复选框、只有输入 `I ACCEPT ROOT RISK`
   才启用按钮；最后传入一次性 token，`ConsoleActivity` 无 token 直接结束。
@@ -667,5 +667,5 @@ after the first `D3ADDR`; it stays behind `O3P_D3V3` for analysis only.
 - 构建/校验：`scripts/verify.sh` 新增 `VERIFY_BETA=1`（构建并检查两个变体）；
   正式版构建排除 `ConsoleActivity.java`/`ConsoleGate.java` 并编译跟踪的
   `BuildInfo.java`（`CONSOLE=false`），beta 生成 `build/gen/BuildInfo.java`
-  （`CONSOLE=true`）与 `build/AndroidManifest.xml`（versionCode 16 + 控制台
+  （`CONSOLE=true`）与 `build/AndroidManifest.xml`（versionCode 18 + 控制台
   activity）。APK 重建哈希不可复现（重新打包时间戳 + 重签），发布件哈希是产物指纹。

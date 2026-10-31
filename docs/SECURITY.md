@@ -37,7 +37,7 @@ the kernel**, so treat it as code, not data:
   `Android/data/o3.st.root1/files`) and restored on the next
   launch, so a module you once selected is executed again — clear the row
   (long press) after trying an untrusted build.
-- The test build v3.2-beta1 also ships a hidden root console (long press the
+- The test build v3.2.1-console also ships a hidden root console (long press the
   version row): after three non-skippable confirmations it runs arbitrary
   commands through the rootd socket. This adds no privilege (the stable build
   can start the payload anyway), but it puts root command execution one gesture

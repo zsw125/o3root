@@ -155,7 +155,7 @@ v3.1/v3.1.1 只新增 Java 源文件（`CustomKo`、`KoResult`、`KoChoice`、`K
 `KoApplyTask`、`ClickPickKo`、`LongClearKo`）与载荷里的
 `ko_validate()`/`O3P_CUSTOM_KO`；上面两条构建命令不变。v3.2 新增 `BuildInfo`
 （版本 + 控制台开关）与 `ClickCopyLog`，并让 LogBox 可选中/复制。测试变体用
-`BETA=1` 构建（versionCode 16、versionName `3.2-beta1`，生成
+`BETA=1` 构建（versionCode 18、versionName `3.2.1-console`，生成
 `build/gen/BuildInfo.java` 与带隐藏 `ConsoleActivity` 的
 `build/AndroidManifest.xml`）；正式版编译跟踪的 `BuildInfo.java`
 （`CONSOLE=false`、`3.2`）并排除 `ConsoleActivity.java`/`ConsoleGate.java`。

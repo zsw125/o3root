@@ -11,7 +11,7 @@
 #   D8_JAR         override path to d8.jar
 #   PAYLOAD        path to libo3p.so (default ../payload/build/libo3p.so)
 #   PY             python interpreter (default python3)
-#   BETA=1         build the test variant: hidden root console, version 3.2-beta1
+#   BETA=1         build the test variant: hidden root console, version 3.2.1-console
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -41,13 +41,13 @@ cp "$PAYLOAD" build/lib/arm64-v8a/libo3p.so
 
 SRCS=(src/o3/st/root1/*.java)
 if [ "$BETA" = "1" ]; then
-  echo "variant: beta (root console, 3.2-beta1)"
+  echo "variant: beta (root console, 3.2.1-console)"
   cat > build/gen/BuildInfo.java <<'JAVA'
 package o3.st.root1;
 
 final class BuildInfo {
     static final boolean CONSOLE = true;
-    static final String VERSION = "3.2-beta1";
+    static final String VERSION = "3.2.1-console";
 }
 JAVA
   KEEP=()
@@ -60,8 +60,8 @@ JAVA
   "$PY" - "$MANIFEST" <<'PY'
 import sys
 src = open('AndroidManifest.xml', encoding='utf-8').read()
-out = src.replace('android:versionCode="17"', 'android:versionCode="16"')
-out = out.replace('android:versionName="3.2"', 'android:versionName="3.2-beta1"')
+out = src.replace('android:versionCode="17"', 'android:versionCode="18"')
+out = out.replace('android:versionName="3.2"', 'android:versionName="3.2.1-console"')
 act = ('        <activity\n'
        '            android:name=".ConsoleActivity"\n'
        '            android:exported="false"\n'
