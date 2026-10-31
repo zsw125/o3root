@@ -10,14 +10,21 @@ and leaves a root daemon for the current boot. Read this file first, then
 
 ## State
 
-- Release **v3.0**, `release/o3root2-v3.0.apk`
-  (`14,218,768 B`, `sha256 c80f499a6b06ddf92241aa8cb0aa8874767eccdd960e631b28dcff98e7c141dd`).
+- Release **v3.1**, `release/o3root2-v3.1.apk`
+  (`14,235,152 B`, `sha256 6d9041a97bb1ea6811b6cc512f3d98bb0504be2b8db1e375b73f56e9879e4d73`).
   v2.0 added the multi-LKM blob (KernelSU / KernelSU-Next / SukiSU) with
   manager-based selection; v2.1 makes the probe permission-aware (local manager
   detection, probe-then-payload after granting, unique payload path); v3.0
   replaces the single-reap write with two reaps — an unaligned enforcing-only
   zero at `selinux_state-7` plus the cred swap — and drops the KernelSU init
   patch (KSU's own `setenforce(1)` is safe because `policycap` stays clean).
+  v3.1 adds a user-supplied LKM path ("选择 .ko"): the app checks the ELF and
+  `.modinfo` (AArch64 `ET_REL`, `name=kernelsu`, same 6.18 series) before the
+  run, warns and offers a fallback to the adaptive built-in LKM, and the payload
+  re-validates and automatically falls back when the file is unreadable or the
+  load fails. The three built-in LKMs are unchanged (all were the latest
+  upstream on 2026-10-29 except SukiSU, which has v4.3.0 — see
+  `python3 tools/check_lkm_updates.py`).
   v1.8 (relink-only) and v1.9 remain in the git history.
 - Hardware-verified on `yingtian` / `OS4.0.16.0.XBMCNXM` (cold boot, end-to-end).
 - `lhasa` / `OS4.0.26.0.XPNCNXM` ships the **bit-identical kernel**
@@ -33,7 +40,7 @@ bash scripts/fetch-toolchain.sh   # android.jar, build-tools r34, Shizuku jars, 
 
 # payload  (needs an NDK clang)
 NDK_CC=/path/to/ndk/.../aarch64-linux-android35-clang bash payload/build-payload.sh
-# reference result: 73,768 B payload; libo3p.so 1,492,484 B (three LKMs), sha256 e64217c8…87dfa
+# reference result: 77,328 B payload; libo3p.so 1,496,044 B (three LKMs), sha256 e479e539…0a2b
 
 # app (needs SDK + Shizuku jars + your keystore; see docs/BUILD.md)
 ANDROID_JAR=... BUILD_TOOLS=... SHIZUKU_JARS=... \
@@ -47,10 +54,10 @@ KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
 | `payload/o3p.c` | the exploit payload (C): UAF trigger, page reclaim, RB write primitive, two stages, KASLR slide, KernelSU runtime loader (kallsyms first, relink fallback), legacy init patch (`O3P_CODEPATCH=1`), rootd |
 | `payload/ksu/` | `ksu_symtab.h` (union of 248 KernelSU symbols from upstream forks), `mksymtab.py` (regen single-LKM table), `relink_ksu.py` (offline relinker reference) |
 | `payload/lkm/` | official `android17-6.18` LKMs (GPL-3.0, unmodified): KernelSU v3.3.1, KernelSU-Next v3.4.2, SukiSU-Ultra v4.2.1-r2 |
-| `app/src/o3/st/root1/` | Java: `Main` (UI/state machine), `PayloadRunner`, `StateProbe`, `RecoverRunner` (legacy guard; disabled in v3), `ManagerInstaller`, listeners |
+| `app/src/o3/st/root1/` | Java: `Main` (UI/state machine), `PayloadRunner` (also stages a custom `.ko`), `CustomKo`+`KoResult` (ELF/.modinfo validation), `StateProbe`, `RecoverRunner` (legacy guard; disabled in v3), `ManagerInstaller`, listeners |
 | `app/build.sh`, `payload/build-payload.sh`, `scripts/*` | build entry points |
 | `docs/` | ARCHITECTURE (design + porting), SECURITY (risks/cleanup), BUILD, APP_O3_ROOT (dev log), OTA/kernel report, CVE feasibility, evidence PNGs |
-| `tools/` | OTA extraction / boot image unpack / BTF+disasm checks |
+| `tools/` | OTA extraction / boot image unpack / BTF+disasm checks / `check_lkm_updates.py` |
 | `release/` | prebuilt APK + SHA256SUMS |
 
 ## Invariants — do not "clean up"
@@ -91,7 +98,13 @@ KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
 8. **Release hygiene**: `android:debuggable` stays off; the firmware gate in
    `Main.checkFirmware()` must match the kernel/branch the payload was built
    for (`yingtian`/`lhasa`).
-9. **KernelSU loading is runtime-resolved by default.** `kallsyms_patch()`
+9. **A custom `.ko` is untrusted input.** `CustomKo.java` (app) and
+   `ko_validate()` (payload) are the only gates: keep them in sync, and never
+   remove the automatic fallback to the embedded blob when the custom file is
+   unreadable, rejected or fails to load. The checks are compatibility checks,
+   not a security boundary — a module that passes still runs in the kernel.
+
+10. **KernelSU loading is runtime-resolved by default.** `kallsyms_patch()`
    collects the module's UNDEF names, temporarily writes `0` to
    `/proc/sys/kernel/kptr_restrict`, resolves addresses through
    `/proc/kallsyms`, and always restores the old value before `insmod`.
@@ -144,7 +157,7 @@ Negative results — don't repeat without a new idea (details in
 
 1. Shizuku running in shell mode: `ps -A -o UID,LABEL,ARGS | grep shizuku_plus_server`
    → `2000 u:r:shell:s0`.
-2. Install: `adb install -r release/o3root2-v3.0.apk`; if MIUI says
+2. Install: `adb install -r release/o3root2-v3.1.apk`; if MIUI says
    `INSTALL_FAILED_USER_RESTRICTED`, allow install-via-USB or, with root,
    `pm install -r -d`.
 3. Open the app, grant Shizuku permission, press Continue; wait 20–120 s.

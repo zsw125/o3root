@@ -20,6 +20,7 @@
 #include <sys/un.h>
 #include <stddef.h>
 #include <sys/stat.h>
+#include <sys/utsname.h>
 #include <linux/perf_event.h>
 #include <linux/capability.h>
 #include <glob.h>
@@ -867,13 +868,112 @@ static int ksu_patch(unsigned char *d,size_t len,unsigned long long slide){
   return g_relink_skip_syms?0:(found>0?0:-6);
 }
 
-static void ksu_modlist(void){
+static int ksu_module_live(void){
   int fd=open("/proc/modules",O_RDONLY);
-  if(fd<0){printf("KSU_MODULE UNKNOWN\n");fflush(stdout);return;}
+  if(fd<0)return -1;
   char b[8192]; ssize_t n=read(fd,b,sizeof b-1); close(fd);
-  if(n<=0){printf("KSU_MODULE UNKNOWN\n");fflush(stdout);return;}
+  if(n<=0)return -1;
   b[n]=0;
-  printf("KSU_MODULE %s\n",strstr(b,"kernelsu")?"LIVE":"ABSENT");fflush(stdout);
+  return strstr(b,"kernelsu")?1:0;
+}
+static void ksu_modlist(void){
+  int r=ksu_module_live();
+  printf("KSU_MODULE %s", r<0?"UNKNOWN":(r?"LIVE":"ABSENT"));
+  putchar(10); fflush(stdout);
+}
+
+/* ---- user-supplied LKM (O3P_CUSTOM_KO) ----------------------------------
+ * The app stages the chosen .ko into /data/local/tmp and exports its path.
+ * The same basic checks run first in the app (CustomKo.java); they are
+ * repeated here because the path is user controlled and because the payload
+ * must still fall back to the embedded adaptive blob when the file is
+ * unreadable or unsuitable. WARN (same kernel series, different build) is
+ * accepted on purpose: the shipped LKMs are built for 6.18.32 and run on
+ * 6.18.21 after symbol resolution. */
+#define KO_MAX_BYTES (8u << 20)
+static int ko_series(const char *release){
+  if(!release||!*release)return -1;
+  char *end=NULL;
+  long maj=strtol(release,&end,10);
+  if(!end||*end!='.')return -1;
+  long min=strtol(end+1,&end,10);
+  if(min<0)return -1;
+  return (int)(maj*1000+min);
+}
+static void ko_modinfo_field(const char *blob,size_t blen,const char *key,char *out,size_t osz){
+  size_t kl=strlen(key);
+  out[0]=0;
+  for(size_t i=0;i<blen;){
+    size_t j=i; while(j<blen&&blob[j])j++;
+    if(j-i>kl&&!memcmp(blob+i,key,kl)&&blob[i+kl]=='='){
+      size_t n=j-(i+kl+1);
+      if(n>=osz)n=osz-1;
+      memcpy(out,blob+i+kl+1,n); out[n]=0; return;
+    }
+    i=j+1;
+  }
+}
+/* 0 = ok, 1 = ok with warning, -1 = reject (*why set, name/vermagic filled) */
+static int ko_validate(const unsigned char *d,size_t len,char *name,size_t nsz,
+                       char *vermagic,size_t vsz,const char **why){
+  name[0]=0; vermagic[0]=0;
+  if(len<64||d[0]!=0x7f||d[1]!='E'||d[2]!='L'||d[3]!='F'){*why="not_elf";return -1;}
+  if(d[4]!=2||d[5]!=1){*why="not_elf64_le";return -1;}
+  {unsigned short et=0; memcpy(&et,d+16,2); if(et!=1){*why="not_relocatable";return -1;}}
+  {unsigned short mach=0; memcpy(&mach,d+18,2); if(mach!=183){*why="not_aarch64";return -1;}}
+  unsigned long long shoff=0; unsigned short shent=0,shnum=0,shstr=0;
+  memcpy(&shoff,d+0x28,8); memcpy(&shent,d+0x3a,2); memcpy(&shnum,d+0x3c,2); memcpy(&shstr,d+0x3e,2);
+  if(shent<64||shnum==0||shnum>512){*why="bad_section_table";return -1;}
+  if(shoff+(unsigned long long)shent*shnum>len){*why="truncated";return -1;}
+  if(shstr>=shnum){*why="bad_shstrtab";return -1;}
+  const unsigned char *sh=d+shoff;
+  unsigned long long strs=0,strl=0;
+  memcpy(&strs,sh+(size_t)shstr*shent+0x18,8);
+  memcpy(&strl,sh+(size_t)shstr*shent+0x20,8);
+  if(strs+strl>len){*why="bad_shstrtab";return -1;}
+  const char *strtab=(const char*)(d+strs);
+  int have=0;
+  for(unsigned i=0;i<shnum;i++){
+    const unsigned char *sh2=sh+(size_t)i*shent;
+    unsigned int no=0; memcpy(&no,sh2,4);
+    if(no==0||no>=strl)continue;
+    if(strcmp(strtab+no,".modinfo"))continue;
+    unsigned long long off=0,sz=0; memcpy(&off,sh2+0x18,8); memcpy(&sz,sh2+0x20,8);
+    if(off+sz>len){*why="bad_modinfo";return -1;}
+    have=1;
+    ko_modinfo_field((const char*)(d+off),(size_t)sz,"name",name,nsz);
+    ko_modinfo_field((const char*)(d+off),(size_t)sz,"vermagic",vermagic,vsz);
+    break;
+  }
+  if(!have){*why="no_modinfo";return -1;}
+  if(!name[0]){*why="no_module_name";return -1;}
+  if(strncmp(name,"kernelsu",8)){*why="not_kernelsu";return -1;}
+  if(!vermagic[0])return 1;
+  char vmrel[80]; size_t i=0;
+  while(i+1<sizeof vmrel && vermagic[i] && vermagic[i]!=' '){vmrel[i]=vermagic[i];i++;}
+  vmrel[i]=0;
+  struct utsname un; const char *rel="";
+  if(!uname(&un))rel=un.release;
+  int a=ko_series(vmrel), b=ko_series(rel);
+  if(a<0||b<0)return 1;
+  if(a!=b){*why="kernel_series_mismatch";return -1;}
+  if(strcmp(vmrel,rel))return 1;
+  return 0;
+}
+static unsigned char *ko_read_file(const char *path,size_t *plen){
+  int fd=open(path,O_RDONLY);
+  if(fd<0)return NULL;
+  off_t sz=lseek(fd,0,SEEK_END);
+  if(sz<=0||(unsigned long long)sz>KO_MAX_BYTES){close(fd);return NULL;}
+  if(lseek(fd,0,SEEK_SET)!=0){close(fd);return NULL;}
+  unsigned char *b=(unsigned char*)malloc((size_t)sz);
+  if(!b){close(fd);return NULL;}
+  size_t got=0;
+  while(got<(size_t)sz){ssize_t r=read(fd,b+got,(size_t)sz-got); if(r<=0)break; got+=(size_t)r;}
+  close(fd);
+  if(got!=(size_t)sz){free(b);return NULL;}
+  *plen=got;
+  return b;
 }
 
 
@@ -949,32 +1049,26 @@ static int kallsyms_patch(unsigned char *d,size_t len,int *pfound,int *pmissing)
   return 0;
 }
 
-static int ksu_load(unsigned long long slide){
-  stage_note("KSU_BEGIN");
-  if(!g_ksu_tag)ksu_detect_fork();
-  wf("/proc/sys/kernel/panic_on_oops","0\n");
-  size_t len=0;
-  unsigned char *b=ksu_blob_load(&len);
-  if(!b){printf("KSU_BLOB MISSING\n");fflush(stdout);return -1;}
-  printf("KSU_BLOB len=%zu slide=0x%llx\n",len,slide);fflush(stdout);
+static int ksu_try_load(unsigned char *b,size_t len,unsigned long long slide,const char *origin){
+  printf("KSU_BLOB len=%zu slide=0x%llx origin=%s",len,slide,origin); putchar(10); fflush(stdout);
   stage_note("KSU_BLOB_OK");
   int ksf=0,ksm=0,ksfound=0;
   int kres=-1;
   if(!getenv("O3P_RELINK_ONLY")){ kres=kallsyms_patch(b,len,&ksfound,&ksm); }
-  if(kres==0 && ksm==0){ printf("KSU_LOADER kallsyms found=%d missing=0\n",ksfound);fflush(stdout); stage_note("KSU_LOADER_KALLSYMS"); }
+  if(kres==0 && ksm==0){ printf("KSU_LOADER kallsyms found=%d missing=0",ksfound); putchar(10); fflush(stdout); stage_note("KSU_LOADER_KALLSYMS"); }
   else {
-    printf("KSU_LOADER relink (kallsyms r=%d missing=%d)\n",kres,ksm);fflush(stdout);
+    printf("KSU_LOADER relink (kallsyms r=%d missing=%d)",kres,ksm); putchar(10); fflush(stdout);
     int r=ksu_patch(b,len,slide);
-    if(r){printf("KSU_PATCH_FAIL r=%d\n",r);fflush(stdout);free(b);return -1;}
+    if(r){ printf("KSU_PATCH_FAIL r=%d",r); putchar(10); fflush(stdout); free(b); return -1; }
   }
   if(kres==0 && ksm==0){ g_relink_skip_syms=1; ksu_patch(b,len,slide); g_relink_skip_syms=0; }
   const char *out="/data/local/tmp/o3p_ksu.ko";
   int fd=open(out,O_WRONLY|O_CREAT|O_TRUNC,0644);
-  if(fd<0){printf("KSU_WRITE_FAIL errno=%d\n",errno);fflush(stdout);free(b);return -1;}
+  if(fd<0){ printf("KSU_WRITE_FAIL errno=%d",errno); putchar(10); fflush(stdout); free(b); return -1; }
   size_t w=0;
   while(w<len){ssize_t x=write(fd,b+w,len-w); if(x<=0)break; w+=x;}
   fsync(fd); close(fd); free(b);
-  printf("KSU_WROTE %s %zu\n",out,w);fflush(stdout);
+  printf("KSU_WROTE %s %zu",out,w); putchar(10); fflush(stdout);
   if(w!=len)return -1;
   stage_note("KSU_EXEC_GO");
   pid_t cp=fork();
@@ -984,11 +1078,51 @@ static int ksu_load(unsigned long long slide){
   }
   int st=0; int done=0;
   for(int i=0;i<160;i++){ pid_t r=waitpid(cp,&st,WNOHANG); if(r==cp){done=1;break;} msleep(250); }
-  printf("KSU_EXEC done=%d status=0x%x\n",done,st);fflush(stdout);
-  {char m[96];snprintf(m,sizeof m,"KSU_EXEC done=%d status=0x%x",done,st);stage_note(m);}
+  printf("KSU_EXEC done=%d status=0x%x",done,st); putchar(10); fflush(stdout);
+  { char m[96]; snprintf(m,sizeof m,"KSU_EXEC done=%d status=0x%x",done,st); stage_note(m); }
   read_file_print("/data/local/tmp/o3p_insmod.out","KSU_INSMOD_OUT");
   ksu_modlist();
-  return done?0:-1;
+  if(!done||w!=len)return -1;
+  return ksu_module_live()==1?0:-1;
+}
+
+static int ksu_load(unsigned long long slide){
+  stage_note("KSU_BEGIN");
+  if(!g_ksu_tag)ksu_detect_fork();
+  wf("/proc/sys/kernel/panic_on_oops","0");
+  const char *custom=getenv("O3P_CUSTOM_KO");
+  if(custom && *custom){
+    size_t clen=0;
+    unsigned char *cb=ko_read_file(custom,&clen);
+    if(!cb){
+      printf("CUSTOM_KO reject reason=unreadable path=%s",custom); putchar(10); fflush(stdout);
+      stage_note("CUSTOM_KO_UNREADABLE");
+    } else {
+      char nm[64], vm[192]; const char *why="unknown";
+      int vr=ko_validate(cb,clen,nm,sizeof nm,vm,sizeof vm,&why);
+      if(vr<0 && getenv("O3P_CUSTOM_KO_FORCE") && !strcmp(why,"kernel_series_mismatch")){
+        printf("CUSTOM_KO force reason=%s name=%s",why,nm); putchar(10); fflush(stdout);
+        stage_note("CUSTOM_KO_FORCE");
+        vr=1;
+      }
+      if(vr<0){
+        printf("CUSTOM_KO reject reason=%s name=%s",why,nm); putchar(10); fflush(stdout);
+        { char m[160]; snprintf(m,sizeof m,"CUSTOM_KO_REJECT %s",why); stage_note(m); }
+        free(cb);
+      } else {
+        printf("CUSTOM_KO ok name=%s vermagic=%s warn=%d",nm,vm,vr==1?1:0); putchar(10); fflush(stdout);
+        { char m[200]; snprintf(m,sizeof m,"CUSTOM_KO_OK name=%s warn=%d",nm,vr==1?1:0); stage_note(m); }
+        int rr=ksu_try_load(cb,clen,slide,"custom");
+        if(rr==0){ stage_note("CUSTOM_KO_LIVE"); return 0; }
+        printf("CUSTOM_KO fallback reason=load_failed"); putchar(10); fflush(stdout);
+        stage_note("CUSTOM_KO_FALLBACK");
+      }
+    }
+  }
+  size_t len=0;
+  unsigned char *b=ksu_blob_load(&len);
+  if(!b){ printf("KSU_BLOB MISSING"); putchar(10); fflush(stdout); return -1; }
+  return ksu_try_load(b,len,slide,"builtin");
 }
 
 static void armed_tail(pid_t pid){

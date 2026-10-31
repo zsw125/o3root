@@ -2,7 +2,7 @@
 
 > Chinese translation: [`SECURITY.zh-CN.md`](SECURITY.zh-CN.md) — a translation of this file; if the two disagree, this English file is authoritative.
 
-**Scope:** v3.0 (2026-10-25); legacy v1.7–v2.1 behaviour is called out explicitly.
+**Scope:** v3.1 (2026-11-01); legacy v1.7–v2.1 behaviour is called out explicitly.
 
 ## Read this first
 
@@ -16,6 +16,22 @@ understand/repair it.
 - The exploit is **not persistent**: a reboot removes everything it did.
 - Nothing here writes to partitions, changes `vbmeta`, or unlocks the
   bootloader. The device's verified boot state is not modified.
+
+## Custom KernelSU modules (v3.1)
+
+v3.1 lets the operator load a `.ko` of their choice. That file is **executed in
+the kernel**, so treat it as code, not data:
+
+- The app performs a basic compatibility check before the run (64-bit AArch64
+  `ET_REL`, `.modinfo` present, `name=kernelsu`, same 6.18 kernel series) and
+  the payload repeats it before `insmod`. Passing the check says "this looks
+  like a module for this kernel", **not** "this module is safe or benign".
+- Only load modules whose provenance you trust (your own build, or an official
+  asset from the KernelSU / KernelSU-Next / SukiSU projects). A hostile module
+  can do anything root can, and a buggy one can panic the device.
+- When the custom module is rejected, unreadable or fails to load, the payload
+  automatically falls back to the adaptive built-in LKM; the app also offers
+  the fallback before the run.
 
 ## Threat model
 

@@ -63,14 +63,14 @@ PAYLOAD=.../payload/build/libo3p.so           # 默认即此
 
 ```bash
 bash payload/build-payload.sh
-# build/o3p.bin      73,768 B（载荷）
+# build/o3p.bin      77,328 B（载荷）
 # build/libo3p.so    载荷 + 三个 LKM（blob v2 trailer）
 ```
 
 `build-payload.sh` 只需要 `NDK_CC`。KernelSU LKM 位于
 `payload/lkm/lkm-aarch64-android17-6.18_kernelsu.ko`；默认输出与
-`release/o3root2-v3.0.apk` 里的参考构建一致（`libo3p.so` 的
-`sha256 e64217c8…`）。
+`release/o3root2-v3.1.apk` 里的参考构建一致（`libo3p.so` 的
+`sha256 e479e539…`）。
 
 你也可以直接在设备上（root/shell）运行载荷：
 
@@ -140,9 +140,13 @@ App 的 LogBox 会显示载荷每个阶段；用 **导出日志** 写到
 
 ## 可复现性
 
-参考构建（v3.0，release/o3root2-v3.0.apk）：
+参考构建（v3.0，release/o3root2-v3.1.apk）：
 
-- APK `14,218,768` 字节
-- `sha256 c80f499a6b06ddf92241aa8cb0aa8874767eccdd960e631b28dcff98e7c141dd`
-- payload `libo3p.so` `1,492,484` 字节（配官方 LKM），
-  `sha256 e64217c8fac2950763869881efdd15ff9fb76f1423a3388185bca7e72499aac3`
+- APK `14,235,152` 字节
+- `sha256 6d9041a97bb1ea6811b6cc512f3d98bb0504be2b8db1e375b73f56e9879e4d73`
+- payload `libo3p.so` `1,496,044` 字节（配官方 LKM），
+  `sha256 e479e539bf812f7fe0dc18734ec6f47727fc6f650b4a8d9fd45751a9c6500a2b`
+
+v3.1 只新增 Java 源文件（`CustomKo`、`KoResult`、`KoChoice`、`KoReadTask`、
+`KoApplyTask`、`ClickPickKo`）与载荷里的 `ko_validate()`/`O3P_CUSTOM_KO`；上面两条
+构建命令不变。

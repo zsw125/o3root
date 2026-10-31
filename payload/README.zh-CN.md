@@ -65,6 +65,7 @@ KernelSU-Next v3.4.2、SukiSU v4.2.1-r2）+ 每项 24 字节的 tag 表 +
 | `O3P_NOKSU` | `1` | 跳过 KernelSU blob 加载。 |
 | `O3P_RELINK_ONLY` | `1` | 绕过 `/proc/kallsyms`，用内置 248 符号表 + slide 重链接。 |
 | `O3P_KSU_FORK` | `tiann`/`next`/`sukisu` | 强制使用某个内置 LKM，而非按管理器选择。 |
+| `O3P_CUSTOM_KO` | 路径 | 加载用户自选的 `.ko`（v3.1），替代内置 blob。载荷先做基础校验（ELF64 AArch64 `ET_REL`、`.modinfo` 的 `name=kernelsu`、同一内核系列）；文件不可读、被拒绝或 `insmod` 失败时自动退回内置自适应 LKM。 |
 | `O3P_D3` | `1` | 三 timerqueue 单次回收实验（D）；不加载 KernelSU，仅 shell 域。 |
 | `O3P_D3V3` | `1` | **危险**：单次回收 cred+enforcing+空写实验（v3a–v3c），本内核会 panic。 |
 | `O3P_SDLOG` | `1` | 进度镜像到 `/sdcard/o3p_sd.log`（调试；panic 时 FUSE 写可能丢）。 |

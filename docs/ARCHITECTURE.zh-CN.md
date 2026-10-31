@@ -146,6 +146,28 @@ KernelSU 用运行时 kallsyms 加载器、**不打 init 补丁**。`policycap` 
 所以 KSU 自己的 `setenforce(1)` 无害：设备停在 Enforcing、Wi‑Fi 正常、管理器
 正常打开。`KSU_CODEPATCH skip` 是预期日志行；`O3P_CODEPATCH=1` 可回退旧补丁。
 
+### v3.1 —— 用户自选 LKM
+
+应用可以加载操作者选择的 `.ko`，替代内置 blob：
+
+1. `Main` 打开文档选择器（`ACTION_OPEN_DOCUMENT`，任意 MIME），最多读 8 MB，
+   `CustomKo.validate()` 解析 ELF 头与 `.modinfo`：64 位小端 AArch64
+   `ET_REL`、`name=kernelsu`、`vermagic` 的内核系列等于
+   `System.getProperty("os.version")`（6.18）。系列不同是硬失败；同为 6.18
+   但构建不同只是警告（内置 LKM 就是 6.18.32 构建、跑在 6.18.21 上）。
+2. 验证失败时应用弹窗提供“退回自适应”（清空选择，推荐）、“仍然尝试”
+   （强制使用，载荷仍会再校验）与“取消”；警告则写日志后接受。
+3. `PayloadRunner` 把字节写到
+   `/sdcard/Android/data/o3.st.root1/files/custom-ko.ko`，再由 Shizuku shell
+   复制到 `/data/local/tmp/o3p_custom_<millis>.ko`（外部副本不可读时退回 stdin
+   管道），然后为载荷设置 `O3P_CUSTOM_KO`。
+4. `ksu_load()` 读取该文件、再次执行 `ko_validate()`；通过则走正常的
+   relink/`insmod` 流程。文件不可读、被拒绝或模块没有出现在 `/proc/modules`
+   时，打印 `CUSTOM_KO fallback` 并改为加载内置自适应 LKM。
+
+模块名必须是 `kernelsu`（三个 fork 都用这个名字）。该检查只针对兼容性，不是
+安全边界——见 `docs/SECURITY.md`。
+
 ## rootd
 
 成功后载荷 fork 一个脱离的守护进程（`o3p --rootd`），并在本次 boot 的剩余时间里

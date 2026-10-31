@@ -33,7 +33,8 @@ rebuilds the payload/APK when the toolchain environment is set.
 
 | | |
 |---|---|
-| release | **v3.0** (`release/o3root2-v3.0.apk`, sha256 `c80f499a…`) |
+| release | **v3.1** (`release/o3root2-v3.1.apk`, sha256 `6d9041a9…`) |
+| custom LKM | optional user-supplied KernelSU-family .ko (basic compatibility check; falls back to the built-in adaptive module) |
 | chain | Shizuku shell → CVE-2026-98260 → `uid=0` + full caps → matching KernelSU LKM (KernelSU / KernelSU-Next / SukiSU) → rootd |
 | persistence | none (current boot only) |
 | tested device | Xiaomi Pad 9 Pro Max `yingtian`, HyperOS `OS4.0.16.0.XBMCNXM` |
@@ -59,7 +60,9 @@ rebuilds the payload/APK when the toolchain environment is set.
    Enforcing. Then it is `insmod`ed and a `rootd` daemon is left behind
    (abstract socket `@o3p_rootd`, peer-uid 0/2000). Upstream KernelSU,
    KernelSU-Next and SukiSU LKMs all work (legacy: `O3P_CODEPATCH=1` patches the
-   `setenforce` immediate).
+   `setenforce` immediate). Since v3.1 the app can instead load a `.ko` you pick
+   (basic ELF/.modinfo compatibility check, automatic fallback to the built-in
+   LKM when it is rejected or fails to load).
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for offsets, the write
 primitive, the KernelSU patch and the porting guide.
@@ -69,7 +72,7 @@ primitive, the KernelSU patch and the porting guide.
 1. On the device: enable Developer options → Wireless debugging (or ADB).
    Install **Shizuku** / ShizukuX and start it in **shell mode**:
    `shizuku_plus_server` must run as `uid=2000`, `u:r:shell:s0`.
-2. Install `release/o3root2-v3.0.apk` (MIUI may need "Install via USB" allowed).
+2. Install `release/o3root2-v3.1.apk` (MIUI may need "Install via USB" allowed).
 3. Open **O3 Root**, grant the Shizuku permission, press
    **Continue to UID 0**. The log shows `★ UIDNOW uid=0`,
    `★ KSU_MODULE LIVE`, and the KernelSU manager opens automatically.

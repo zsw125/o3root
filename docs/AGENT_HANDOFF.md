@@ -11,7 +11,7 @@ work with rough effort estimates.
 
 | item | value |
 |---|---|
-| release | v3.0, `release/o3root2-v3.0.apk` (14,218,768 B, sha256 `c80f499a…`) |
+| release | v3.1, `release/o3root2-v3.1.apk` (14,235,152 B, sha256 `6d9041a9…`) |
 | verified device | Xiaomi Pad 9 Pro Max `yingtian`, HyperOS `OS4.0.16.0.XBMCNXM`, kernel `6.18.21-android17-5-g805aa6adea19-abogki565292102-4k` |
 | second target | `lhasa` (Xiaomi 18 Fold) `OS4.0.26.0.XPNCNXM` — same kernel sha256 `cde87cd7…` (boot header/ramdisk differ); **not device-tested** |
 | persistence | none (current boot only) |
@@ -54,7 +54,7 @@ Dates/commits/credits: `docs/PRIOR-ART.md` §5–7; superseded reports:
    locates the `setenforce` patch point from `.rela.init.text`, and works with
    tiann, KernelSU-Next and SukiSU LKMs; the v1.9 APK was cold-boot verified.
 
-7. **v3.0 (current, 2026-10-25)**: two reaps instead of one. Stage 0 is an
+7. **v3.0 (shipped 2026-10-25; the app/LKM path was extended in v3.1)**: two reaps instead of one. Stage 0 is an
    unaligned 8-byte zero at `selinux_state-7` (clears `enforcing` and the
    adjacent `notif_lock` pending/tail bytes; keeps `initialized`/`policycap`),
    stage 1 is the `task_cred` swap; KernelSU loads
@@ -264,3 +264,31 @@ The payload can be tested standalone (root or shell): push `libo3p.so` as
 - Cold-boot verified (yingtian): `KALLSYMS_PATCH found=225 missing=0`,
   `KSU_INSMOD_OUT:[rc=0]`, `KSU_MODULE LIVE`, Enforcing, `ping` 22 ms,
   `nc 443` rc=0, manager auto-opened, `boot_id` unchanged.
+
+## v3.1 — user-supplied LKM + built-in LKM check (2026-11-01)
+
+- App: a "选择 .ko" row under the main button. The picker feeds
+  `CustomKo.validate()` (64-bit AArch64 `ET_REL`, `.modinfo` with
+  `name=kernelsu`, kernel series vs `os.version`); on failure an AlertDialog
+  offers 退回自适应 (recommended) / 仍然尝试 / 取消, and warnings are accepted
+  with a log line. The chosen module is copied to the app's external files dir,
+  staged to `/data/local/tmp/o3p_custom_<millis>.ko` by the Shizuku shell
+  (stdin-pipe fallback) and exported as `O3P_CUSTOM_KO`.
+- Payload: `ko_validate()` repeats the check; `ksu_load()` tries the custom
+  module first and falls back to the embedded adaptive blob when the file is
+  unreadable, rejected or fails to load (`CUSTOM_KO fallback`). The relink /
+  `insmod` path is shared, so a custom module still gets runtime kallsyms
+  resolution.
+- Built-in LKM check (`python3 tools/check_lkm_updates.py`, 2026-10-29): tiann
+  v3.3.1 and KernelSU-Next v3.4.2 have no newer release; SukiSU-Ultra v4.3.0 is
+  newer than the bundled v4.2.1-r2. The bundled files were **not** swapped:
+  without a device run the SukiSU path would lose its verified status. To try
+  v4.3.0, use the new custom-.ko path (same `android17-6.18` build/vermagic as
+  the bundled module).
+- Release: `release/o3root2-v3.1.apk` (14,235,152 B, sha256 `6d9041a9…`);
+  payload `libo3p.so` 1,496,044 B sha256 `e479e539…`; versionCode 14 /
+  versionName 3.1.
+- Not verified on hardware yet (no device attached at build time): the picker
+  flow, staging paths and fallback branches are compiled and desktop-tested
+  only (`CustomKo` against the three bundled LKMs, a copy with a 6.18.21
+  vermagic, plus wrong-arch / wrong-type / truncated / non-ELF files).

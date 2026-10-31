@@ -10,7 +10,7 @@
 
 | 项 | 值 |
 |---|---|
-| 发布 | v3.0，`release/o3root2-v3.0.apk`（14,218,768 B，sha256 `c80f499a…`） |
+| 发布 | v3.1，`release/o3root2-v3.1.apk`（14,235,152 B，sha256 `6d9041a9…`） |
 | 已验证设备 | 小米 Pad 9 Pro Max `yingtian`，HyperOS `OS4.0.16.0.XBMCNXM`，内核 `6.18.21-android17-5-g805aa6adea19-abogki565292102-4k` |
 | 第二目标 | `lhasa`（Xiaomi 18 Fold）`OS4.0.26.0.XPNCNXM` —— 同内核 sha256 `cde87cd7…`（boot header/ramdisk 不同）；**未实机测试** |
 | 持久化 | 无（仅当前 boot） |
@@ -50,7 +50,7 @@ Permissive）、网络可用、`boot_id` 未变。
    补丁点；tiann / KernelSU-Next / SukiSU 三种 LKM 均可；v1.9 APK 已冷启动
    端到端验证。
 
-7. **v3.0（当前，2026-10-25）**：两段式取代单次写入。stage 0 在
+7. **v3.0（2026-10-25 发布；v3.1 扩展了 App/LKM 路径）**：两段式取代单次写入。stage 0 在
    `selinux_state-7` 做 8 字节非对齐零写（清 `enforcing`，同时清相邻锁的
    pending/tail 字节；保留 `initialized`/`policycap`），stage 1 换 `task_cred`；
    KernelSU 经运行时
@@ -243,3 +243,25 @@ adb shell 'tail -f /data/data/o3.st.root1/files/run.log'   # 仅 debuggable 构�
 - yingtian 冷启验证：`KALLSYMS_PATCH found=225`、`KSU_INSMOD_OUT:[rc=0]`、
   `KSU_MODULE LIVE`、Enforcing、`ping` 22 ms、`nc 443` rc=0、管理器自动打开、
   `boot_id` 未变。
+
+## v3.1 —— 自定义 LKM 与内置 LKM 检查（2026-11-01）
+
+- 应用：主按钮下方新增“选择 .ko”。选择器 → `CustomKo.validate()`（64 位
+  AArch64 `ET_REL`、`.modinfo` 有 `name=kernelsu`、内核系列对比 `os.version`）；
+  不通过时弹窗：退回自适应（推荐）/ 仍然尝试 / 取消，警告则记日志后接受。选中的
+  模块先复制到应用外部目录，由 Shizuku shell 推到
+  `/data/local/tmp/o3p_custom_<millis>.ko`（失败时走 stdin 管道），再以
+  `O3P_CUSTOM_KO` 传给载荷。
+- 载荷：`ko_validate()` 重复同一套校验；`ksu_load()` 先试自定义模块，文件不可读、
+  被拒绝或加载失败时自动退回内置自适应 blob（`CUSTOM_KO fallback`）。relink /
+  `insmod` 路径共用，因此自定义模块同样享受运行时 kallsyms 解析。
+- 内置 LKM 检查（`python3 tools/check_lkm_updates.py`，2026-10-29）：tiann
+  v3.3.1 与 KernelSU-Next v3.4.2 没有更新；SukiSU-Ultra v4.3.0 比内置的
+  v4.2.1-r2 新。**没有**替换内置文件：没有真机验证的话 SukiSU 路径会失去已验证
+  状态。想试 v4.3.0 可以用新的自定义 .ko 通道（与内置同属
+  `android17-6.18` 构建，vermagic 相同）。
+- 发布件：`release/o3root2-v3.1.apk`（14,235,152 B，sha256 `6d9041a9…`）；载荷
+  `libo3p.so` 1,496,044 B，sha256 `e479e539…`；versionCode 14 / versionName 3.1。
+- 尚未真机验证（构建时没有连接设备）：选择器流程、推送路径与回退分支只做了编译
+  与桌面测试（`CustomKo` 对三个内置 LKM、一个改成 6.18.21 vermagic 的副本，以及
+  错误架构/类型/截断/非 ELF 文件）。

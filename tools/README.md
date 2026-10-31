@@ -15,6 +15,7 @@ written against one specific OTA, the defaults reflect that).
 | `check_hash.py <ota.zip>` | research helper: check whether the operation `data_sha256` covers the stored (compressed) blob or the decompressed data |
 | `hash_payload.py <ota.zip> [expected_b64]` | verify `payload.bin` SHA-256 against `payload_properties.txt` `FILE_HASH` |
 | `neighbor_lookup.py <symbol> [--delta N] [--require NAME] [--strict]` | print the symbols around `symbol+N` in a vmlinux ELF and state its evidence level: with `st_size` it does a real containment check (`st_value <= target < st_value+size`), without it falls back to nearest-symbol and warns (`--strict` refuses the fallback). `--require` validates the expected owner; the `name source` line says the names come from `.symtab` as emitted (no BTF synthesis). Used by the porting check for the `selinux_state - 7` write. Needs `pyelftools` (set `PYELFTOOLS`) |
+| `check_lkm_updates.py` | compare the bundled `payload/lkm/*.ko` with each project’s latest GitHub release (`android17-6.18` aarch64 asset) by SHA-256; exits non-zero with `--fail-on-update` |
 | `kernel_cfg_btf.py <kernel>` | print the embedded kernel config (`IKCONFIG`), BTF layouts (`task_struct`, `cred`, `k_itimer`, `selinux_state`, …) and disassemble the probe points (`begin_new_exec`, `timerqueue_del`, `rb_erase`, `selinux_inode_permission`). Needs `pyelftools` + `capstone` (set `PYELFTOOLS`) |
 
 ## Getting the kernel

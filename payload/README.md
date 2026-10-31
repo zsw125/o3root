@@ -73,6 +73,7 @@ unset.
 | `O3P_NOKSU` | `1` | skip the KernelSU blob load. |
 | `O3P_RELINK_ONLY` | `1` | bypass `/proc/kallsyms`; relink with the embedded 248-symbol table + slide. |
 | `O3P_KSU_FORK` | `tiann` / `next` / `sukisu` | force one embedded LKM instead of manager-based selection. |
+| `O3P_CUSTOM_KO` | path | load this user-supplied `.ko` instead of the embedded blob (v3.1). The payload validates it first (ELF64 AArch64 `ET_REL`, `.modinfo` `name=kernelsu`, same kernel series); an unreadable/rejected file or a failed `insmod` falls back to the embedded adaptive LKM automatically. |
 | `O3P_D3` | `1` | lab demo of the three-timerqueue single reap (D); no KernelSU, shell domain only. |
 | `O3P_D3V3` | `1` | **unsafe**: single-reap cred+enforcing+no-op experiment (v3a–v3c); panics on this kernel. |
 | `O3P_SDLOG` | `1` | mirror progress to `/sdcard/o3p_sd.log` (debugging; FUSE writes may be lost on panic). |

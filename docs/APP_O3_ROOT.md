@@ -585,3 +585,30 @@ Final state: Enforcing, `kernelsu` Live, `ping 10.30.0.1` 22 ms,
 
 Single-reap, three-write attempt (v3a/v3b/v3c) panicked three times right
 after the first `D3ADDR`; it stays behind `O3P_D3V3` for analysis only.
+
+
+## v3.1 — 自定义 .ko + 内置 LKM 更新检查（2026-11-01）
+
+- 需求：App 内自选 `.ko`，做基础兼容性验证；不通过时提示并可选择退回自适应；
+  同时检查内置 LKM 是否有更新。
+- App（versionCode 14 / versionName 3.1）：主按钮下新增“选择 .ko”行 + 状态行。
+  `ACTION_OPEN_DOCUMENT` 任意 MIME；`CustomKo`（纯 Java，可桌面单测）解析 ELF64
+  小端 AArch64 `ET_REL`、`.modinfo` 的 `name=`/`vermagic=`；name 必须是
+  `kernelsu`；内核系列必须与 `os.version` 同为 6.18。系列不同 → 弹窗“退回自适应
+  / 仍然尝试 / 取消”；同系列不同构建 → 警告（内置 LKM 正是 6.18.32 构建、跑在
+  6.18.21）。选中后写应用外部目录，由 `PayloadRunner` 推到
+  `/data/local/tmp/o3p_custom_<millis>.ko`（外部副本不可读时 stdin 回退），以
+  `O3P_CUSTOM_KO` 导出。
+- 载荷：`ko_read_file`/`ko_validate`（C 侧同规则）；`ksu_try_load` 抽出原有
+  patch+insmod 流程供自定义/内置复用；`ksu_load` 先试自定义，失败（不可读/拒绝/
+  `insmod` 后 `/proc/modules` 无 kernelsu）自动打印 `CUSTOM_KO fallback` 并改用
+  内置自适应 LKM。新增日志 `CUSTOM_KO ok|reject`、`CUSTOM_KO fallback`。
+- 内置 LKM 检查（`tools/check_lkm_updates.py`）：tiann v3.3.1（sha `d848bcbe…`）、
+  KernelSU-Next v3.4.2（`71931508…`）都是上游最新；SukiSU 内置 v4.2.1-r2
+  （`0faa3268…`），上游已有 v4.3.0（`df3b52b2…`，612,448 B）。未替换：无真机
+  验证，保留已验证状态；用户可用新功能自选 4.3.0 试。
+- 构建：payload 77,328 B；libo3p.so 1,496,044 B sha256 `e479e539…`；APK
+  14,235,152 B sha256 `6d9041a9…`；`bash scripts/verify.sh` 全绿。
+- 未真机验证：选择器流程与回退分支（构建时无设备）。桌面单测：三个内置 LKM →
+  WARN；把 vermagic 改成 6.18.21 的副本 → OK；错架构/错类型/截断/非 ELF →
+  FAIL；缺 vermagic → WARN；`name=Kernelsu` → FAIL。

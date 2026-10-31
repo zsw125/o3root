@@ -165,6 +165,31 @@ is harmless: the device ends in Enforcing with working Wi-Fi and the manager
 opens. `KSU_CODEPATCH skip` is the expected log line; `O3P_CODEPATCH=1`
 restores the legacy patch.
 
+### v3.1 — user-supplied LKM
+
+The app can load a `.ko` chosen by the operator instead of the embedded blob:
+
+1. `Main` opens a document picker (`ACTION_OPEN_DOCUMENT`, any MIME type),
+   reads up to 8 MB, and `CustomKo.validate()` parses the ELF header and
+   `.modinfo`: 64-bit little-endian AArch64 `ET_REL`, `name=kernelsu`, and a
+   `vermagic` kernel series equal to `System.getProperty("os.version")`
+   (6.18). A different series is a hard failure; a different 6.18.x build is a
+   warning (the shipped LKMs are built for 6.18.32 and run on 6.18.21).
+2. On failure the app shows a dialog with "退回自适应" (clear the selection,
+   recommended), "仍然尝试" (force, still re-checked by the payload) and
+   "取消". A warning is accepted with a note in the log.
+3. `PayloadRunner` writes the bytes to
+   `/sdcard/Android/data/o3.st.root1/files/custom-ko.ko`; the Shizuku shell
+   copies that to `/data/local/tmp/o3p_custom_<millis>.ko` (stdin-pipe fallback
+   when the external copy is unreadable) and exports `O3P_CUSTOM_KO`.
+4. `ksu_load()` reads the file, repeats `ko_validate()` and, if it is accepted,
+   runs the normal relink/`insmod` path. If the file is unreadable, rejected,
+   or the module does not appear in `/proc/modules`, it logs `CUSTOM_KO
+   fallback` and loads the embedded adaptive LKM instead.
+
+The module name must stay `kernelsu` (all three forks use it). The check is
+about compatibility, not a security boundary — see `docs/SECURITY.md`.
+
 ## rootd
 
 After success the payload forks a detached daemon (`o3p --rootd`) and keeps it

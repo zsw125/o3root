@@ -1,7 +1,11 @@
 package o3.st.root1;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Intent;
+import android.database.Cursor;
+import android.net.Uri;
+import android.provider.OpenableColumns;
 import android.content.res.Configuration;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -52,6 +56,12 @@ public class Main extends Activity implements PayloadSink {
     private final StringBuilder logBuf = new StringBuilder();
     private final SpannableStringBuilder logSpan = new SpannableStringBuilder();
     private String payloadPath;
+    private TextView koView;
+    private byte[] customKoBytes;
+    private String customKoLabel;
+    private String customKoExtPath;
+    private KoResult customKoCheck;
+    private boolean customKoForced;
     private boolean running;
     private boolean rootOk;
     private boolean ksuOk;
@@ -70,6 +80,8 @@ public class Main extends Activity implements PayloadSink {
     static final String WARN_DEFAULT =
             "需要 Shizuku 以 shell 模式运行（无线调试启动，无需电脑）";
 
+    private static final int REQ_KO = 1002;
+
     private static Main INSTANCE;
 
     static Main instance() {
@@ -84,7 +96,7 @@ public class Main extends Activity implements PayloadSink {
         lastNight = isNight();
         setContentView(buildUi());
         applyWindowTheme();
-        append("O3 Root v3 · CVE-2026-98260");
+        append("O3 Root v3.1 · CVE-2026-98260");
         append("payload=" + payloadPath);
         checkFirmware();
         Shizuku.addBinderReceivedListenerSticky(new BindListener(this));
@@ -146,6 +158,9 @@ public class Main extends Activity implements PayloadSink {
         logView.setTextColor(LOG);
         btn.setBackground(round(ACCENT, 14));
         btn.setTextColor(BTN_TEXT);
+        if (koView != null) {
+            updateKoView();
+        }
         tvShizuku.setTextColor(binderAlive ? OK : BAD);
         if (binderAlive) {
             tvSelinux.setTextColor(MUTED);
@@ -225,7 +240,7 @@ public class Main extends Activity implements PayloadSink {
         titleView = title;
         root.addView(title);
 
-        TextView sub = text("v3 · CVE-2026-98260 · OS4", 12, MUTED, false);
+        TextView sub = text("v3.1 · CVE-2026-98260 · OS4", 12, MUTED, false);
         subView = sub;
         sub.setPadding(0, dp(4), 0, 0);
         root.addView(sub);
@@ -270,6 +285,18 @@ public class Main extends Activity implements PayloadSink {
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(52));
         blp.topMargin = dp(14);
         root.addView(btn, blp);
+
+        LinearLayout koRow = new LinearLayout(this);
+        koRow.setOrientation(LinearLayout.HORIZONTAL);
+        koRow.setGravity(Gravity.CENTER_VERTICAL);
+        koRow.setPadding(0, dp(10), 0, 0);
+        koView = text("内核模块: 自适应（内置 KSU / Next / SukiSU）", 11, MUTED, false);
+        koRow.addView(koView, new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView koPick = text("选择 .ko", 11, ACCENT, false);
+        koPick.setOnClickListener(new ClickPickKo(this));
+        koRow.addView(koPick);
+        root.addView(koRow);
 
         TextView lt = text("LogBox", 11, MUTED, false);
         logTitleView = lt;
@@ -351,6 +378,12 @@ public class Main extends Activity implements PayloadSink {
                 || line.startsWith("top ->") || line.startsWith("probe ->")
                 || line.startsWith("KSU_")) {
             color = MUTED;
+        } else if (line.startsWith("custom ko")) {
+            color = (line.indexOf("失败") >= 0 || line.indexOf("未通过") >= 0) ? WARN : ACCENT;
+            pre = "· ";
+        } else if (line.startsWith("CUSTOM_KO")) {
+            color = (line.indexOf("reject") >= 0 || line.indexOf("fallback") >= 0) ? WARN : ACCENT;
+            pre = "· ";
         } else if (line.startsWith("O3 Root v")) {
             color = ACCENT; bold = true;
         } else if (line.startsWith("checkSelfPermission=") || line.startsWith("requesting permission")
@@ -787,7 +820,8 @@ public class Main extends Activity implements PayloadSink {
         if (runBootId != null) {
             append("boot_id=" + runBootId);
         }
-        new Thread(new PayloadRunner(payloadPath, this, mgrFork), "payload").start();
+        new Thread(new PayloadRunner(payloadPath, this, mgrFork, customKoBytes, customKoLabel,
+                customKoExtPath, customKoForced), "payload").start();
     }
 
     public void onLine(String line) {
@@ -929,6 +963,188 @@ public class Main extends Activity implements PayloadSink {
         if (tip != null) {
             append("诊断: " + tip);
         }
+    }
+
+    // ---- custom .ko (user supplied LKM) ----
+
+    void pickKo() {
+        if (running) {
+            append("正在运行，稍后再选择内核模块");
+            return;
+        }
+        Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        i.addCategory(Intent.CATEGORY_OPENABLE);
+        i.setType("*/*");
+        try {
+            startActivityForResult(i, REQ_KO);
+            append("custom ko: 选择自定义 .ko 文件");
+        } catch (Throwable t) {
+            append("custom ko: 无法打开文件选择器 " + t);
+        }
+    }
+
+    protected void onActivityResult(int req, int res, Intent data) {
+        super.onActivityResult(req, res, data);
+        if (req != REQ_KO) {
+            return;
+        }
+        if (res != RESULT_OK || data == null || data.getData() == null) {
+            append("custom ko: 已取消选择");
+            return;
+        }
+        Uri uri = data.getData();
+        String label = displayName(uri);
+        append("custom ko: 读取 " + label);
+        new Thread(new KoReadTask(this, uri, label), "ko-read").start();
+    }
+
+    private String displayName(Uri uri) {
+        String name = null;
+        try {
+            Cursor c = getContentResolver().query(uri, null, null, null, null);
+            if (c != null) {
+                try {
+                    int idx = c.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                    if (idx >= 0 && c.moveToFirst()) {
+                        name = c.getString(idx);
+                    }
+                } finally {
+                    c.close();
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        if (name == null || name.length() == 0) {
+            String p = uri.getPath();
+            name = (p == null || p.lastIndexOf('/') < 0)
+                    ? "custom.ko" : p.substring(p.lastIndexOf('/') + 1);
+        }
+        return name;
+    }
+
+    void postKoRead(String label, byte[] data, String err, KoResult r) {
+        ui.post(new KoApplyTask(this, label, data, err, r));
+    }
+
+    void applyKoRead(String label, byte[] data, String err, KoResult r) {
+        if (err != null || data == null || r == null) {
+            customKoBytes = null;
+            customKoLabel = null;
+            customKoCheck = null;
+            customKoForced = false;
+            updateKoView();
+            append("custom ko: 读取失败 " + (err == null ? "" : err) + "；继续使用自适应");
+            return;
+        }
+        append("custom ko: " + label + " name=" + r.name
+                + " vermagic=" + (r.vermagic.length() == 0 ? "?" : r.vermagic));
+        if (r.level == CustomKo.FAIL) {
+            append("custom ko: 兼容性验证未通过 — " + r.reason);
+            customKoBytes = data;
+            customKoLabel = label;
+            customKoCheck = r;
+            customKoForced = false;
+            updateKoView();
+            showKoFailDialog();
+            return;
+        }
+        if (r.level == CustomKo.WARN) {
+            append("custom ko: 兼容性警告 — " + r.reason);
+        }
+        adoptCustomKo(label, data, r, false);
+    }
+
+    private void showKoFailDialog() {
+        try {
+            new AlertDialog.Builder(this)
+                    .setTitle("自定义 .ko 兼容性验证未通过")
+                    .setMessage(customKoCheck.reason
+                            + "。退回自适应将使用内置的 KernelSU / KernelSU-Next / SukiSU 模块（推荐）。")
+                    .setPositiveButton("退回自适应", new KoChoice(this, KoChoice.FALLBACK))
+                    .setNeutralButton("仍然尝试", new KoChoice(this, KoChoice.FORCE))
+                    .setNegativeButton("取消", new KoChoice(this, KoChoice.CANCEL))
+                    .show();
+        } catch (Throwable t) {
+            append("custom ko: 无法显示对话框 " + t + "；已退回自适应");
+            clearCustomKo("兼容性验证未通过，已退回自适应");
+        }
+    }
+
+    void koDialogChoice(int action) {
+        if (action == KoChoice.FALLBACK) {
+            clearCustomKo("已选择退回自适应（内置模块）");
+        } else if (action == KoChoice.FORCE) {
+            if (customKoBytes != null && customKoCheck != null) {
+                append("custom ko: 用户选择仍然尝试（未通过验证）");
+                adoptCustomKo(customKoLabel, customKoBytes, customKoCheck, true);
+            }
+        } else {
+            clearCustomKo("已取消，继续使用自适应（内置模块）");
+        }
+    }
+
+    void adoptCustomKo(String label, byte[] data, KoResult r, boolean forced) {
+        customKoBytes = data;
+        customKoLabel = label;
+        customKoCheck = r;
+        customKoForced = forced;
+        customKoExtPath = writeExtKo(data);
+        updateKoView();
+        append("custom ko: 已采用 " + label + (forced ? "（未通过验证，强制使用）" : "")
+                + "；加载失败时载荷会自动退回内置模块");
+    }
+
+    void clearCustomKo(String why) {
+        customKoBytes = null;
+        customKoLabel = null;
+        customKoCheck = null;
+        customKoForced = false;
+        customKoExtPath = null;
+        updateKoView();
+        append("custom ko: " + why);
+    }
+
+    private String writeExtKo(byte[] data) {
+        try {
+            File dir = getExternalFilesDir(null);
+            if (dir == null) {
+                return null;
+            }
+            File f = new File(dir, "custom-ko.ko");
+            FileOutputStream out = new FileOutputStream(f);
+            out.write(data);
+            out.close();
+            return f.getAbsolutePath();
+        } catch (Throwable t) {
+            append("custom ko: 外部暂存失败 " + t);
+            return null;
+        }
+    }
+
+    void updateKoView() {
+        if (koView == null) {
+            return;
+        }
+        if (customKoBytes == null || customKoCheck == null) {
+            koView.setText("内核模块: 自适应（内置 KSU / Next / SukiSU）");
+            koView.setTextColor(MUTED);
+            return;
+        }
+        String s = "内核模块: 自定义 " + customKoLabel;
+        if (customKoForced) {
+            s = s + " ⚠ 未通过验证";
+            koView.setTextColor(WARN);
+        } else if (customKoCheck.level == CustomKo.FAIL) {
+            s = s + " ⚠ 未通过验证（待选择）";
+            koView.setTextColor(WARN);
+        } else if (customKoCheck.level == CustomKo.WARN) {
+            s = s + " ⚠ 同系列不同构建";
+            koView.setTextColor(WARN);
+        } else {
+            s = s + " ✔ " + customKoCheck.kernelRelease;
+            koView.setTextColor(OK);
+        }
+        koView.setText(s);
     }
 
     public void launchManager() {

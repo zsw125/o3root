@@ -66,12 +66,18 @@ if [ "$cnt" = "248" ]; then ok "ksu_symtab.h has 248 entries"; else bad "ksu_sym
 
 echo "== release checksum"
 "$PY" - <<'PY'
-import hashlib, sys
-want = open('release/SHA256SUMS.txt', encoding='utf-8').read().split()[0]
-got = hashlib.sha256(open('release/o3root2-v3.0.apk', 'rb').read()).hexdigest()
-print('  ok    release apk sha256 matches SHA256SUMS' if got == want else
-      '  FAIL  release apk sha256 %s != %s' % (got, want))
-sys.exit(0 if got == want else 1)
+import glob, hashlib, os, sys
+sums = open('release/SHA256SUMS.txt', encoding='utf-8').read().split()
+want, name = sums[0], sums[1].lstrip('*')
+apks = sorted(glob.glob('release/*.apk'))
+if len(apks) != 1:
+    print('  FAIL  expected exactly one release/*.apk, found %d' % len(apks))
+    sys.exit(1)
+got = hashlib.sha256(open(apks[0], 'rb').read()).hexdigest()
+ok = (got == want) and (os.path.basename(apks[0]) == name)
+print('  ok    release apk sha256 matches SHA256SUMS' if ok else
+      '  FAIL  release apk sha256 %s != %s (or name mismatch)' % (got, want))
+sys.exit(0 if ok else 1)
 PY
 [ $? -eq 0 ] || fail=1
 
@@ -101,7 +107,7 @@ if [ -n "${NDK_CC:-}" ]; then
   log=$(mktemp)
   if bash payload/build-payload.sh >"$log" 2>&1; then
     got=$("$PY" -c "import hashlib;print(hashlib.sha256(open('payload/build/libo3p.so','rb').read()).hexdigest())")
-    want=e64217c8fac2950763869881efdd15ff9fb76f1423a3388185bca7e72499aac3
+    want=e479e539bf812f7fe0dc18734ec6f47727fc6f650b4a8d9fd45751a9c6500a2b
     if [ "$got" = "$want" ]; then ok "libo3p.so sha256 matches reference"; else bad "libo3p.so sha256 $got != $want"; fi
   else
     bad "payload build failed"; tail -20 "$log" | sed 's/^/        /'
@@ -118,7 +124,7 @@ if [ -n "${ANDROID_JAR:-}" ] && [ -n "${BUILD_TOOLS:-}" ] && [ -n "${SHIZUKU_JAR
     if [ -x "$BUILD_TOOLS/aapt2" ] || [ -x "$BUILD_TOOLS/aapt2.exe" ]; then
       AAPT2="$BUILD_TOOLS/aapt2"; [ -x "$AAPT2" ] || AAPT2="$BUILD_TOOLS/aapt2.exe"
       v=$("$AAPT2" dump badging app/o3root2.apk 2>/dev/null | grep -o "versionName='[^']*'" | head -1)
-      case "$v" in *"'3.0'"*) ok "APK rebuilt ($v)";; *) bad "APK version $v (expected 3.0)";; esac
+      case "$v" in *"'3.1'"*) ok "APK rebuilt ($v)";; *) bad "APK version $v (expected 3.1)";; esac
     else
       note "APK rebuilt (aapt2 not found to verify version)"
     fi
