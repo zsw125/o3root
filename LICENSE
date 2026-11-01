@@ -19,11 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-Note: the MIT license above covers the original code in this repository.
-Bundled or fetched third-party components carry their own licenses; see
-NOTICE.md. This project is security research tooling for devices you own.
-Using it may violate warranties, service terms, or local law depending on
-jurisdiction. No warranty of any kind is provided.

@@ -74,6 +74,17 @@ licenses and redistribution terms.
 - `pyelftools` (public domain / Unlicense) is required by
   `payload/ksu/mksymtab.py` and `payload/ksu/relink_ksu.py`.
 
+## License scope (MIT)
+
+`LICENSE` contains only the standard MIT text, so GitHub and license scanners
+identify this repository as MIT. The note that used to follow it is kept here:
+
+- The MIT license covers the original code in this repository; bundled or
+  fetched third-party components carry their own licenses (see above).
+- This project is security research tooling for devices you own. Using it may
+  violate warranties, service terms, or local law depending on jurisdiction.
+  No warranty of any kind is provided.
+
 ---
 
 ## Disclaimer

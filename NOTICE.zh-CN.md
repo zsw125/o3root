@@ -65,6 +65,15 @@
 - `pyelftools`（public domain / Unlicense）为 `payload/ksu/mksymtab.py` 与
   `payload/ksu/relink_ksu.py` 所需。
 
+## 许可证范围（MIT）
+
+`LICENSE` 只保留标准 MIT 全文，因此 GitHub 与许可证扫描器会把它识别为 MIT。
+原先附在 LICENSE 末尾的说明移到本节：
+
+- MIT 覆盖本仓库自有代码；内置或构建时拉取的第三方组件各有自己的许可证（见上）。
+- 本项目是面向自有设备的安全研究工具；使用它可能因所在司法辖区而违反保修、
+  服务条款或当地法律。不提供任何形式的担保。
+
 ---
 
 ## 免责声明
