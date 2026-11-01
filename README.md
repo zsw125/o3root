@@ -2,7 +2,7 @@
 
 [![verify](https://github.com/zsw125/o3root/actions/workflows/verify.yml/badge.svg)](https://github.com/zsw125/o3root/actions/workflows/verify.yml)
 [![release](https://img.shields.io/github/v/release/zsw125/o3root?display_name=tag)](https://github.com/zsw125/o3root/releases)
-[![license](https://img.shields.io/github/license/zsw125/o3root)](LICENSE)
+[![license](https://img.shields.io/github/license/zsw125/o3root?v=20261101)](LICENSE)
 [![platform](https://img.shields.io/badge/Android%2017-kernel%206.18.21-3DDC84)](docs/ARCHITECTURE.md)
 [![devices](https://img.shields.io/badge/devices-yingtian%20%7C%20lhasa-3DDC84)](docs/ARCHITECTURE.md)
 
