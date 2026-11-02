@@ -1,4 +1,4 @@
-# 实验性 O1 构建（`v3.3.1-o1-test`）测试指南
+# 实验性 O1 构建（`v3.3.2-o1-test`）测试指南
 
 > 英文版：[`TESTING_O1.md`](TESTING_O1.md)
 
@@ -42,29 +42,30 @@ profile。它**只经过静态分析**，从未在 O1 真机上运行过。请�
 ## 安装与运行
 
 ```bash
-adb install -r release/test/o3root2-v3.3.1-o1-test.apk
+adb install -r release/test/o3root2-v3.3.2-o1-test.apk
 # MIUI 拒绝时，先在开发者选项允许“USB 安装”
 ```
 
-1. 打开 **O3 Root**，版本行应显示 `v3.3.1-o1-test`。
-2. 看日志：已分析构建应出现
+1. 打开 **O3 Root**，版本行应显示 `v3.3.2-o1-test`。
+2. 点 **Continue to UID 0**。真正开始前会先弹出两步警告：风险说明，然后一个
+   勾选框启用“开始提权”；两步都接受才会开始，取消不会改动设备。
+3. 看日志：已分析构建应出现
    `固件门禁通过（O1 实验性：<代号> / 6.18.21-…-g1d099fcb35e0-…）`；其他
    OS4.0.0.x 构建应出现 `固件门禁通过（O1 宽松模式：<代号> / <内核>）`。若显示
    `固件门禁未通过`，停止操作并反馈日志，不要盲目重试。
-3. 授予 Shizuku 权限，点 **Continue to UID 0**。
-4. 等 20–120 秒。成功标记：`★ UIDNOW uid=0`、`★ KSU_MODULE LIVE`，KernelSU
+4. 授予 Shizuku 权限；载荷会在上面的确认之后启动。等 20–120 秒。成功标记：`★ UIDNOW uid=0`、`★ KSU_MODULE LIVE`，KernelSU
    管理器自动打开。开头还应有 `SELINUX_PROFILE kernel=…` 和
    `SEL_WRITE … SEL_OK`。
-5. 验证 root：长按版本行 → 通过三道确认 → 执行 `id`（应为 `uid=0`）与
+6. 验证 root：长按版本行 → 通过三道确认 → 执行 `id`（应为 `uid=0`）与
    `getenforce`。
-6. 点 **导出日志**（或 **复制**）并保存日志文件。
+7. 点 **导出日志**（或 **复制**）并保存日志文件。
 
 ## 反馈内容
 
 请开 GitHub issue（或在该 release 下评论），附上：
 
 - 设备代号、完整 `Build.FINGERPRINT`、`kernel` 行、OS4 build 号；
-- App 版本（`v3.3.1-o1-test`）、Shizuku 版本与模式（shell / root）；
+- App 版本（`v3.3.2-o1-test`）、Shizuku 版本与模式（shell / root）；
 - 导出的日志（至少包含 `SELINUX_PROFILE`、`VERDICT`、`UIDNOW`、`KSU_*` 行）；
 - 结果：成功、反复 `VERDICT NO_RECLAIM`、panic/重启、管理器打不开等；以及
   `getenforce` 是否停在 Enforcing、网络是否正常。

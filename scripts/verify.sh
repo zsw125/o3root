@@ -9,7 +9,7 @@
 #   NDK_CC=...                                  rebuild payload, compare sha256
 #   ANDROID_JAR/BUILD_TOOLS/SHIZUKU_JARS/...    rebuild APK, check version
 #   VERIFY_BETA=1                               also build the test variant and
-#                                               check version 3.3.1-o1-test
+#                                               check version 3.3.2-o1-test
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 
@@ -42,7 +42,8 @@ for f in \
   AGENTS.md AGENTS.zh-CN.md README.md README.zh-CN.md LICENSE NOTICE.md NOTICE.zh-CN.md \
   third_party/NOTICE.zh-CN.md \
   app/AndroidManifest.xml app/build.sh app/src/o3/st/root1/Main.java \
-  app/src/o3/st/root1/LongClearKo.java app/src/o3/st/root1/BuildInfo.java \
+  app/src/o3/st/root1/LongClearKo.java app/src/o3/st/root1/O1Warning.java \
+  app/src/o3/st/root1/BuildInfo.java \
   app/src/o3/st/root1/ClickCopyLog.java app/src/o3/st/root1/ConsoleEntry.java \
   app/src/o3/st/root1/ConsoleGate.java app/src/o3/st/root1/ConsoleActivity.java \
   payload/o3p.c payload/mk_payload.py payload/build-payload.sh \
@@ -158,10 +159,10 @@ if [ -n "${ANDROID_JAR:-}" ] && [ -n "${BUILD_TOOLS:-}" ] && [ -n "${SHIZUKU_JAR
   rm -f "$log"
   if [ "${VERIFY_BETA:-0}" = "1" ]; then
     log=$(mktemp)
-    if BETA=1 BETA_VERSION=3.3.1-o1-test BETA_CODE=21 bash app/build.sh >"$log" 2>&1; then
+    if BETA=1 BETA_VERSION=3.3.2-o1-test BETA_CODE=22 bash app/build.sh >"$log" 2>&1; then
       if [ -x "$BUILD_TOOLS/aapt2" ] || [ -x "$BUILD_TOOLS/aapt2.exe" ]; then
         v=$("$AAPT2" dump badging app/o3root2.apk 2>/dev/null | grep -o "versionName='[^']*'" | head -1)
-        case "$v" in *"'3.3.1-o1-test'"*) ok "beta APK rebuilt ($v)";; *) bad "beta APK version $v (expected 3.3.1-o1-test)";; esac
+        case "$v" in *"'3.3.2-o1-test'"*) ok "beta APK rebuilt ($v)";; *) bad "beta APK version $v (expected 3.3.2-o1-test)";; esac
         c=$("$AAPT2" dump xmltree app/o3root2.apk --file AndroidManifest.xml 2>/dev/null | grep -c ConsoleActivity || true)
         if [ "${c:-0}" -ge 1 ]; then ok "test APK contains the console activity"; else bad "test APK is missing ConsoleActivity"; fi
       else

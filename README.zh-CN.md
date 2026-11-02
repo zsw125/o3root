@@ -32,7 +32,7 @@ Max）与 **lhasa**（Xiaomi 18 Fold）系列，做本地提权 + KernelSU。整
 | | |
 |---|---|
 | 发布 | **v3.2**（`release/o3root2-v3.2.apk`，14,239,248 B，sha256 `64bbc654…`） |
-| O1 测试构建 | **v3.3.1-o1-test**（`release/test/o3root2-v3.3.1-o1-test.apk`，14,247,440 B，sha256 `4ae9fcd5…`）：v3.2 功能 + **实验性 O1（XRING）profile**（`dijun` / `jinghu` / `violin`）+ 隐藏 root 控制台。接受 OS4.0.0.x 的任意 `6.18.21-android17…-4k` 内核：已分析构建走验证路径，其他构建走宽松模式并警告；仅供测试，从未真机验证 |
+| O1 测试构建 | **v3.3.2-o1-test**（`release/test/o3root2-v3.3.2-o1-test.apk`，14,247,440 B，sha256 `7aa29c48…`）：v3.2 功能 + **实验性 O1（XRING）profile**（`dijun` / `jinghu` / `violin`）+ 隐藏 root 控制台。接受 OS4.0.0.x 的任意 `6.18.21-android17…-4k` 内核：已分析构建走验证路径，其他构建走宽松模式并警告；仅供测试，从未真机验证 |
 | 旧测试构建 | **v3.2.1-console**（`release/beta/o3root2-v3.2.1-console.apk`，14,243,344 B，sha256 `9cba365a…`）：正式版 + 隐藏 root 控制台（长按版本行，三道确认） |
 | O1 设备 | 小米 O1 SoC 的 `dijun` / `jinghu` / `violin`（OS4.0.0.x）：三台共用**同一颗** 6.18.21 内核（`sha256 0d9917ca…`，`g1d099fcb35e0`）；静态分析认为链路可用，尚未实机验证 |
 | 自定义 LKM | 可选：任意 KernelSU 系列 .ko（基础兼容性检查；未通过可退回自适应内置模块；选择会保存并在下次启动恢复，长按该行可清除） |
@@ -62,7 +62,9 @@ Max）与 **lhasa**（Xiaomi 18 Fold）系列，做本地提权 + KernelSU。整
    里自选 `.ko`（基础 ELF/.modinfo 兼容性检查；被拒绝或加载失败时自动退回内置 LKM）。v3.1.1 起选择会持久化到
    `files/custom-ko.ko` + `custom-ko.meta`，启动时恢复；失效文件会被丢弃，长按
    模块行可清除。v3.2 起 LogBox 可选中，并有 **复制** 链接复制全部日志；只有
-   已在底部附近时才自动滚动。测试构建额外把 root 控制台藏在长按版本行之后：
+   已在底部附近时才自动滚动。识别到 O1 机型时，测试版会在启动载荷前弹出两步
+   风险确认（风险说明 + 勾选），确认后才开始提权。测试构建额外把 root
+   控制台藏在长按版本行之后：
    三道不可跳过的确认，之后命令经 `rootd` socket 以 root 执行（需本次 boot 内
    先跑过一次载荷）。正式版不包含控制台类。
 
@@ -80,7 +82,7 @@ Max）与 **lhasa**（Xiaomi 18 Fold）系列，做本地提权 + KernelSU。整
    `★ UIDNOW uid=0`、`★ KSU_MODULE LIVE`，随后 KernelSU 管理器自动打开。
 
 O1 设备（`dijun` / `jinghu` / `violin`）测试：请安装
-[`release/test/o3root2-v3.3.1-o1-test.apk`](release/test/o3root2-v3.3.1-o1-test.apk)，
+[`release/test/o3root2-v3.3.2-o1-test.apk`](release/test/o3root2-v3.3.2-o1-test.apk)，
 并按 [docs/TESTING_O1.md](docs/TESTING_O1.md) 操作。门禁接受三个代号下任意
 `6.18.21-android17…-4k` 内核（OS4.0.0.x）；已分析的 `g1d099fcb35e0` 构建走验证
 路径，其他构建会打印 `固件门禁通过（O1 宽松模式：…）` 并带警告沿用 O1 地址。

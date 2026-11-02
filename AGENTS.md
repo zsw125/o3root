@@ -12,10 +12,10 @@ and leaves a root daemon for the current boot. Read this file first, then
 
 - Release **v3.2** (latest stable), `release/o3root2-v3.2.apk`
   (`14,239,248 B`, `sha256 64bbc65420181babd69b826de7b86be99409963dd29253b72a2930d7a7ff6cfd`).
-- **Experimental test build v3.3.1-o1-test**, `release/test/o3root2-v3.3.1-o1-test.apk`
-  (`14,247,440 B`, `sha256 4ae9fcd5a4d0e209bc2e62e5061970bbeafb9f48769443a253842af02b6d4ad7`):
+- **Experimental test build v3.3.2-o1-test**, `release/test/o3root2-v3.3.2-o1-test.apk`
+  (`14,247,440 B`, `sha256 7aa29c483d75562f2b35418911fdc6d0ca2921def1710ff4fcd3fb02115da4df`):
   v3.2 plus an O1 (XRING) kernel profile and the hidden root console
-  (versionCode 21 / `3.3.1-o1-test`). Static-analysis-only support for
+  (versionCode 22 / `3.3.2-o1-test`). Static-analysis-only support for
   `dijun` / `jinghu` / `violin`; not hardware-validated.
   Previous test build `release/beta/o3root2-v3.2.1-console.apk`
   (`14,243,344 B`, `sha256 9cba365a…`) remains in the tree as history.
@@ -49,7 +49,10 @@ and leaves a root daemon for the current boot. Read this file first, then
   same O1 address, stronger warning). All three analysed O1 OTAs ship the same
   kernel (`sha256 0d9917ca…`); only `selinux_state` differs from yingtian
   (`0xffffffc082958630`), `init_user_ns` is identical. This is static analysis
-  only — no O1 device has run the chain. The three built-in LKMs are unchanged (all were the latest
+  only — no O1 device has run the chain. On a recognised O1 device the app
+  shows a two-step warning before any payload run (risk dialog, then a
+  checkbox that enables 开始提权); nothing starts until both are accepted.
+  The three built-in LKMs are unchanged (all were the latest
   upstream on 2026-10-29 except SukiSU, which has v4.3.0 — see
   `python3 tools/check_lkm_updates.py`).
   v1.8 (relink-only) and v1.9 remain in the git history.
@@ -76,7 +79,7 @@ KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
 # test build (hidden root console; version/versionCode are overridable)
 ANDROID_JAR=... BUILD_TOOLS=... SHIZUKU_JARS=... \
 KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... \
-PAYLOAD=... BETA=1 BETA_VERSION=3.3.1-o1-test BETA_CODE=21 bash app/build.sh
+PAYLOAD=... BETA=1 BETA_VERSION=3.3.2-o1-test BETA_CODE=22 bash app/build.sh
 ```
 
 ## Map

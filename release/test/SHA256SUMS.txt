@@ -1,1 +1,1 @@
-4ae9fcd5a4d0e209bc2e62e5061970bbeafb9f48769443a253842af02b6d4ad7  *o3root2-v3.3.1-o1-test.apk
+7aa29c483d75562f2b35418911fdc6d0ca2921def1710ff4fcd3fb02115da4df  *o3root2-v3.3.2-o1-test.apk

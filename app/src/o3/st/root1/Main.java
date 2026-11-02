@@ -26,6 +26,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -80,6 +81,9 @@ public class Main extends Activity implements PayloadSink {
     private boolean netRisk;
     private boolean netRiskShown;
     private boolean o1Profile;
+    private boolean o1Confirmed;
+    private String o1DevName;
+    private boolean o1Exact;
 
     static final String EXPECT_FP =
             "Xiaomi/yingtian/yingtian:17/CP2A.260605.016/OS4.0.16.0.XBMCNXM:user/release-keys";
@@ -533,6 +537,8 @@ public class Main extends Activity implements PayloadSink {
             }
             fwOk = true;
             o1Profile = true;
+            o1DevName = o1Dev;
+            o1Exact = o1Kernel;
             if (o1Kernel) {
                 append("固件门禁通过（O1 实验性：" + o1Dev + " / " + kv + "）");
                 append("⚠ O1 支持仅经静态分析，未真机验证；如失败请导出日志反馈");
@@ -889,6 +895,60 @@ public class Main extends Activity implements PayloadSink {
     }
 
     void startPayload() {
+        if (o1Profile && !o1Confirmed) {
+            showO1Warning();
+            return;
+        }
+        startPayloadRun();
+    }
+
+    void showO1Warning() {
+        String dev = o1DevName == null ? "?" : o1DevName;
+        String kv = System.getProperty("os.version", "");
+        String mode = o1Exact ? "已分析构建（实验性）" : "未分析构建（宽松模式）";
+        AlertDialog.Builder b = new AlertDialog.Builder(this);
+        b.setTitle("O1 实验性支持：风险确认");
+        b.setMessage("检测到 O1 机型：" + dev + " / " + mode + "\n"
+                + kv + "\n\n"
+                + "该支持仅经过静态分析，没有任何 O1 真机验证。开始前请确认：\n"
+                + "• 若内核布局与本版本假设不一致，写内核页可能失败，导致重启 / panic，"
+                + "极端情况需要 fastboot 或 EDL 恢复\n"
+                + "• 宽松模式的内核没有逐一比对偏移，风险更高\n"
+                + "• root 仅在本次开机有效，不写分区\n\n"
+                + "确认后才会开始提权流程（含 Shizuku 授权与载荷执行）。");
+        b.setPositiveButton("继续", new O1WarnNext(this));
+        b.setNegativeButton("取消", null);
+        b.show();
+    }
+
+    void showO1Checkbox() {
+        CheckBox cb = new CheckBox(this);
+        cb.setText("我已了解这是实验性支持，愿意承担设备无法启动的风险，"
+                + "并确认自己可以恢复这台设备。");
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        int p = dp(20);
+        box.setPadding(p, dp(4), p, 0);
+        box.addView(cb, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        AlertDialog.Builder b = new AlertDialog.Builder(this);
+        b.setTitle("再次确认：O1 实验性支持");
+        b.setView(box);
+        b.setPositiveButton("开始提权", new O1WarnStart(this));
+        b.setNegativeButton("取消", null);
+        AlertDialog d = b.show();
+        Button pos = d.getButton(AlertDialog.BUTTON_POSITIVE);
+        pos.setEnabled(false);
+        cb.setOnCheckedChangeListener(new O1WarnCheck(pos));
+    }
+
+    void startAfterO1Warning() {
+        o1Confirmed = true;
+        append("O1: 用户已确认实验性风险，开始提权流程");
+        startPayloadRun();
+    }
+
+    void startPayloadRun() {
         if (running) {
             return;
         }

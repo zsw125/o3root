@@ -12,7 +12,7 @@
 |---|---|
 | 发布 | v3.2，`release/o3root2-v3.2.apk`（14,239,248 B，sha256 `64bbc654…`） |
 | 测试构建 | v3.2.1-console，`release/beta/o3root2-v3.2.1-console.apk`（14,243,344 B，sha256 `9cba365a…`；隐藏 root 控制台） |
-| O1 测试构建 | v3.3.1-o1-test，`release/test/o3root2-v3.3.1-o1-test.apk`（14,247,440 B，sha256 `4ae9fcd5…`；O1 profile + 隐藏控制台；**仅静态分析**） |
+| O1 测试构建 | v3.3.2-o1-test，`release/test/o3root2-v3.3.2-o1-test.apk`（14,247,440 B，sha256 `7aa29c48…`；O1 profile + 隐藏控制台；**仅静态分析**） |
 | 已验证设备 | 小米 Pad 9 Pro Max `yingtian`，HyperOS `OS4.0.16.0.XBMCNXM`，内核 `6.18.21-android17-5-g805aa6adea19-abogki565292102-4k` |
 | 第二目标 | `lhasa`（Xiaomi 18 Fold）`OS4.0.26.0.XPNCNXM` —— 同内核 sha256 `cde87cd7…`（boot header/ramdisk 不同）；**未实机测试** |
 | 持久化 | 无（仅当前 boot） |
@@ -338,13 +338,15 @@ adb shell 'tail -f /data/data/o3.st.root1/files/run.log'   # 仅 debuggable 构�
   OS4.0.0.x 的任意 `6.18.21-android17…-4k` 内核（宽松路径），分别打印
   `固件门禁通过（O1 实验性/宽松模式：…）`；系列外内核仍被拒绝。识别为 O1 时
   `PayloadRunner` 导出 `O3P_SELINUX_PROFILE=o1`。正式版 3.3 的 APK：14,239,248 B
-  sha256 `55cb478c…`（未发布）。
-- 测试构建：`BETA=1 BETA_VERSION=3.3.1-o1-test BETA_CODE=21` →
-  `release/test/o3root2-v3.3.1-o1-test.apk`，14,247,440 B，sha256 `4ae9fcd5…`，
-  versionCode 21，含隐藏控制台。
-- 取代 v3.3-o1-test（同一代号，但旧构建只接受精确 O1 内核）：v3.3.1 增加
-  OS4.0.0 系列宽松门禁与 App→载荷的 `O3P_SELINUX_PROFILE=o1` 提示；旧 tag/release
-  已删除。
+  sha256 `2e092d3b…`（未发布）。
+- 测试构建：`BETA=1 BETA_VERSION=3.3.2-o1-test BETA_CODE=22` →
+  `release/test/o3root2-v3.3.2-o1-test.apk`，14,247,440 B，sha256 `7aa29c48…`，
+  versionCode 22，含隐藏控制台。
+- App（v3.3.2）：识别到 O1 机型时，启动载荷前会先弹出两步警告确认（风险
+  说明，然后勾选后启用“开始提权”）；取消不会改动设备。实现在 `Main` +
+  `O1Warning.java`（顶层监听器）。
+- 取代 v3.3.1（相同的宽松门禁，另加两步 O1 确认）和 v3.3-o1-test（只接受
+  精确 O1 内核）；旧 tag / GitHub release 均已删除。
 - **未做真机验证**：没有 O1 设备；主要风险是 O1 的旧实现
   `posix_cpu_timer_del`（`__rcu_read_lock` + `pid_task` +
   `__lock_task_sighand`，而非 `timer_lock_sighand`），可能影响 UAF 时序。测试

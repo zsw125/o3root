@@ -1,4 +1,4 @@
-# Testing the experimental O1 build (`v3.3.1-o1-test`)
+# Testing the experimental O1 build (`v3.3.2-o1-test`)
 
 > 中文版：[`TESTING_O1.zh-CN.md`](TESTING_O1.zh-CN.md)
 
@@ -48,29 +48,32 @@ series are still blocked.
 ## Install and run
 
 ```bash
-adb install -r release/test/o3root2-v3.3.1-o1-test.apk
+adb install -r release/test/o3root2-v3.3.2-o1-test.apk
 # or, if MIUI refuses: allow "Install via USB" in Developer options first
 ```
 
-1. Open **O3 Root**. The version line must read `v3.3.1-o1-test`.
-2. Check the log. The analysed build prints
+1. Open **O3 Root**. The version line must read `v3.3.2-o1-test`.
+2. Press **Continue to UID 0**. Before anything runs, a two-step warning
+   appears: a risk dialog, then a checkbox that enables **开始提权**.
+   Nothing starts unless you accept both; cancel leaves the device untouched.
+3. Check the log. The analysed build prints
    `固件门禁通过（O1 实验性：<codename> / 6.18.21-…-g1d099fcb35e0-…）`; another
    OS4.0.0.x build prints `固件门禁通过（O1 宽松模式：<codename> / <kernel>）`.
    If it says `固件门禁未通过`, stop and report the log — do not retry blindly.
-3. Grant the Shizuku permission when asked and press **Continue to UID 0**.
-4. Wait 20–120 s. Success markers: `★ UIDNOW uid=0`, `★ KSU_MODULE LIVE`,
+4. Grant the Shizuku permission when asked; the payload starts after the
+   confirmation above. Wait 20–120 s. Success markers: `★ UIDNOW uid=0`, `★ KSU_MODULE LIVE`,
    the KernelSU manager opens. Also look for `SELINUX_PROFILE kernel=…` and
    `SEL_WRITE … SEL_OK` near the start.
-5. Verify root: long-press the version line → pass the three confirmations →
+6. Verify root: long-press the version line → pass the three confirmations →
    run `id` (must print `uid=0`) and `getenforce`.
-6. Tap **导出日志** (or **复制**) and keep the log file.
+7. Tap **导出日志** (or **复制**) and keep the log file.
 
 ## What to report
 
 Open a GitHub issue (or comment on the release) with:
 
 - device codename, full `Build.FINGERPRINT`, `kernel` line, OS4 build number;
-- app version (`v3.3.1-o1-test`), Shizuku version and mode (`shell` vs root);
+- app version (`v3.3.2-o1-test`), Shizuku version and mode (`shell` vs root);
 - the exported log file (or the relevant `SELINUX_PROFILE` / `VERDICT` /
   `UIDNOW` / `KSU_*` lines);
 - outcome: success, repeated `VERDICT NO_RECLAIM`, panic/reboot, or manager
