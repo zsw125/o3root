@@ -375,7 +375,7 @@ The payload can be tested standalone (root or shell): push `libo3p.so` as
 - App: `Main.checkFirmware()` accepts the three codenames with the analysed O1
   kernel (`固件门禁通过（O1 实验性：…）`) or with any OS4.0.0.x
   `6.18.21-android17…-4k` kernel (`固件门禁通过（O1 宽松模式：…）`); both show
-  a warning, and kernels outside the series fail closed. Stable 3.3: 14,239,248 B
+  a warning, and kernels outside the series fail closed. Stable 3.3: 14,243,344 B
   sha256 `2e092d3b…` (not published).
 - Test build: `BETA=1 BETA_VERSION=3.3.2-o1-test BETA_CODE=22` →
   `release/test/o3root2-v3.3.2-o1-test.apk`, 14,247,440 B, sha256 `7aa29c48…`,

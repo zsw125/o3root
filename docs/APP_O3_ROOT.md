@@ -701,7 +701,7 @@ after the first `D3ADDR`; it stays behind `O3P_D3V3` for analysis only.
   `PayloadRunner` 导出 `O3P_SELINUX_PROFILE=o1`。versionCode 20 / versionName
   3.3；测试构建用 `BETA_VERSION=3.3.2-o1-test BETA_CODE=22`。
 - 产物：payload 77,928 B；`libo3p.so` 1,496,644 B sha256
-  `0d3d4dd5…`；正式版 3.3 APK 14,239,248 B sha256 `2e092d3b…`（未发布）；
+  `0d3d4dd5…`；正式版 3.3 APK 14,243,344 B sha256 `2e092d3b…`（未发布）；
   测试 APK `release/test/o3root2-v3.3.2-o1-test.apk` 14,247,440 B sha256
   `7aa29c48…`（versionCode 22，含控制台）。
 - 未真机验证：构建时无 O1 设备（设备当时不在 adb 上），也没有

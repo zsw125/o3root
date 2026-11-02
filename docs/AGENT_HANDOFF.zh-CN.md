@@ -337,7 +337,7 @@ adb shell 'tail -f /data/data/o3.st.root1/files/run.log'   # 仅 debuggable 构�
 - App：`Main.checkFirmware()` 对三个代号接受已分析 O1 内核（实验路径）或
   OS4.0.0.x 的任意 `6.18.21-android17…-4k` 内核（宽松路径），分别打印
   `固件门禁通过（O1 实验性/宽松模式：…）`；系列外内核仍被拒绝。识别为 O1 时
-  `PayloadRunner` 导出 `O3P_SELINUX_PROFILE=o1`。正式版 3.3 的 APK：14,239,248 B
+  `PayloadRunner` 导出 `O3P_SELINUX_PROFILE=o1`。正式版 3.3 的 APK：14,243,344 B
   sha256 `2e092d3b…`（未发布）。
 - 测试构建：`BETA=1 BETA_VERSION=3.3.2-o1-test BETA_CODE=22` →
   `release/test/o3root2-v3.3.2-o1-test.apk`，14,247,440 B，sha256 `7aa29c48…`，
