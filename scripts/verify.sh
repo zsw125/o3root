@@ -8,8 +8,8 @@
 # Optional builds (only when their environment is configured):
 #   NDK_CC=...                                  rebuild payload, compare sha256
 #   ANDROID_JAR/BUILD_TOOLS/SHIZUKU_JARS/...    rebuild APK, check version
-#   VERIFY_BETA=1                               also build the beta variant and
-#                                               check version 3.2.1-console
+#   VERIFY_BETA=1                               also build the test variant and
+#                                               check version 3.3-o1-test
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 
@@ -55,7 +55,7 @@ for f in \
   docs/ARCHITECTURE.zh-CN.md docs/SECURITY.zh-CN.md docs/BUILD.zh-CN.md \
   docs/history/README.md docs/history/CVE-2026-98260_FEASIBILITY.md   docs/history/CVE-2026-98260_FEASIBILITY.zh-CN.md docs/history/ROOT_ACHIEVED_OS4.0.16.md   docs/history/ALTERNATIVE_ROOT_DIRECTIONS.md docs/history/OTA_4.0.16_kernel_report.md \
   payload/README.md payload/README.zh-CN.md tools/README.md tools/README.zh-CN.md \
-  docs/APP_O3_ROOT.md
+  docs/APP_O3_ROOT.md docs/TESTING_O1.md docs/TESTING_O1.zh-CN.md
 do
   if [ -f "$f" ]; then ok "$f"; else bad "missing $f"; fi
 done
@@ -73,7 +73,7 @@ echo "== release checksums"
 "$PY" - <<'PY'
 import glob, hashlib, os, sys
 bad = 0
-for d in ('release', 'release/beta'):
+for d in ('release', 'release/beta', 'release/test'):
     sums_path = os.path.join(d, 'SHA256SUMS.txt')
     if not os.path.exists(sums_path):
         continue
@@ -129,7 +129,7 @@ if [ -n "${NDK_CC:-}" ]; then
   log=$(mktemp)
   if bash payload/build-payload.sh >"$log" 2>&1; then
     got=$("$PY" -c "import hashlib;print(hashlib.sha256(open('payload/build/libo3p.so','rb').read()).hexdigest())")
-    want=e479e539bf812f7fe0dc18734ec6f47727fc6f650b4a8d9fd45751a9c6500a2b
+    want=35a44ef60ef4db4d7fe7cbf86f89aee7011b4b927ddcc8ee247647dfeed5ea96
     if [ "$got" = "$want" ]; then ok "libo3p.so sha256 matches reference"; else bad "libo3p.so sha256 $got != $want"; fi
   else
     bad "payload build failed"; tail -20 "$log" | sed 's/^/        /'
@@ -146,7 +146,9 @@ if [ -n "${ANDROID_JAR:-}" ] && [ -n "${BUILD_TOOLS:-}" ] && [ -n "${SHIZUKU_JAR
     if [ -x "$BUILD_TOOLS/aapt2" ] || [ -x "$BUILD_TOOLS/aapt2.exe" ]; then
       AAPT2="$BUILD_TOOLS/aapt2"; [ -x "$AAPT2" ] || AAPT2="$BUILD_TOOLS/aapt2.exe"
       v=$("$AAPT2" dump badging app/o3root2.apk 2>/dev/null | grep -o "versionName='[^']*'" | head -1)
-      case "$v" in *"'3.2'"*) ok "APK rebuilt ($v)";; *) bad "APK version $v (expected 3.2)";; esac
+      case "$v" in *"'3.3'"*) ok "APK rebuilt ($v)";; *) bad "APK version $v (expected 3.3)";; esac
+      c=$("$AAPT2" dump xmltree app/o3root2.apk --file AndroidManifest.xml 2>/dev/null | grep -c ConsoleActivity || true)
+      if [ "${c:-0}" = "0" ]; then ok "stable APK has no console activity"; else bad "stable APK contains ConsoleActivity"; fi
     else
       note "APK rebuilt (aapt2 not found to verify version)"
     fi
@@ -156,10 +158,12 @@ if [ -n "${ANDROID_JAR:-}" ] && [ -n "${BUILD_TOOLS:-}" ] && [ -n "${SHIZUKU_JAR
   rm -f "$log"
   if [ "${VERIFY_BETA:-0}" = "1" ]; then
     log=$(mktemp)
-    if BETA=1 bash app/build.sh >"$log" 2>&1; then
+    if BETA=1 BETA_VERSION=3.3-o1-test BETA_CODE=19 bash app/build.sh >"$log" 2>&1; then
       if [ -x "$BUILD_TOOLS/aapt2" ] || [ -x "$BUILD_TOOLS/aapt2.exe" ]; then
         v=$("$AAPT2" dump badging app/o3root2.apk 2>/dev/null | grep -o "versionName='[^']*'" | head -1)
-        case "$v" in *"'3.2.1-console'"*) ok "beta APK rebuilt ($v)";; *) bad "beta APK version $v (expected 3.2.1-console)";; esac
+        case "$v" in *"'3.3-o1-test'"*) ok "beta APK rebuilt ($v)";; *) bad "beta APK version $v (expected 3.3-o1-test)";; esac
+        c=$("$AAPT2" dump xmltree app/o3root2.apk --file AndroidManifest.xml 2>/dev/null | grep -c ConsoleActivity || true)
+        if [ "${c:-0}" -ge 1 ]; then ok "test APK contains the console activity"; else bad "test APK is missing ConsoleActivity"; fi
       else
         note "beta APK rebuilt (aapt2 not found to verify version)"
       fi

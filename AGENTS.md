@@ -10,10 +10,15 @@ and leaves a root daemon for the current boot. Read this file first, then
 
 ## State
 
-- Release **v3.2**, `release/o3root2-v3.2.apk`
-  (`14,239,248 B`, `sha256 64bbc65420181babd69b826de7b86be99409963dd29253b72a2930d7a7ff6cfd`),
-  plus the **test build** `release/beta/o3root2-v3.2.1-console.apk`
-  (`14,243,344 B`, `sha256 9cba365a36344a3e6994100a6d3276b220f15bc4de7d7ce2bde74a6999674f8e`).
+- Release **v3.2** (latest stable), `release/o3root2-v3.2.apk`
+  (`14,239,248 B`, `sha256 64bbc65420181babd69b826de7b86be99409963dd29253b72a2930d7a7ff6cfd`).
+- **Experimental test build v3.3-o1-test**, `release/test/o3root2-v3.3-o1-test.apk`
+  (`14,247,440 B`, `sha256 45764d9911403c39c21c1bad2bfe14366093df403b76ddcbf51b8cbccdf138ab`):
+  v3.2 plus an O1 (XRING) kernel profile and the hidden root console
+  (versionCode 19 / `3.3-o1-test`). Static-analysis-only support for
+  `dijun` / `jinghu` / `violin`; not hardware-validated.
+  Previous test build `release/beta/o3root2-v3.2.1-console.apk`
+  (`14,243,344 B`, `sha256 9cba365a…`) remains in the tree as history.
   v2.0 added the multi-LKM blob (KernelSU / KernelSU-Next / SukiSU) with
   manager-based selection; v2.1 makes the probe permission-aware (local manager
   detection, probe-then-payload after granting, unique payload path); v3.0
@@ -29,12 +34,19 @@ and leaves a root daemon for the current boot. Read this file first, then
   validates, and clears it on a long press of the module row. v3.2 makes the
   LogBox selectable and copyable (a "复制" link copies the whole log; the output
   view is selectable, and it only auto-scrolls while the reader is already at
-  the bottom). The test build v3.2.1-console additionally hides a root console
+  the bottom). The test builds additionally hide a root console
   behind a long press of the version row: three non-skippable confirmations
   (risk dialog, checkbox, then typing `I ACCEPT ROOT RISK`) plus a one-shot
   token guard the activity, and each command goes through the rootd socket
   (uid 0/2000 accepted) after the payload has started. The stable build does
-  not compile the console classes at all. The three built-in LKMs are unchanged (all were the latest
+  not compile the console classes at all. v3.3 adds a second kernel profile for
+  the O1 (XRING) SoC: the payload chooses the `selinux_state` link address at
+  runtime from `uname().release` (`SELINUX_PROFILE kernel=… base=…`), and
+  `Main.checkFirmware()` accepts `dijun` / `jinghu` / `violin` with the O1
+  kernel `6.18.21-android17-5-g1d099fcb35e0-abogki538445360-4k`. All three O1
+  OTAs ship the same kernel (`sha256 0d9917ca…`); only `selinux_state` differs
+  from yingtian (`0xffffffc082958630`), `init_user_ns` is identical. This is
+  static analysis only — no O1 device has run the chain. The three built-in LKMs are unchanged (all were the latest
   upstream on 2026-10-29 except SukiSU, which has v4.3.0 — see
   `python3 tools/check_lkm_updates.py`).
   v1.8 (relink-only) and v1.9 remain in the git history.
@@ -52,16 +64,16 @@ bash scripts/fetch-toolchain.sh   # android.jar, build-tools r34, Shizuku jars, 
 
 # payload  (needs an NDK clang)
 NDK_CC=/path/to/ndk/.../aarch64-linux-android35-clang bash payload/build-payload.sh
-# reference result: 77,328 B payload; libo3p.so 1,496,044 B (three LKMs), sha256 e479e539…0a2b
+# reference result: 77,736 B payload; libo3p.so 1,496,452 B (three LKMs), sha256 35a44ef6…ea96
 
 # app (needs SDK + Shizuku jars + your keystore; see docs/BUILD.md)
 ANDROID_JAR=... BUILD_TOOLS=... SHIZUKU_JARS=... \
 KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
 
-# beta test build (hidden root console: versionCode 18, versionName 3.2.1-console)
+# test build (hidden root console; version/versionCode are overridable)
 ANDROID_JAR=... BUILD_TOOLS=... SHIZUKU_JARS=... \
 KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... \
-PAYLOAD=... BETA=1 bash app/build.sh
+PAYLOAD=... BETA=1 BETA_VERSION=3.3-o1-test BETA_CODE=19 bash app/build.sh
 ```
 
 ## Map
@@ -146,7 +158,10 @@ steps, opened the console with its one-shot token, and ran `id` as uid 0
 through the rootd socket (`[exit 0]`); copying the console output into the
 clipboard was verified by pasting it back. The automatic fallback branch was
 not exercised on hardware (the forced
-module still loaded) and remains desktop-tested. v1.8–v2.1 had
+module still loaded) and remains desktop-tested. The v3.3 O1 profile is
+**static-analysis-only**: the O1 kernel and the yingtian kernel were compared
+symbol-by-symbol/BTF/config/instruction-wise (see `docs/AGENT_HANDOFF.md`),
+but no O1 device has run either the payload or the KernelSU LKM. v1.8–v2.1 had
 additionally verified the old guard/recovery UI and network health while
 Permissive (both removed in v3.0). The v2.0 release APK was cold-boot tested; v2.1 was cold-boot tested with a revoked Shizuku permission (grant → probe → automatic payload)
 end-to-end on three images (only the tiann manager, only KernelSU-Next, only
@@ -154,7 +169,8 @@ SukiSU): each time the app detected the manager, the payload selected the
 matching embedded LKM and the matching manager came to the foreground;
 `O3P_RELINK_ONLY=1` still falls back to the 248-symbol union.
 
-Not verified: `lhasa` hardware; **original Shizuku** (we use the official
+Not verified: **O1 hardware** (dijun/jinghu/violin — see `docs/TESTING_O1.md`);
+`lhasa` hardware; **original Shizuku** (we use the official
 `dev.rikka.shizuku` API, but only ShizukuX 13.7 was exercised); `/system/bin/su`
 appears only after KernelSU's first root request.
 
@@ -182,9 +198,10 @@ Negative results — don't repeat without a new idea (details in
   bundled KernelSU manager.
 - Don't commit CRLF churn for `payload/*.c`; the index normalizes to LF.
 - `BETA=1` writes `build/gen/BuildInfo.java` (`CONSOLE=true`,
-  `VERSION="3.2.1-console"`) and a generated `build/AndroidManifest.xml`
-  (versionCode 18, `ConsoleActivity` entry). The stable build compiles the
-  tracked `BuildInfo.java` (`CONSOLE=false`, `3.2`) and excludes
+  `VERSION=$BETA_VERSION`, default `3.2.1-console`) and a generated
+  `build/AndroidManifest.xml` (versionCode `$BETA_CODE`, default 18,
+  `ConsoleActivity` entry). The stable build compiles the tracked
+  `BuildInfo.java` (`CONSOLE=false`, `3.3`) and excludes
   `ConsoleActivity.java`/`ConsoleGate.java`; `Main` reaches the gate only
   via `ConsoleEntry` reflection, so never link `ConsoleGate` from stable
   code.
@@ -210,11 +227,14 @@ Negative results — don't repeat without a new idea (details in
    payload — restart the Shizuku server (or reboot) back to shell mode before
    pressing Continue again.
 6. Rollback: reboot; optional `rm -f /data/local/tmp/o3p*` and uninstall.
-7. Beta console (test build only):
-   `adb install -r release/beta/o3root2-v3.2.1-console.apk` (its versionCode
-   18 is higher than stable 17); start the payload once so rootd is running,
-   long-press the version row, and pass the three confirmations; `id` must
-   print `uid=0`. Stable must show no console entry on the same long press.
+7. Test console (test build only): install the test APK, start the payload
+   once so rootd is running, long-press the version row, and pass the three
+   confirmations; `id` must print `uid=0`. Stable must show no console entry
+   on the same long press.
+8. O1 (`dijun` / `jinghu` / `violin`): follow `docs/TESTING_O1.md`. Expect the
+   gate line `固件门禁通过（O1 实验性：<codename> / 6.18.21-…-g1d099fcb35e0-…）`
+   and `SELINUX_PROFILE kernel=… base=0xffffffc082958630`; report the export
+   even when it fails. There is no O1 device here — never claim it works.
 
 | symptom | meaning / action |
 |---|---|

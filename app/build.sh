@@ -11,7 +11,9 @@
 #   D8_JAR         override path to d8.jar
 #   PAYLOAD        path to libo3p.so (default ../payload/build/libo3p.so)
 #   PY             python interpreter (default python3)
-#   BETA=1         build the test variant: hidden root console, version 3.2.1-console
+#   BETA=1         build the test variant: hidden root console
+#   BETA_VERSION   versionName for that variant (default 3.2.1-console)
+#   BETA_CODE      versionCode for that variant (default 18)
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -21,6 +23,8 @@ cd "$(dirname "$0")"
 : "${KEY_PASS:?set KEY_PASS}"
 PY=${PY:-python3}
 BETA=${BETA:-0}
+BETA_VERSION=${BETA_VERSION:-3.2.1-console}
+BETA_CODE=${BETA_CODE:-18}
 PAYLOAD=${PAYLOAD:-$PWD/../payload/build/libo3p.so}
 D8_JAR=${D8_JAR:-$BUILD_TOOLS/lib/d8.jar}
 JBIN=${JAVA_HOME:+$JAVA_HOME/bin/}
@@ -41,13 +45,13 @@ cp "$PAYLOAD" build/lib/arm64-v8a/libo3p.so
 
 SRCS=(src/o3/st/root1/*.java)
 if [ "$BETA" = "1" ]; then
-  echo "variant: beta (root console, 3.2.1-console)"
-  cat > build/gen/BuildInfo.java <<'JAVA'
+  echo "variant: beta (root console, $BETA_VERSION / versionCode $BETA_CODE)"
+  cat > build/gen/BuildInfo.java <<JAVA
 package o3.st.root1;
 
 final class BuildInfo {
     static final boolean CONSOLE = true;
-    static final String VERSION = "3.2.1-console";
+    static final String VERSION = "$BETA_VERSION";
 }
 JAVA
   KEEP=()
@@ -58,10 +62,12 @@ JAVA
   SRCS=("${KEEP[@]}" "build/gen/BuildInfo.java")
   MANIFEST="$PWD/build/AndroidManifest.xml"
   "$PY" - "$MANIFEST" <<'PY'
-import sys
+import os, sys
 src = open('AndroidManifest.xml', encoding='utf-8').read()
-out = src.replace('android:versionCode="17"', 'android:versionCode="18"')
-out = out.replace('android:versionName="3.2"', 'android:versionName="3.2.1-console"')
+code = os.environ.get('BETA_CODE', '18')
+name = os.environ.get('BETA_VERSION', '3.2.1-console')
+out = src.replace('android:versionCode="20"', 'android:versionCode="%s"' % code)
+out = out.replace('android:versionName="3.3"', 'android:versionName="%s"' % name)
 act = ('        <activity\n'
        '            android:name=".ConsoleActivity"\n'
        '            android:exported="false"\n'
@@ -70,7 +76,7 @@ out = out.replace('</application>', act + '</application>')
 open(sys.argv[1], 'w', encoding='utf-8').write(out)
 PY
 else
-  echo "variant: stable (no console, 3.2)"
+  echo "variant: stable (no console, 3.3)"
   KEEP=()
   for f in "${SRCS[@]}"; do
     case "$f" in

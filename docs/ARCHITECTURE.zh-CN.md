@@ -190,6 +190,31 @@ token 放进 intent；`ConsoleActivity` 没有 token 会立刻结束。`ConsoleT
 已经成功跑过载荷，本身不新开提权路径——只是 rootd 的瘦客户端。正式版不含控制台
 类，manifest 里也没有 `ConsoleActivity`。
 
+### v3.3 —— O1（XRING）内核 profile
+
+小米 O1 SoC 上的 `dijun`、`jinghu`、`violin`（OS4.0.0.x）共享同一个内核：
+42,936,832 B，`sha256 0d9917ca…`，`Linux version
+6.18.21-android17-5-g1d099fcb35e0-abogki538445360-4k`（2026-07-28 构建）。与
+v3.0–v3.2 使用的 yingtian 镜像对比：BTF 布局（`task_struct`、`cred`、
+`k_itimer`、`selinux_state`）、config（只差 `CONFIG_DPM_WATCHDOG`）、
+`begin_new_exec` 的 128 个调用顺序（POSIX timer 清理仍在
+`exec_task_namespaces` 之后，说明 6.18.54+ 的修复 `acb03d388181` 不存在）完全
+一致；`init_user_ns` 地址相同，只有 `selinux_state` 下移一页。
+
+因此载荷运行时选基址：`selinux_state_static()` 读 `uname().release`，包含
+`g1d099fcb35e0` 或 `abogki538445360` 时用 `SELINUX_STATE_O1_STATIC`
+（`0xffffffc082958630`），否则用 yingtian 常量；并打印
+`SELINUX_PROFILE kernel=… base=0x…`。slide 仍由 `init_user_ns` 推导，其他常量
+不变。`Main.checkFirmware()` 只在该精确 O1 内核下接受这三个代号，并显示实验性
+提示；未知内核仍走原门禁。
+
+该 profile **没有在 O1 真机上运行过**。主要风险：O1 的
+`posix_cpu_timer_del` 是旧实现（`__rcu_read_lock` + `pid_task` +
+`__lock_task_sighand`，yingtian 是新 `timer_lock_sighand` 版），可能影响 UAF
+时序；以及重链接后的 KernelSU LKM 加载（O1 镜像具备它需要的全部 UNDEF 符号，
+`__versions` 为空且 `MODULE_SIG_FORCE` 未设置）。测试指南见
+`docs/TESTING_O1.md`。
+
 ## rootd
 
 成功后载荷 fork 一个脱离的守护进程（`o3p --rootd`），并在本次 boot 的剩余时间里
@@ -215,7 +240,10 @@ token 放进 intent；`ConsoleActivity` 没有 token 会立刻结束。`ConsoleT
   显示状态（v1.8–v2.1 才有告警与一键 `su -c setenforce 0`）。
 - 固件门禁：内核 release 字符串必须匹配
   `6.18.21-android17-5-g805aa6adea19-abogki565292102-4k`，且设备 build
-  fingerprint 必须包含 `/yingtian/` 或 `/lhasa/`。
+  fingerprint 必须包含 `/yingtian/` 或 `/lhasa/`。v3.3 另外接受
+  `/dijun/`、`/jinghu/`、`/violin/` 配 O1 内核
+  `6.18.21-android17-5-g1d099fcb35e0-abogki538445360-4k`；该 profile 为实验性，
+  仅经静态分析（见下）。
 
 ## 内核 profile
 
@@ -242,6 +270,22 @@ token 放进 intent；`ConsoleActivity` 没有 token 会立刻结束。`ConsoleT
 | `selinux_state`（enforcing、initialized、policycap、policy） | `0` / `1` / `2` / `0x40` |
 | `selinux_state - 7` 的相邻对象 | `avc_latest_notif_update.notif_lock` 的字节 1..3（`0xffffffc082959629..962b`）加同一静态对象随后的 4 字节（`0x…962c..962f`）；本构建该锁为 0（未加锁）；换内核必须复核 |
 | 页相关常量 | `PAGE_OFFSET=0xffffff8000000000`、`VMEMAP_BASE=0xfffffffec0000000`、`struct page=0x40` |
+
+### O1 profile（v3.3，实验性）
+
+三份 O1 OTA 共享同一个内核（42,936,832 B，`sha256 0d9917ca…`）。与 yingtian
+常量表相比只有以下值不同：
+
+| 符号 | 值 |
+|---|---|
+| `selinux_state` | `0xffffffc082958630` |
+| `selinux_state - 7` 的相邻对象 | 仍是 `avc_latest_notif_update.notif_lock`（已用 `neighbor_lookup.py` 验证） |
+| 内核镜像 sha256 | `0d9917ca00657798e258889e258931b8b1fb0b2bbb8c0ad90e8c89ce517da0ac` |
+
+`init_user_ns` 相同（`0xffffffc0826d10d8`），所以 slide 公式与
+`INIT_USER_NS_STATIC` 继续有效；载荷只替换 `selinux_state` 基址。所有结构偏移
+一致，`do_timer_create+0x68` 探针落在同一条 `cbz` 指令上。`posix_cpu_timer_del`
+的实现不同（见上）。
 
 ### 移植到其它内核
 
@@ -271,6 +315,7 @@ token 放进 intent；`ConsoleActivity` 没有 token 会立刻结束。`ConsoleT
    `.rela.init.text`（`setenforce` 重定位往前 4 字节）在运行时定位，不需要按
    构建写死常量；唯一扫描也找不到时会打印 `KSU_CODEPATCH … -2`。v3 默认完全
    跳过该补丁。
-7. 更新固件门禁（`Main.checkFirmware`）并重编 APK。
+7. 更新固件门禁（`Main.checkFirmware`）并重编 APK —— v3.3 的 O1 profile 就是
+   “新增第二个内核”的范例（运行时选基址 + 门禁分支），而不是替换 yingtian。
 
 KASLR 本身不需要按设备适配：slide 是运行时推导的。

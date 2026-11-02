@@ -84,6 +84,10 @@ public class Main extends Activity implements PayloadSink {
             "Xiaomi/yingtian/yingtian:17/CP2A.260605.016/OS4.0.16.0.XBMCNXM:user/release-keys";
     static final String EXPECT_KERNEL =
             "6.18.21-android17-5-g805aa6adea19-abogki565292102-4k";
+    /* Experimental O1 (XRING) profile: one shared kernel for dijun/jinghu/violin. */
+    static final String O1_KERNEL =
+            "6.18.21-android17-5-g1d099fcb35e0-abogki538445360-4k";
+    static final String[] O1_DEVICES = {"dijun", "jinghu", "violin"};
     static final String WARN_DEFAULT =
             "需要 Shizuku 以 shell 模式运行（无线调试启动，无需电脑）";
 
@@ -486,9 +490,16 @@ public class Main extends Activity implements PayloadSink {
         append("fingerprint=" + fp);
         append("kernel=" + kv);
         boolean kernelOk = EXPECT_KERNEL.equals(kv);
+        boolean o1Kernel = O1_KERNEL.equals(kv);
         boolean yt = fp.contains("/yingtian/");
         boolean lh = fp.contains("/lhasa/");
-        if (!kernelOk) {
+        String o1Dev = null;
+        for (int i = 0; i < O1_DEVICES.length; i++) {
+            if (fp.contains("/" + O1_DEVICES[i] + "/")) {
+                o1Dev = O1_DEVICES[i];
+            }
+        }
+        if (!kernelOk && !o1Kernel) {
             fwOk = false;
             append("固件门禁未通过：内核不是已验证的 6.18.21-android17-5-g805aa6adea19");
             if (warnView != null) {
@@ -497,6 +508,28 @@ public class Main extends Activity implements PayloadSink {
             }
             if (btn != null) {
                 btn.setEnabled(false);
+            }
+            return;
+        }
+        if (o1Kernel) {
+            if (o1Dev == null) {
+                fwOk = false;
+                append("固件门禁未通过：O1 内核但设备代号未知（仅支持 dijun / jinghu / violin）");
+                if (warnView != null) {
+                    warnView.setText("O1 内核，但未识别的设备：" + fp);
+                    warnView.setTextColor(BAD);
+                }
+                if (btn != null) {
+                    btn.setEnabled(false);
+                }
+                return;
+            }
+            fwOk = true;
+            append("固件门禁通过（O1 实验性：" + o1Dev + " / " + kv + "）");
+            append("⚠ O1 支持仅经静态分析，未真机验证；如失败请导出日志反馈");
+            if (warnView != null) {
+                warnView.setText("O1 实验性支持（未真机验证）：如失败请导出日志反馈");
+                warnView.setTextColor(WARN);
             }
             return;
         }
@@ -514,7 +547,7 @@ public class Main extends Activity implements PayloadSink {
             append("固件门禁通过（yingtian；build 串非 4.0.16，但内核一致，继续执行）");
         } else {
             fwOk = false;
-            append("固件门禁未通过：未识别的设备（仅支持 yingtian 与 lhasa）");
+            append("固件门禁未通过：未识别的设备（支持 yingtian / lhasa；O1 实验性：dijun / jinghu / violin）");
             if (warnView != null) {
                 warnView.setText("未识别的设备：" + fp + "；本版本仅支持 yingtian / lhasa 且内核为 6.18.21-android17-5-g805aa6adea19");
                 warnView.setTextColor(BAD);

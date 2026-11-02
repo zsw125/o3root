@@ -65,14 +65,15 @@ PAYLOAD=.../payload/build/libo3p.so           # default is this
 
 ```bash
 bash payload/build-payload.sh
-# build/o3p.bin      77,328 B (payload)
+# build/o3p.bin      77,736 B (payload)
 # build/libo3p.so    payload + three LKMs (blob v2 trailer)
 ```
 
 `build-payload.sh` only needs `NDK_CC`. The KernelSU LKM is in
 `payload/lkm/lkm-aarch64-android17-6.18_kernelsu.ko`; the default output matches
-the reference build in `release/o3root2-v3.2.apk`
-(`sha256 e479e539…` for `libo3p.so`).
+the reference build in `release/test/o3root2-v3.3-o1-test.apk`
+(`sha256 35a44ef6…` for `libo3p.so`). The committed v3.2 release APK was
+built with the previous payload (`e479e539…`) and stays published as-is.
 
 v3.1/v3.1.1 only add Java sources (`CustomKo`, `KoResult`, `KoChoice`,
 `KoReadTask`, `KoApplyTask`, `ClickPickKo`, `LongClearKo`) plus
@@ -84,6 +85,14 @@ built with `BETA=1` (versionCode 18, versionName `3.2.1-console`, generated
 `ConsoleActivity`); the stable build compiles the tracked `BuildInfo.java`
 (`CONSOLE=false`, `3.2`) and excludes `ConsoleActivity.java`/`ConsoleGate.java`.
 `VERIFY_BETA=1 bash scripts/verify.sh` builds and checks both variants.
+
+v3.3 adds the experimental O1 (XRING) kernel profile: the payload picks the
+`selinux_state` link address at runtime from `uname().release`
+(`SELINUX_PROFILE kernel=… base=…`), and `Main.checkFirmware()` accepts
+`dijun` / `jinghu` / `violin` with the O1 kernel string. The stable version
+is 3.3 (versionCode 20); the tester build is
+`BETA=1 BETA_VERSION=3.3-o1-test BETA_CODE=19 bash app/build.sh`
+(versionName `3.3-o1-test`, versionCode 19, hidden console).
 
 You can run the payload directly on the device (root/shell):
 
@@ -158,12 +167,16 @@ The app's LogBox shows every payload stage; use **Export log** to write
 
 ## Reproducibility
 
-Reference build (v3.2, release/o3root2-v3.2.apk):
+Reference build (v3.3-o1-test, release/test/o3root2-v3.3-o1-test.apk):
 
-- APK `14,239,248` bytes
-- `sha256 64bbc65420181babd69b826de7b86be99409963dd29253b72a2930d7a7ff6cfd`
-- payload `libo3p.so` `1,496,044` bytes (with the stock LKM),
-  `sha256 e479e539bf812f7fe0dc18734ec6f47727fc6f650b4a8d9fd45751a9c6500a2b`
+- APK `14,247,440` bytes
+- `sha256 45764d9911403c39c21c1bad2bfe14366093df403b76ddcbf51b8cbccdf138ab`
+- payload `libo3p.so` `1,496,452` bytes (with the stock LKM),
+  `sha256 35a44ef60ef4db4d7fe7cbf86f89aee7011b4b927ddcc8ee247647dfeed5ea96`
+
+The published stable `release/o3root2-v3.2.apk` is still
+`14,239,248` B / `sha256 64bbc654…` and contains the previous payload
+(`e479e539…`); it stays the latest stable release until O1 validation.
 
 The APK hash above pins the committed artifact. `app/build.sh` re-zips with
 fresh entry timestamps and re-signs, so a rebuild from identical sources
