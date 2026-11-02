@@ -509,10 +509,17 @@ public class Main extends Activity implements PayloadSink {
                 o1Dev = O1_DEVICES[i];
             }
         }
-        if (!kernelOk && !o1Kernel && !(o1Dev != null && o1Series)) {
+        /* The O1 branch must only run for an O1 device: the verified
+           yingtian/lhasa kernel is itself 6.18.21-android17...-4k, so a
+           series match alone must not shadow the normal gate. */
+        boolean o1Gate = o1Dev != null && (o1Kernel || o1Series);
+        if (!kernelOk && !o1Gate) {
             fwOk = false;
             append("固件门禁未通过：内核不是已验证的 yingtian/lhasa 构建，"
-                    + "也不在 O1 的 6.18.21-android17 系列");
+                    + "也不属于受支持的 O1 系列");
+            if (o1Kernel || o1Series) {
+                append("（检测到 O1 系列内核，但设备代号不是 dijun / jinghu / violin）");
+            }
             if (warnView != null) {
                 warnView.setText("当前内核与已验证版本不一致：" + kv + "；为避免写坏内核对象，已禁用一键提权");
                 warnView.setTextColor(BAD);
@@ -522,19 +529,7 @@ public class Main extends Activity implements PayloadSink {
             }
             return;
         }
-        if (o1Kernel || o1Series) {
-            if (o1Dev == null) {
-                fwOk = false;
-                append("固件门禁未通过：O1 内核但设备代号未知（仅支持 dijun / jinghu / violin）");
-                if (warnView != null) {
-                    warnView.setText("O1 内核，但未识别的设备：" + fp);
-                    warnView.setTextColor(BAD);
-                }
-                if (btn != null) {
-                    btn.setEnabled(false);
-                }
-                return;
-            }
+        if (o1Gate) {
             fwOk = true;
             o1Profile = true;
             o1DevName = o1Dev;

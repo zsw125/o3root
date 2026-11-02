@@ -13,7 +13,7 @@ work with rough effort estimates.
 |---|---|
 | release | v3.2, `release/o3root2-v3.2.apk` (14,239,248 B, sha256 `64bbc654…`) |
 | test build | v3.2.1-console, `release/beta/o3root2-v3.2.1-console.apk` (14,243,344 B, sha256 `9cba365a…`; hidden root console) |
-| O1 test build | v3.3.2-o1-test, `release/test/o3root2-v3.3.2-o1-test.apk` (14,247,440 B, sha256 `7aa29c48…`; O1 profile + hidden console; **static-analysis only**) |
+| O1 test build | v3.3.3-o1-test, `release/test/o3root2-v3.3.3-o1-test.apk` (14,247,440 B, sha256 `62411f72…`; O1 profile + hidden console; **static-analysis only**) |
 | verified device | Xiaomi Pad 9 Pro Max `yingtian`, HyperOS `OS4.0.16.0.XBMCNXM`, kernel `6.18.21-android17-5-g805aa6adea19-abogki565292102-4k` |
 | second target | `lhasa` (Xiaomi 18 Fold) `OS4.0.26.0.XPNCNXM` — same kernel sha256 `cde87cd7…` (boot header/ramdisk differ); **not device-tested** |
 | persistence | none (current boot only) |
@@ -376,14 +376,22 @@ The payload can be tested standalone (root or shell): push `libo3p.so` as
   kernel (`固件门禁通过（O1 实验性：…）`) or with any OS4.0.0.x
   `6.18.21-android17…-4k` kernel (`固件门禁通过（O1 宽松模式：…）`); both show
   a warning, and kernels outside the series fail closed. Stable 3.3: 14,243,344 B
-  sha256 `2e092d3b…` (not published).
-- Test build: `BETA=1 BETA_VERSION=3.3.2-o1-test BETA_CODE=22` →
-  `release/test/o3root2-v3.3.2-o1-test.apk`, 14,247,440 B, sha256 `7aa29c48…`,
-  versionCode 22, includes the hidden console.
-- App (v3.3.2): before any payload run on a recognised O1 device, a two-step
+  sha256 `00ac0081…` (not published).
+- Test build: `BETA=1 BETA_VERSION=3.3.3-o1-test BETA_CODE=23` →
+  `release/test/o3root2-v3.3.3-o1-test.apk`, 14,247,440 B, sha256 `62411f72…`,
+  versionCode 23, includes the hidden console.
+- App (v3.3.3): before any payload run on a recognised O1 device, a two-step
   confirmation appears (risk dialog, then a checkbox that enables 开始提权);
   cancelling leaves the device untouched. Implemented in `Main` +
   `O1Warning.java` (top-level listeners).
+- v3.3.3 fixes a gate regression introduced by the relaxed series match: the
+  verified yingtian/lhasa kernel is itself `6.18.21-android17…-4k`, so the O1
+  branch was entered without an O1 codename and reported
+  `固件门禁未通过：O1 内核但设备代号未知` on a verified O3 device. The branch is
+  now gated by `o1Gate = o1Dev != null && (o1Kernel || o1Series)`, so the
+  yingtian/lhasa paths are reached first; a known O1 kernel on an unknown
+  codename still fails (with an explicit hint line). Reported from a device
+  screenshot (v3.3.2); no O3 device was attached here to re-run it.
 - Supersedes v3.3.1 (same relaxed gate, plus the two-step O1 confirmation) and
   v3.3-o1-test (which accepted only the exact O1 kernel). The older tags and
   GitHub releases were removed.

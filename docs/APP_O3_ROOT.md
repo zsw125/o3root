@@ -9,8 +9,8 @@
 
 > 当前发布件是 **v3.2**：`release/o3root2-v3.2.apk`（14,239,248 B，sha256
 > `64bbc65420181babd69b826de7b86be99409963dd29253b72a2930d7a7ff6cfd`）；实验性
-> O1 测试构建 `release/test/o3root2-v3.3.2-o1-test.apk`（14,247,440 B，sha256
-> `7aa29c483d75562f2b35418911fdc6d0ca2921def1710ff4fcd3fb02115da4df`）；上一测试
+> O1 测试构建 `release/test/o3root2-v3.3.3-o1-test.apk`（14,247,440 B，sha256
+> `62411f7219a047afcb83aa42831d530e80ad79e57be716f34f0c0300481fbcbe`）；上一测试
 > 构建 `release/beta/o3root2-v3.2.1-console.apk`（14,243,344 B，sha256
 > `9cba365a36344a3e6994100a6d3276b220f15bc4de7d7ce2bde74a6999674f8e`）。下表的
 > 13,973,008 B/`0d7c5ea8…` 仅指 v1.8 的 APK，保留作历史记录。
@@ -699,11 +699,15 @@ after the first `D3ADDR`; it stays behind `O3P_D3V3` for analysis only.
   OS4.0.0.x 的任意 `6.18.21-android17…-4k` 内核（宽松路径），分别打印
   `固件门禁通过（O1 实验性/宽松模式：…）`；系列外内核仍失败。识别为 O1 时
   `PayloadRunner` 导出 `O3P_SELINUX_PROFILE=o1`。versionCode 20 / versionName
-  3.3；测试构建用 `BETA_VERSION=3.3.2-o1-test BETA_CODE=22`。
+  3.3；测试构建用 `BETA_VERSION=3.3.3-o1-test BETA_CODE=23`。
 - 产物：payload 77,928 B；`libo3p.so` 1,496,644 B sha256
-  `0d3d4dd5…`；正式版 3.3 APK 14,243,344 B sha256 `2e092d3b…`（未发布）；
-  测试 APK `release/test/o3root2-v3.3.2-o1-test.apk` 14,247,440 B sha256
-  `7aa29c48…`（versionCode 22，含控制台）。
+  `0d3d4dd5…`；正式版 3.3 APK 14,243,344 B sha256 `00ac0081…`（未发布）；
+  测试 APK `release/test/o3root2-v3.3.3-o1-test.apk` 14,247,440 B sha256
+  `62411f72…`（versionCode 23，含控制台）。
+- v3.3.3 修复门禁回归：已验证 yingtian/lhasa 内核也满足 O1 的 6.18.21-android17
+  系列，原先会进入 O1 分支并报“O1 内核但设备代号未知”；现在 O1 分支要求设备
+  代号属于 dijun/jinghu/violin，O3 设备恢复走原门禁。用户截图（v3.3.2）报障，
+  修复版未能在本机重测（无设备连接）。
 - 未真机验证：构建时无 O1 设备（设备当时不在 adb 上），也没有
   在 O3 机器上回归 3.3（设备断连）。测试指南：
   `docs/TESTING_O1.md` / `docs/TESTING_O1.zh-CN.md`。

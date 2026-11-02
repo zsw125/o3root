@@ -14,9 +14,9 @@
 
 - 发布 **v3.2**（最新稳定版）：`release/o3root2-v3.2.apk`
   （`14,239,248 B`，`sha256 64bbc65420181babd69b826de7b86be99409963dd29253b72a2930d7a7ff6cfd`）。
-- **实验性测试构建 v3.3.2-o1-test**：`release/test/o3root2-v3.3.2-o1-test.apk`
-  （`14,247,440 B`，`sha256 7aa29c483d75562f2b35418911fdc6d0ca2921def1710ff4fcd3fb02115da4df`）：
-  v3.2 + O1（XRING）内核 profile + 隐藏 root 控制台（versionCode 22 / `3.3.2-o1-test`）；
+- **实验性测试构建 v3.3.3-o1-test**：`release/test/o3root2-v3.3.3-o1-test.apk`
+  （`14,247,440 B`，`sha256 62411f7219a047afcb83aa42831d530e80ad79e57be716f34f0c0300481fbcbe`）：
+  v3.2 + O1（XRING）内核 profile + 隐藏 root 控制台（versionCode 23 / `3.3.3-o1-test`）；
   `dijun` / `jinghu` / `violin` 仅经静态分析，未真机验证。上一测试构建
   `release/beta/o3root2-v3.2.1-console.apk`（`14,243,344 B`，`sha256 9cba365a…`）
   留在树里作为历史。
@@ -25,7 +25,7 @@
 授权后先探测再决定是否跑载荷，并使用唯一载荷文件名；v3.0 改为两段式（`selinux_state-7` 只清
 enforcing + cred 写入），并默认不打 KernelSU init 补丁（`policycap` 干净，KSU 自己的
 `setenforce(1)` 无害）；v3.1 增加自定义 .ko：应用先做 ELF/.modinfo 基础校验（AArch64 ET_REL、name=kernelsu、同一 6.18 系列），未通过时提示并可退回自适应内置模块；载荷会再次校验，文件不可读或加载失败时自动回退。v3.1.1 把选择持久化到应用 files 目录
-（`custom-ko.ko` + `custom-ko.meta`），启动时恢复，失效文件自动丢弃，长按模块行清除。v3.2 让 LogBox 可选中、可复制（LogBox 头部“复制”链接复制全部日志；输出区可选中，只有读到底部附近才自动滚动）。测试构建（v3.2.1-console / v3.3.2-o1-test）额外把 root 控制台藏在长按版本行之后：三道不可跳过的确认（风险对话框、复选框、输入 `I ACCEPT ROOT RISK`）加一次性 token 才能进入；命令在载荷启动后经 rootd socket 执行（接受 uid 0/2000）。正式版不编译控制台类。v3.3 增加第二个内核 profile：载荷优先根据 App 导出的 `O3P_SELINUX_PROFILE`，否则
+（`custom-ko.ko` + `custom-ko.meta`），启动时恢复，失效文件自动丢弃，长按模块行清除。v3.2 让 LogBox 可选中、可复制（LogBox 头部“复制”链接复制全部日志；输出区可选中，只有读到底部附近才自动滚动）。测试构建（v3.2.1-console / v3.3.3-o1-test）额外把 root 控制台藏在长按版本行之后：三道不可跳过的确认（风险对话框、复选框、输入 `I ACCEPT ROOT RISK`）加一次性 token 才能进入；命令在载荷启动后经 rootd socket 执行（接受 uid 0/2000）。正式版不编译控制台类。v3.3 增加第二个内核 profile：载荷优先根据 App 导出的 `O3P_SELINUX_PROFILE`，否则
 按 `uname().release` 选择 `selinux_state` 链接地址（日志
 `SELINUX_PROFILE kernel=… base=… src=env|uname`）。`Main.checkFirmware()` 接受
 `dijun` / `jinghu` / `violin` 配已分析的 O1 内核
@@ -66,7 +66,7 @@ KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
 # 测试版构建（隐藏 root 控制台；版本/versionCode 可用环境变量覆盖）
 ANDROID_JAR=... BUILD_TOOLS=... SHIZUKU_JARS=... \
 KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... \
-PAYLOAD=... BETA=1 BETA_VERSION=3.3.2-o1-test BETA_CODE=22 bash app/build.sh
+PAYLOAD=... BETA=1 BETA_VERSION=3.3.3-o1-test BETA_CODE=23 bash app/build.sh
 ```
 
 ## 目录地图
@@ -170,7 +170,7 @@ root 请求后才出现。
    transition，会拒绝 exec 载荷 —— 需重启 Shizuku server（或重启设备）回到
    shell 模式后再点 Continue。
 6. 回滚：重启；可选 `rm -f /data/local/tmp/o3p*` 并卸载 App。
-7. 测试版控制台（仅测试构建）：安装测试 APK（`release/beta/o3root2-v3.2.1-console.apk` 或 `release/test/o3root2-v3.3.2-o1-test.apk`，versionCode 均高于正式版 17，可直接升级）；先跑一次载荷让 rootd 在跑，长按版本行并通过三道确认；`id` 必须显示 `uid=0`。正式版做同样的长按必须没有控制台入口。
+7. 测试版控制台（仅测试构建）：安装测试 APK（`release/beta/o3root2-v3.2.1-console.apk` 或 `release/test/o3root2-v3.3.3-o1-test.apk`，versionCode 均高于正式版 17，可直接升级）；先跑一次载荷让 rootd 在跑，长按版本行并通过三道确认；`id` 必须显示 `uid=0`。正式版做同样的长按必须没有控制台入口。
 8. O1（`dijun` / `jinghu` / `violin`）：按 `docs/TESTING_O1.md` 操作。已分析内核打印
    `固件门禁通过（O1 实验性：<代号> / <kv>）`，同系列其他构建打印
    `固件门禁通过（O1 宽松模式：<代号> / <kv>）`；两者都应出现

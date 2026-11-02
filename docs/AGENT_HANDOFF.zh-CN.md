@@ -12,7 +12,7 @@
 |---|---|
 | 发布 | v3.2，`release/o3root2-v3.2.apk`（14,239,248 B，sha256 `64bbc654…`） |
 | 测试构建 | v3.2.1-console，`release/beta/o3root2-v3.2.1-console.apk`（14,243,344 B，sha256 `9cba365a…`；隐藏 root 控制台） |
-| O1 测试构建 | v3.3.2-o1-test，`release/test/o3root2-v3.3.2-o1-test.apk`（14,247,440 B，sha256 `7aa29c48…`；O1 profile + 隐藏控制台；**仅静态分析**） |
+| O1 测试构建 | v3.3.3-o1-test，`release/test/o3root2-v3.3.3-o1-test.apk`（14,247,440 B，sha256 `62411f72…`；O1 profile + 隐藏控制台；**仅静态分析**） |
 | 已验证设备 | 小米 Pad 9 Pro Max `yingtian`，HyperOS `OS4.0.16.0.XBMCNXM`，内核 `6.18.21-android17-5-g805aa6adea19-abogki565292102-4k` |
 | 第二目标 | `lhasa`（Xiaomi 18 Fold）`OS4.0.26.0.XPNCNXM` —— 同内核 sha256 `cde87cd7…`（boot header/ramdisk 不同）；**未实机测试** |
 | 持久化 | 无（仅当前 boot） |
@@ -338,13 +338,19 @@ adb shell 'tail -f /data/data/o3.st.root1/files/run.log'   # 仅 debuggable 构�
   OS4.0.0.x 的任意 `6.18.21-android17…-4k` 内核（宽松路径），分别打印
   `固件门禁通过（O1 实验性/宽松模式：…）`；系列外内核仍被拒绝。识别为 O1 时
   `PayloadRunner` 导出 `O3P_SELINUX_PROFILE=o1`。正式版 3.3 的 APK：14,243,344 B
-  sha256 `2e092d3b…`（未发布）。
-- 测试构建：`BETA=1 BETA_VERSION=3.3.2-o1-test BETA_CODE=22` →
-  `release/test/o3root2-v3.3.2-o1-test.apk`，14,247,440 B，sha256 `7aa29c48…`，
-  versionCode 22，含隐藏控制台。
-- App（v3.3.2）：识别到 O1 机型时，启动载荷前会先弹出两步警告确认（风险
+  sha256 `00ac0081…`（未发布）。
+- 测试构建：`BETA=1 BETA_VERSION=3.3.3-o1-test BETA_CODE=23` →
+  `release/test/o3root2-v3.3.3-o1-test.apk`，14,247,440 B，sha256 `62411f72…`，
+  versionCode 23，含隐藏控制台。
+- App（v3.3.3）：识别到 O1 机型时，启动载荷前会先弹出两步警告确认（风险
   说明，然后勾选后启用“开始提权”）；取消不会改动设备。实现在 `Main` +
   `O1Warning.java`（顶层监听器）。
+- v3.3.3 修复宽松系列匹配带来的门禁回归：已验证的 yingtian/lhasa 内核本身也是
+  `6.18.21-android17…-4k`，导致没有 O1 代号时也进入 O1 分支，在已验证的 O3
+  设备上误报 `固件门禁未通过：O1 内核但设备代号未知`。现在分支条件是
+  `o1Gate = o1Dev != null && (o1Kernel || o1Series)`，yingtian/lhasa 先走原路径；
+  已知 O1 内核但代号未知仍失败（并多打印一行说明）。由用户截图（v3.3.2）报障；
+  本次无 O3 设备连接，未能重新实测。
 - 取代 v3.3.1（相同的宽松门禁，另加两步 O1 确认）和 v3.3-o1-test（只接受
   精确 O1 内核）；旧 tag / GitHub release 均已删除。
 - **未做真机验证**：没有 O1 设备；主要风险是 O1 的旧实现

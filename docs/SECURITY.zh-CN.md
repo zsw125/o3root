@@ -31,11 +31,11 @@ v3.1 允许操作者加载自选 `.ko`。这个文件会**在内核里执行**�
   提醒，不是安全保证。
 - v3.1.1 起选中的模块会持久化在应用专用 files 目录（外部存储 `Android/data/o3.st.root1/files`，`custom-ko.ko` +
   `custom-ko.meta`），下次启动恢复，因此试过不可信模块后应长按模块行清除。
-- 测试版（v3.2.1-console / v3.3.2-o1-test）还带一个隐藏的 root 控制台（长按版本行）：通过三道不可跳过的
+- 测试版（v3.2.1-console / v3.3.3-o1-test）还带一个隐藏的 root 控制台（长按版本行）：通过三道不可跳过的
   确认后可经 rootd socket 执行任意命令。它不新增权限（正式版本来也能启动载荷），
   但把 root 命令执行缩短到一次手势；隐藏入口不是安全边界，正式版则完全不含控制台
   代码。
-- v3.3.2-o1-test 增加实验性 O1（XRING）内核 profile，适用 `dijun` / `jinghu` /
+- v3.3.3-o1-test 增加实验性 O1（XRING）内核 profile，适用 `dijun` / `jinghu` /
   `violin`。它基于 O1 内核与 yingtian 内核的静态对比（同为 6.18.21、BTF/config
   一致、`begin_new_exec` 清理顺序相同，只有 `selinux_state` 地址不同）。没有
   O1 真机跑过；O1 的 `posix_cpu_timer_del` 是旧实现，可能影响 UAF 时序。宽松门禁还接受

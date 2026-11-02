@@ -1,4 +1,4 @@
-# 实验性 O1 构建（`v3.3.2-o1-test`）测试指南
+# 实验性 O1 构建（`v3.3.3-o1-test`）测试指南
 
 > 英文版：[`TESTING_O1.md`](TESTING_O1.md)
 
@@ -42,11 +42,11 @@ profile。它**只经过静态分析**，从未在 O1 真机上运行过。请�
 ## 安装与运行
 
 ```bash
-adb install -r release/test/o3root2-v3.3.2-o1-test.apk
+adb install -r release/test/o3root2-v3.3.3-o1-test.apk
 # MIUI 拒绝时，先在开发者选项允许“USB 安装”
 ```
 
-1. 打开 **O3 Root**，版本行应显示 `v3.3.2-o1-test`。
+1. 打开 **O3 Root**，版本行应显示 `v3.3.3-o1-test`。
 2. 点 **Continue to UID 0**。真正开始前会先弹出两步警告：风险说明，然后一个
    勾选框启用“开始提权”；两步都接受才会开始，取消不会改动设备。
 3. 看日志：已分析构建应出现
@@ -65,7 +65,7 @@ adb install -r release/test/o3root2-v3.3.2-o1-test.apk
 请开 GitHub issue（或在该 release 下评论），附上：
 
 - 设备代号、完整 `Build.FINGERPRINT`、`kernel` 行、OS4 build 号；
-- App 版本（`v3.3.2-o1-test`）、Shizuku 版本与模式（shell / root）；
+- App 版本（`v3.3.3-o1-test`）、Shizuku 版本与模式（shell / root）；
 - 导出的日志（至少包含 `SELINUX_PROFILE`、`VERDICT`、`UIDNOW`、`KSU_*` 行）；
 - 结果：成功、反复 `VERDICT NO_RECLAIM`、panic/重启、管理器打不开等；以及
   `getenforce` 是否停在 Enforcing、网络是否正常。
