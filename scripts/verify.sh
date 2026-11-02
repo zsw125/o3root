@@ -9,7 +9,7 @@
 #   NDK_CC=...                                  rebuild payload, compare sha256
 #   ANDROID_JAR/BUILD_TOOLS/SHIZUKU_JARS/...    rebuild APK, check version
 #   VERIFY_BETA=1                               also build the test variant and
-#                                               check version 3.3-o1-test
+#                                               check version 3.3.1-o1-test
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 
@@ -129,7 +129,7 @@ if [ -n "${NDK_CC:-}" ]; then
   log=$(mktemp)
   if bash payload/build-payload.sh >"$log" 2>&1; then
     got=$("$PY" -c "import hashlib;print(hashlib.sha256(open('payload/build/libo3p.so','rb').read()).hexdigest())")
-    want=35a44ef60ef4db4d7fe7cbf86f89aee7011b4b927ddcc8ee247647dfeed5ea96
+    want=0d3d4dd592b2b487e274fc699466fc3851f4fa363745d778b31b9a9296200701
     if [ "$got" = "$want" ]; then ok "libo3p.so sha256 matches reference"; else bad "libo3p.so sha256 $got != $want"; fi
   else
     bad "payload build failed"; tail -20 "$log" | sed 's/^/        /'
@@ -158,10 +158,10 @@ if [ -n "${ANDROID_JAR:-}" ] && [ -n "${BUILD_TOOLS:-}" ] && [ -n "${SHIZUKU_JAR
   rm -f "$log"
   if [ "${VERIFY_BETA:-0}" = "1" ]; then
     log=$(mktemp)
-    if BETA=1 BETA_VERSION=3.3-o1-test BETA_CODE=19 bash app/build.sh >"$log" 2>&1; then
+    if BETA=1 BETA_VERSION=3.3.1-o1-test BETA_CODE=21 bash app/build.sh >"$log" 2>&1; then
       if [ -x "$BUILD_TOOLS/aapt2" ] || [ -x "$BUILD_TOOLS/aapt2.exe" ]; then
         v=$("$AAPT2" dump badging app/o3root2.apk 2>/dev/null | grep -o "versionName='[^']*'" | head -1)
-        case "$v" in *"'3.3-o1-test'"*) ok "beta APK rebuilt ($v)";; *) bad "beta APK version $v (expected 3.3-o1-test)";; esac
+        case "$v" in *"'3.3.1-o1-test'"*) ok "beta APK rebuilt ($v)";; *) bad "beta APK version $v (expected 3.3.1-o1-test)";; esac
         c=$("$AAPT2" dump xmltree app/o3root2.apk --file AndroidManifest.xml 2>/dev/null | grep -c ConsoleActivity || true)
         if [ "${c:-0}" -ge 1 ]; then ok "test APK contains the console activity"; else bad "test APK is missing ConsoleActivity"; fi
       else

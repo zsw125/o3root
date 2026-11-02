@@ -13,7 +13,7 @@ work with rough effort estimates.
 |---|---|
 | release | v3.2, `release/o3root2-v3.2.apk` (14,239,248 B, sha256 `64bbc654…`) |
 | test build | v3.2.1-console, `release/beta/o3root2-v3.2.1-console.apk` (14,243,344 B, sha256 `9cba365a…`; hidden root console) |
-| O1 test build | v3.3-o1-test, `release/test/o3root2-v3.3-o1-test.apk` (14,247,440 B, sha256 `45764d99…`; O1 profile + hidden console; **static-analysis only**) |
+| O1 test build | v3.3.1-o1-test, `release/test/o3root2-v3.3.1-o1-test.apk` (14,247,440 B, sha256 `4ae9fcd5…`; O1 profile + hidden console; **static-analysis only**) |
 | verified device | Xiaomi Pad 9 Pro Max `yingtian`, HyperOS `OS4.0.16.0.XBMCNXM`, kernel `6.18.21-android17-5-g805aa6adea19-abogki565292102-4k` |
 | second target | `lhasa` (Xiaomi 18 Fold) `OS4.0.26.0.XPNCNXM` — same kernel sha256 `cde87cd7…` (boot header/ramdisk differ); **not device-tested** |
 | persistence | none (current boot only) |
@@ -369,16 +369,20 @@ The payload can be tested standalone (root or shell): push `libo3p.so` as
   O1 image (`__versions` empty, `MODULE_SIG_FORCE` unset). Only `selinux_state`
   differs (`0xffffffc082958630` vs `…959630`); `init_user_ns` is identical.
 - Payload: `SELINUX_STATE_O1_STATIC` + `selinux_state_static()`; the base is
-  chosen at runtime from `uname().release` and logged as
-  `SELINUX_PROFILE kernel=… base=0x…`. Payload 77,736 B; `libo3p.so`
-  1,496,452 B sha256 `35a44ef6…`.
-- App: `Main.checkFirmware()` accepts the three codenames with the exact O1
-  kernel and prints `固件门禁通过（O1 实验性：…）` plus a static-analysis
-  warning; anything else still fails closed. Stable 3.3 API: 14,239,248 B
-  sha256 `a8a6d684…` (not published).
-- Test build: `BETA=1 BETA_VERSION=3.3-o1-test BETA_CODE=19` →
-  `release/test/o3root2-v3.3-o1-test.apk`, 14,247,440 B, sha256 `45764d99…`,
-  versionCode 19, includes the hidden console.
+  chosen at runtime from `O3P_SELINUX_PROFILE` (app hint) or `uname().release`
+  and logged as `SELINUX_PROFILE kernel=… base=0x… src=env|uname`. Payload
+  77,928 B; `libo3p.so` 1,496,644 B sha256 `0d3d4dd5…`.
+- App: `Main.checkFirmware()` accepts the three codenames with the analysed O1
+  kernel (`固件门禁通过（O1 实验性：…）`) or with any OS4.0.0.x
+  `6.18.21-android17…-4k` kernel (`固件门禁通过（O1 宽松模式：…）`); both show
+  a warning, and kernels outside the series fail closed. Stable 3.3: 14,239,248 B
+  sha256 `55cb478c…` (not published).
+- Test build: `BETA=1 BETA_VERSION=3.3.1-o1-test BETA_CODE=21` →
+  `release/test/o3root2-v3.3.1-o1-test.apk`, 14,247,440 B, sha256 `4ae9fcd5…`,
+  versionCode 21, includes the hidden console.
+- Supersedes v3.3-o1-test (same code, but that build accepted only the exact O1
+  kernel): v3.3.1 adds the OS4.0.0 series relaxed gate and the app→payload
+  `O3P_SELINUX_PROFILE=o1` hint. The v3.3-o1-test tag/release was removed.
 - **Not hardware-validated**: no O1 device was available; the main risk is the
   older O1 `posix_cpu_timer_del` (`__rcu_read_lock` + `pid_task` +
   `__lock_task_sighand` instead of `timer_lock_sighand`), which can change UAF

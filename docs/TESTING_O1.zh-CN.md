@@ -1,4 +1,4 @@
-# 实验性 O1 构建（`v3.3-o1-test`）测试指南
+# 实验性 O1 构建（`v3.3.1-o1-test`）测试指南
 
 > 英文版：[`TESTING_O1.md`](TESTING_O1.md)
 
@@ -8,22 +8,25 @@ profile。它**只经过静态分析**，从未在 O1 真机上运行过。请�
 
 ## 适用设备
 
-| 设备代号 | OTA 示例 | 内核（必须完全一致） |
+| 设备代号 | OTA 示例 | 已分析内核 |
 |---|---|---|
 | `dijun` | OS4.0.0.19.XODCNXM | `6.18.21-android17-5-g1d099fcb35e0-abogki538445360-4k` |
 | `jinghu` | OS4.0.0.16.XOXCNXM | 同上 |
 | `violin` | OS4.0.0.14.XOTCNXM | 同上 |
 
-三台 OTA 的内核逐位相同（`sha256 0d9917ca…`）。如果你的内核不是这个字符串，App
-门禁会阻止执行——不要绕过。
+三台 OTA 的内核逐位相同（`sha256 0d9917ca…`）。门禁也接受 OS4.0.0.x 的其他
+构建，只要内核仍在 `6.18.21-android17…-4k` 系列内：这些会打印
+`固件门禁通过（O1 宽松模式：…）`，沿用 O1 的 `selinux_state` 地址而没有逐构建
+比对。这是给测试者的可控风险，不是已验证 profile；系列外的内核仍会被拦截。
 
 ## 这个构建改了什么
 
-- 载荷在运行时根据 `uname().release` 选择 `selinux_state` 链接地址
-  （日志中的 `SELINUX_PROFILE kernel=… base=…`）。`yingtian` / `lhasa` 继续用原
-  常量；O1 用 `0xffffffc082958630`。
-- `Main.checkFirmware()` 接受三个 O1 代号 + 上述精确内核，并在界面显示
-  **实验性**警告。
+- App 识别出 O1 设备时导出 `O3P_SELINUX_PROFILE=o1`，载荷优先使用该提示，否则
+  回退 `uname().release`；日志为
+  `SELINUX_PROFILE kernel=… base=0x… src=env|uname`。`yingtian` / `lhasa` 继续
+  用原常量；O1 用 `0xffffffc082958630`。
+- `Main.checkFirmware()` 对三个 O1 代号接受已分析的 O1 内核（实验路径），也接受
+  OS4.0.0.x 中任意 `6.18.21-android17…-4k` 内核（宽松路径，警告更强）。
 - 其余是 v3.2 的功能，外加隐藏 root 控制台（长按版本行，三道确认），便于验证
   `uid=0` 与导出日志。
 
@@ -39,13 +42,14 @@ profile。它**只经过静态分析**，从未在 O1 真机上运行过。请�
 ## 安装与运行
 
 ```bash
-adb install -r release/test/o3root2-v3.3-o1-test.apk
+adb install -r release/test/o3root2-v3.3.1-o1-test.apk
 # MIUI 拒绝时，先在开发者选项允许“USB 安装”
 ```
 
-1. 打开 **O3 Root**，版本行应显示 `v3.3-o1-test`。
-2. 看日志：应出现
-   `固件门禁通过（O1 实验性：<代号> / 6.18.21-…-g1d099fcb35e0-…）`。若显示
+1. 打开 **O3 Root**，版本行应显示 `v3.3.1-o1-test`。
+2. 看日志：已分析构建应出现
+   `固件门禁通过（O1 实验性：<代号> / 6.18.21-…-g1d099fcb35e0-…）`；其他
+   OS4.0.0.x 构建应出现 `固件门禁通过（O1 宽松模式：<代号> / <内核>）`。若显示
    `固件门禁未通过`，停止操作并反馈日志，不要盲目重试。
 3. 授予 Shizuku 权限，点 **Continue to UID 0**。
 4. 等 20–120 秒。成功标记：`★ UIDNOW uid=0`、`★ KSU_MODULE LIVE`，KernelSU
@@ -60,7 +64,7 @@ adb install -r release/test/o3root2-v3.3-o1-test.apk
 请开 GitHub issue（或在该 release 下评论），附上：
 
 - 设备代号、完整 `Build.FINGERPRINT`、`kernel` 行、OS4 build 号；
-- App 版本（`v3.3-o1-test`）、Shizuku 版本与模式（shell / root）；
+- App 版本（`v3.3.1-o1-test`）、Shizuku 版本与模式（shell / root）；
 - 导出的日志（至少包含 `SELINUX_PROFILE`、`VERDICT`、`UIDNOW`、`KSU_*` 行）；
 - 结果：成功、反复 `VERDICT NO_RECLAIM`、panic/重启、管理器打不开等；以及
   `getenforce` 是否停在 Enforcing、网络是否正常。

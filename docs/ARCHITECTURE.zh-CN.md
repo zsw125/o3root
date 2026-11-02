@@ -201,12 +201,14 @@ v3.0–v3.2 使用的 yingtian 镜像对比：BTF 布局（`task_struct`、`cred
 `exec_task_namespaces` 之后，说明 6.18.54+ 的修复 `acb03d388181` 不存在）完全
 一致；`init_user_ns` 地址相同，只有 `selinux_state` 下移一页。
 
-因此载荷运行时选基址：`selinux_state_static()` 读 `uname().release`，包含
+因此载荷运行时选基址：`selinux_state_static()` 优先读 `O3P_SELINUX_PROFILE`
+（App 对任何识别出的 O1 设备导出 `o1`），否则回退 `uname().release`：包含
 `g1d099fcb35e0` 或 `abogki538445360` 时用 `SELINUX_STATE_O1_STATIC`
-（`0xffffffc082958630`），否则用 yingtian 常量；并打印
-`SELINUX_PROFILE kernel=… base=0x…`。slide 仍由 `init_user_ns` 推导，其他常量
-不变。`Main.checkFirmware()` 只在该精确 O1 内核下接受这三个代号，并显示实验性
-提示；未知内核仍走原门禁。
+（`0xffffffc082958630`），其余用 yingtian 常量；并打印
+`SELINUX_PROFILE kernel=… base=0x… src=env|uname`。slide 仍由 `init_user_ns`
+推导，其他常量不变。`Main.checkFirmware()` 对三个代号接受已分析的 O1 内核
+（实验路径），也接受 OS4.0.0.x 中任意 `6.18.21-android17…-4k` 内核（宽松路径：
+沿用同一 O1 地址但未逐构建比对，UI 给出更强警告）；系列外内核仍走原门禁。
 
 该 profile **没有在 O1 真机上运行过**。主要风险：O1 的
 `posix_cpu_timer_del` 是旧实现（`__rcu_read_lock` + `pid_task` +

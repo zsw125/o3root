@@ -231,13 +231,17 @@ CVE-2026-98260 fix `acb03d388181` from 6.18.54+ is absent) are identical.
 `init_user_ns` is at the same address; only `selinux_state` moved one page down.
 
 The payload therefore selects the base at runtime: `selinux_state_static()`
-reads `uname().release` and uses `SELINUX_STATE_O1_STATIC`
-(`0xffffffc082958630`) when it contains `g1d099fcb35e0` or
-`abogki538445360`, otherwise the yingtian constant; it prints
-`SELINUX_PROFILE kernel=… base=0x…`. The slide is still derived from
-`init_user_ns`, so no other constant changes. `Main.checkFirmware()` accepts the
-three codenames only with that exact O1 kernel and shows an experimental
-warning. Unknown kernels still hit the normal gate.
+first honours `O3P_SELINUX_PROFILE` (the app exports `o1` for any recognised O1
+device), then falls back to `uname().release`: `SELINUX_STATE_O1_STATIC`
+(`0xffffffc082958630`) when the release contains `g1d099fcb35e0` or
+`abogki538445360`, otherwise the yingtian constant. It prints
+`SELINUX_PROFILE kernel=… base=0x… src=env|uname`. The slide is still derived
+from `init_user_ns`, so no other constant changes. `Main.checkFirmware()`
+accepts the three codenames with the analysed O1 kernel (experimental path) or
+with any `6.18.21-android17…-4k` kernel in the OS4.0.0.x family (relaxed path:
+the same O1 address is used although that build was not compared, and the UI
+shows a stronger warning). Kernels outside the series still hit the normal
+gate.
 
 No O1 hardware has run this profile. The main open risks are the older
 `posix_cpu_timer_del` (O1 uses `__rcu_read_lock` + `pid_task` +
@@ -275,8 +279,9 @@ alive for the rest of the boot:
   `6.18.21-android17-5-g805aa6adea19-abogki565292102-4k`, and the device build
   fingerprint must contain `/yingtian/` or `/lhasa/`.
   v3.3 also accepts `/dijun/`, `/jinghu/` or `/violin/` with the O1 kernel
-  `6.18.21-android17-5-g1d099fcb35e0-abogki538445360-4k`; that profile is
-  experimental and static-analysis only (see below).
+  `6.18.21-android17-5-g1d099fcb35e0-abogki538445360-4k`, or with any
+  `6.18.21-android17…-4k` kernel in the OS4.0.0.x family (relaxed mode); that
+  profile is experimental and static-analysis only (see below).
 
 ## Kernel profile
 

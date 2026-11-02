@@ -1,4 +1,4 @@
-# Testing the experimental O1 build (`v3.3-o1-test`)
+# Testing the experimental O1 build (`v3.3.1-o1-test`)
 
 > 中文版：[`TESTING_O1.zh-CN.md`](TESTING_O1.zh-CN.md)
 
@@ -9,22 +9,28 @@ you own and can recover.
 
 ## Who can test
 
-| device codename | OTA examples | kernel (must match exactly) |
+| device codename | OTA examples | analysed kernel |
 |---|---|---|
 | `dijun` | OS4.0.0.19.XODCNXM | `6.18.21-android17-5-g1d099fcb35e0-abogki538445360-4k` |
 | `jinghu` | OS4.0.0.16.XOXCNXM | same |
 | `violin` | OS4.0.0.14.XOTCNXM | same |
 
-All three OTA kernels are bit-identical (`sha256 0d9917ca…`). If your device
-shows a different kernel, the gate will block it — do not try to bypass that.
+All three OTA kernels are bit-identical (`sha256 0d9917ca…`). The gate also
+accepts other OS4.0.0.x builds whose kernel stays in the
+`6.18.21-android17…-4k` series: those log `固件门禁通过（O1 宽松模式：…）`
+and reuse the O1 `selinux_state` address without a per-build comparison. That
+is a calculated risk for testers, not a verified profile; kernels outside the
+series are still blocked.
 
 ## What this build changes
 
-- The payload picks the `selinux_state` link address at runtime from
-  `uname().release` (`SELINUX_PROFILE kernel=… base=…` in the log). `yingtian` /
-  `lhasa` keep their existing constant; O1 gets `0xffffffc082958630`.
-- `Main.checkFirmware()` accepts the three O1 codenames with that exact kernel
-  and shows an **experimental** warning in the UI.
+- The app exports `O3P_SELINUX_PROFILE=o1` when it recognises an O1 device, and
+  the payload prefers that hint over `uname().release`; the log line is
+  `SELINUX_PROFILE kernel=… base=0x… src=env|uname`. `yingtian` / `lhasa` keep
+  their existing constant; O1 gets `0xffffffc082958630`.
+- `Main.checkFirmware()` accepts the three O1 codenames with the analysed O1
+  kernel (experimental path) or with any `6.18.21-android17…-4k` kernel in the
+  OS4.0.0.x family (relaxed path, stronger warning).
 - Everything else is the v3.2 feature set, plus the hidden root console
   (long-press the version row; three confirmations) which is useful for
   verifying `uid=0` and exporting output.
@@ -42,12 +48,14 @@ shows a different kernel, the gate will block it — do not try to bypass that.
 ## Install and run
 
 ```bash
-adb install -r release/test/o3root2-v3.3-o1-test.apk
+adb install -r release/test/o3root2-v3.3.1-o1-test.apk
 # or, if MIUI refuses: allow "Install via USB" in Developer options first
 ```
 
-1. Open **O3 Root**. The version line must read `v3.3-o1-test`.
-2. Check the log: `固件门禁通过（O1 实验性：<codename> / 6.18.21-…-g1d099fcb35e0-…）`.
+1. Open **O3 Root**. The version line must read `v3.3.1-o1-test`.
+2. Check the log. The analysed build prints
+   `固件门禁通过（O1 实验性：<codename> / 6.18.21-…-g1d099fcb35e0-…）`; another
+   OS4.0.0.x build prints `固件门禁通过（O1 宽松模式：<codename> / <kernel>）`.
    If it says `固件门禁未通过`, stop and report the log — do not retry blindly.
 3. Grant the Shizuku permission when asked and press **Continue to UID 0**.
 4. Wait 20–120 s. Success markers: `★ UIDNOW uid=0`, `★ KSU_MODULE LIVE`,
@@ -62,7 +70,7 @@ adb install -r release/test/o3root2-v3.3-o1-test.apk
 Open a GitHub issue (or comment on the release) with:
 
 - device codename, full `Build.FINGERPRINT`, `kernel` line, OS4 build number;
-- app version (`v3.3-o1-test`), Shizuku version and mode (`shell` vs root);
+- app version (`v3.3.1-o1-test`), Shizuku version and mode (`shell` vs root);
 - the exported log file (or the relevant `SELINUX_PROFILE` / `VERDICT` /
   `UIDNOW` / `KSU_*` lines);
 - outcome: success, repeated `VERDICT NO_RECLAIM`, panic/reboot, or manager
@@ -77,6 +85,9 @@ boot-loops, use your normal fastboot/EDL recovery path.
 
 - O1 kernels use an older `posix_cpu_timer_del` than yingtian; the UAF timing
   may differ, so more retries or a failure are possible.
+- On a relaxed (unverified) OS4.0.0.x kernel the O1 `selinux_state` address is a
+  guess: other statics may have moved, and a wrong address can panic the
+  device. Prefer the analysed builds when you can.
 - The built-in KernelSU LKMs are built for `6.18.32` and relinked/loaded on
   `6.18.21`; this works on yingtian, and every undefined symbol they need is
   present in the O1 kernel, but module loading on O1 is unverified.

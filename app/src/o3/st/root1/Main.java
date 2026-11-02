@@ -79,6 +79,7 @@ public class Main extends Activity implements PayloadSink {
     private String mgrPkg;
     private boolean netRisk;
     private boolean netRiskShown;
+    private boolean o1Profile;
 
     static final String EXPECT_FP =
             "Xiaomi/yingtian/yingtian:17/CP2A.260605.016/OS4.0.16.0.XBMCNXM:user/release-keys";
@@ -491,6 +492,11 @@ public class Main extends Activity implements PayloadSink {
         append("kernel=" + kv);
         boolean kernelOk = EXPECT_KERNEL.equals(kv);
         boolean o1Kernel = O1_KERNEL.equals(kv);
+        /* OS4.0.0.x on O1 may carry other builds of the same 6.18.21
+           android17 4K series; accept the series and warn instead of
+           pinning the one build that was analysed. */
+        boolean o1Series = kv.startsWith("6.18.21-android17")
+                && kv.endsWith("-4k");
         boolean yt = fp.contains("/yingtian/");
         boolean lh = fp.contains("/lhasa/");
         String o1Dev = null;
@@ -499,9 +505,10 @@ public class Main extends Activity implements PayloadSink {
                 o1Dev = O1_DEVICES[i];
             }
         }
-        if (!kernelOk && !o1Kernel) {
+        if (!kernelOk && !o1Kernel && !(o1Dev != null && o1Series)) {
             fwOk = false;
-            append("固件门禁未通过：内核不是已验证的 6.18.21-android17-5-g805aa6adea19");
+            append("固件门禁未通过：内核不是已验证的 yingtian/lhasa 构建，"
+                    + "也不在 O1 的 6.18.21-android17 系列");
             if (warnView != null) {
                 warnView.setText("当前内核与已验证版本不一致：" + kv + "；为避免写坏内核对象，已禁用一键提权");
                 warnView.setTextColor(BAD);
@@ -511,7 +518,7 @@ public class Main extends Activity implements PayloadSink {
             }
             return;
         }
-        if (o1Kernel) {
+        if (o1Kernel || o1Series) {
             if (o1Dev == null) {
                 fwOk = false;
                 append("固件门禁未通过：O1 内核但设备代号未知（仅支持 dijun / jinghu / violin）");
@@ -525,11 +532,22 @@ public class Main extends Activity implements PayloadSink {
                 return;
             }
             fwOk = true;
-            append("固件门禁通过（O1 实验性：" + o1Dev + " / " + kv + "）");
-            append("⚠ O1 支持仅经静态分析，未真机验证；如失败请导出日志反馈");
-            if (warnView != null) {
-                warnView.setText("O1 实验性支持（未真机验证）：如失败请导出日志反馈");
-                warnView.setTextColor(WARN);
+            o1Profile = true;
+            if (o1Kernel) {
+                append("固件门禁通过（O1 实验性：" + o1Dev + " / " + kv + "）");
+                append("⚠ O1 支持仅经静态分析，未真机验证；如失败请导出日志反馈");
+                if (warnView != null) {
+                    warnView.setText("O1 实验性支持（未真机验证）：如失败请导出日志反馈");
+                    warnView.setTextColor(WARN);
+                }
+            } else {
+                append("固件门禁通过（O1 宽松模式：" + o1Dev + " / " + kv + "）");
+                append("⚠ 该内核构建未做静态分析：按 OS4.0.0 / 6.18.21-android17 系列放行，"
+                        + "偏移可能不匹配；如失败请导出日志反馈");
+                if (warnView != null) {
+                    warnView.setText("O1 宽松模式（内核构建未验证）：如失败请导出日志反馈");
+                    warnView.setTextColor(WARN);
+                }
             }
             return;
         }
@@ -549,7 +567,8 @@ public class Main extends Activity implements PayloadSink {
             fwOk = false;
             append("固件门禁未通过：未识别的设备（支持 yingtian / lhasa；O1 实验性：dijun / jinghu / violin）");
             if (warnView != null) {
-                warnView.setText("未识别的设备：" + fp + "；本版本仅支持 yingtian / lhasa 且内核为 6.18.21-android17-5-g805aa6adea19");
+                warnView.setText("未识别的设备：" + fp + "；本版本支持 yingtian / lhasa，"
+                    + "以及 O1 系列（OS4.0.0.x、6.18.21-android17）");
                 warnView.setTextColor(BAD);
             }
             if (btn != null) {
@@ -883,7 +902,7 @@ public class Main extends Activity implements PayloadSink {
             append("boot_id=" + runBootId);
         }
         new Thread(new PayloadRunner(payloadPath, this, mgrFork, customKoBytes, customKoLabel,
-                customKoExtPath, customKoForced), "payload").start();
+                customKoExtPath, customKoForced, o1Profile ? "o1" : null), "payload").start();
     }
 
     public void onLine(String line) {

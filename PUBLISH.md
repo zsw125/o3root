@@ -6,16 +6,18 @@ secrets or device identifiers — the script scans both text and binaries.
 
 ## Current publication state (2026-11-03)
 
-- `main` head: the v3.3 release commit; tags `v3.2` (stable), `v3.2.1-console`
-  and `v3.3-o1-test` (experimental O1) point at their own commits. Earlier tags
-  `v3.1.1` (`93618ac`) and `v3.1` (`db24088`) stay where they are.
+- `main` head: the v3.3.1-o1-test commit; tags `v3.2` (stable),
+  `v3.2.1-console` and `v3.3.1-o1-test` (experimental O1) point at their own
+  commits. The short-lived `v3.3-o1-test` tag/release was deleted and replaced
+  by `v3.3.1-o1-test` (relaxed OS4.0.0 series gate). Earlier tags `v3.1.1`
+  (`93618ac`) and `v3.1` (`db24088`) stay where they are.
 - Releases: `v3.1` (notes only) and `v3.1.1` remain as history; **v3.2** is
   marked **Latest** with `o3root2-v3.2.apk` (14,239,248 B, sha256
   `64bbc654…`) and `SHA256SUMS.txt`; **v3.2.1-console** is a **pre-release** with
   `release/beta/o3root2-v3.2.1-console.apk` (14,243,344 B, sha256 `9cba365a…`)
-  and `release/beta/SHA256SUMS.txt`; **v3.3-o1-test** is a second
-  **pre-release** with `release/test/o3root2-v3.3-o1-test.apk` (14,247,440 B,
-  sha256 `45764d99…`) and `release/test/SHA256SUMS.txt`.
+  and `release/beta/SHA256SUMS.txt`; **v3.3.1-o1-test** is a second
+  **pre-release** with `release/test/o3root2-v3.3.1-o1-test.apk` (14,247,440 B,
+  sha256 `4ae9fcd5…`) and `release/test/SHA256SUMS.txt`.
 - The v3.1.1 APK moved out of the tree (it stays in git history at tag
   `v3.1.1`); v3.0 and v2.1 keep their APKs attached to their releases.
 - `scripts/verify.sh` is green locally for the v3.3 tree; with
@@ -42,14 +44,14 @@ git push https://<user>:<token>@github.com/<user>/o3root.git main
 
 The built APKs are committed at `release/o3root2-v3.2.apk`,
 `release/beta/o3root2-v3.2.1-console.apk` and
-`release/test/o3root2-v3.3-o1-test.apk`, each next to its own `SHA256SUMS.txt`.
+`release/test/o3root2-v3.3.1-o1-test.apk`, each next to its own `SHA256SUMS.txt`.
 Tag and push first:
 
 ```bash
 git tag -a v3.2 -m "v3.2: selectable/copyable log box; beta root console"
 git tag -a v3.2.1-console -m "v3.2.1-console: hidden root console test build"
-git tag -a v3.3-o1-test -m "v3.3-o1-test: experimental O1 (XRING) profile"
-git push origin main v3.2 v3.2.1-console v3.3-o1-test
+git tag -a v3.3.1-o1-test -m "v3.3.1-o1-test: experimental O1 (XRING) profile"
+git push origin main v3.2 v3.2.1-console v3.3.1-o1-test
 ```
 
 Then create the releases in the web UI, or with `gh` (files are positional;
@@ -63,13 +65,14 @@ gh release create v3.2.1-console --title "v3.2.1-console" --notes-file beta-note
   --verify-tag --prerelease release/beta/o3root2-v3.2.1-console.apk \
   release/beta/SHA256SUMS.txt
 
-gh release create v3.3-o1-test --title "v3.3-o1-test — O1 testers" \
+gh release create v3.3.1-o1-test --title "v3.3.1-o1-test — O1 testers" \
   --notes-file o1-notes.md --verify-tag --prerelease \
-  release/test/o3root2-v3.3-o1-test.apk release/test/SHA256SUMS.txt
+  release/test/o3root2-v3.3.1-o1-test.apk release/test/SHA256SUMS.txt
 ```
 
-The test APKs have versionCode 18/19, above the stable 17, so they install over a
-stable install as a normal upgrade (`adb install -r`). Keeping the committed copies makes
+The test APKs have versionCode 18 and 21; both are above the published stable
+v3.2 (17), so they install over a stable install as a normal upgrade
+(`adb install -r`). Keeping the committed copies makes
 `scripts/verify.sh` reproducible; if you prefer Releases-only, delete the
 `release/**/*.apk` files from git and relax that check first. Older releases:
 `v3.1.1`, `v3.0` and `v2.1` have their APKs attached; `v3.1` has notes only.
@@ -102,8 +105,8 @@ Use it only on devices you own. The CVE is public; the README and
 
 1. 在 GitHub 建**空**仓库 `o3root`（不要初始化 README）。
 2. `git remote add origin <url>` → `git push -u origin main`。
-3. `git tag v3.2 && git tag v3.2.1-console && git tag v3.3-o1-test &&
-   git push origin v3.2 v3.2.1-console v3.3-o1-test`；
+3. `git tag v3.2 && git tag v3.2.1-console && git tag v3.3.1-o1-test &&
+   git push origin v3.2 v3.2.1-console v3.3.1-o1-test`；
    在 Releases 上传 `release/o3root2-v3.2.apk` + `release/SHA256SUMS.txt`
    （勾选 Latest），以及 `release/beta/o3root2-v3.2.1-console.apk` +
    `release/beta/SHA256SUMS.txt`（勾选 Pre-release）。beta 的 versionCode 18

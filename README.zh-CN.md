@@ -32,7 +32,7 @@ Max）与 **lhasa**（Xiaomi 18 Fold）系列，做本地提权 + KernelSU。整
 | | |
 |---|---|
 | 发布 | **v3.2**（`release/o3root2-v3.2.apk`，14,239,248 B，sha256 `64bbc654…`） |
-| O1 测试构建 | **v3.3-o1-test**（`release/test/o3root2-v3.3-o1-test.apk`，14,247,440 B，sha256 `45764d99…`）：v3.2 功能 + **实验性 O1（XRING）profile**（`dijun` / `jinghu` / `violin`）+ 隐藏 root 控制台；仅供测试，从未真机验证 |
+| O1 测试构建 | **v3.3.1-o1-test**（`release/test/o3root2-v3.3.1-o1-test.apk`，14,247,440 B，sha256 `4ae9fcd5…`）：v3.2 功能 + **实验性 O1（XRING）profile**（`dijun` / `jinghu` / `violin`）+ 隐藏 root 控制台。接受 OS4.0.0.x 的任意 `6.18.21-android17…-4k` 内核：已分析构建走验证路径，其他构建走宽松模式并警告；仅供测试，从未真机验证 |
 | 旧测试构建 | **v3.2.1-console**（`release/beta/o3root2-v3.2.1-console.apk`，14,243,344 B，sha256 `9cba365a…`）：正式版 + 隐藏 root 控制台（长按版本行，三道确认） |
 | O1 设备 | 小米 O1 SoC 的 `dijun` / `jinghu` / `violin`（OS4.0.0.x）：三台共用**同一颗** 6.18.21 内核（`sha256 0d9917ca…`，`g1d099fcb35e0`）；静态分析认为链路可用，尚未实机验证 |
 | 自定义 LKM | 可选：任意 KernelSU 系列 .ko（基础兼容性检查；未通过可退回自适应内置模块；选择会保存并在下次启动恢复，长按该行可清除） |
@@ -80,9 +80,12 @@ Max）与 **lhasa**（Xiaomi 18 Fold）系列，做本地提权 + KernelSU。整
    `★ UIDNOW uid=0`、`★ KSU_MODULE LIVE`，随后 KernelSU 管理器自动打开。
 
 O1 设备（`dijun` / `jinghu` / `violin`）测试：请安装
-[`release/test/o3root2-v3.3-o1-test.apk`](release/test/o3root2-v3.3-o1-test.apk)，
-并按 [docs/TESTING_O1.md](docs/TESTING_O1.md) 操作。载荷会打印
-`SELINUX_PROFILE kernel=…`，所以反馈只需附上导出的日志。
+[`release/test/o3root2-v3.3.1-o1-test.apk`](release/test/o3root2-v3.3.1-o1-test.apk)，
+并按 [docs/TESTING_O1.md](docs/TESTING_O1.md) 操作。门禁接受三个代号下任意
+`6.18.21-android17…-4k` 内核（OS4.0.0.x）；已分析的 `g1d099fcb35e0` 构建走验证
+路径，其他构建会打印 `固件门禁通过（O1 宽松模式：…）` 并带警告沿用 O1 地址。
+载荷会打印 `SELINUX_PROFILE kernel=… base=… src=env|uname`，所以反馈只需附上
+导出的日志。
 
 没装管理器？按钮会变成 **安装 KernelSU 管理器**，点击后安装内置 APK（按系统
 提示确认即可）。
@@ -128,7 +131,9 @@ bash app/build.sh                                # -> app/build/o3root2.apk
 - **KernelSU LKM ABI**：上游模块是为 `6.18.32-4k` 构建的；这里为 `6.18.21`
   内核重链接，因此会污染内核（taint）。不要把它当生产级 root 方案。
 - **绑定 profile**：偏移/地址是按这个确切内核编译的。换内核构建需要新的
-  profile（见 `docs/ARCHITECTURE.md` 的移植章节）。
+  profile（见 `docs/ARCHITECTURE.md` 的移植章节）。O1 测试构建是唯一受控例外：
+  接受 OS4.0.0.x 中 `6.18.21-android17…-4k` 系列的任意构建，沿用已分析的 O1
+  `selinux_state` 地址，并警告其他静态地址未做比对。
 
 ## 证据
 

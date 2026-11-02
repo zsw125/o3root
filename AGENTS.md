@@ -12,10 +12,10 @@ and leaves a root daemon for the current boot. Read this file first, then
 
 - Release **v3.2** (latest stable), `release/o3root2-v3.2.apk`
   (`14,239,248 B`, `sha256 64bbc65420181babd69b826de7b86be99409963dd29253b72a2930d7a7ff6cfd`).
-- **Experimental test build v3.3-o1-test**, `release/test/o3root2-v3.3-o1-test.apk`
-  (`14,247,440 B`, `sha256 45764d9911403c39c21c1bad2bfe14366093df403b76ddcbf51b8cbccdf138ab`):
+- **Experimental test build v3.3.1-o1-test**, `release/test/o3root2-v3.3.1-o1-test.apk`
+  (`14,247,440 B`, `sha256 4ae9fcd5a4d0e209bc2e62e5061970bbeafb9f48769443a253842af02b6d4ad7`):
   v3.2 plus an O1 (XRING) kernel profile and the hidden root console
-  (versionCode 19 / `3.3-o1-test`). Static-analysis-only support for
+  (versionCode 21 / `3.3.1-o1-test`). Static-analysis-only support for
   `dijun` / `jinghu` / `violin`; not hardware-validated.
   Previous test build `release/beta/o3root2-v3.2.1-console.apk`
   (`14,243,344 B`, `sha256 9cba365a…`) remains in the tree as history.
@@ -41,12 +41,15 @@ and leaves a root daemon for the current boot. Read this file first, then
   (uid 0/2000 accepted) after the payload has started. The stable build does
   not compile the console classes at all. v3.3 adds a second kernel profile for
   the O1 (XRING) SoC: the payload chooses the `selinux_state` link address at
-  runtime from `uname().release` (`SELINUX_PROFILE kernel=… base=…`), and
-  `Main.checkFirmware()` accepts `dijun` / `jinghu` / `violin` with the O1
-  kernel `6.18.21-android17-5-g1d099fcb35e0-abogki538445360-4k`. All three O1
-  OTAs ship the same kernel (`sha256 0d9917ca…`); only `selinux_state` differs
-  from yingtian (`0xffffffc082958630`), `init_user_ns` is identical. This is
-  static analysis only — no O1 device has run the chain. The three built-in LKMs are unchanged (all were the latest
+  runtime from `O3P_SELINUX_PROFILE` (exported by the app for any recognised O1
+  device) or `uname().release` (`SELINUX_PROFILE kernel=… base=… src=env|uname`),
+  and `Main.checkFirmware()` accepts `dijun` / `jinghu` / `violin` with the
+  analysed kernel `6.18.21-android17-5-g1d099fcb35e0-abogki538445360-4k` or with
+  any other OS4.0.0.x build in the `6.18.21-android17…-4k` series (relaxed mode:
+  same O1 address, stronger warning). All three analysed O1 OTAs ship the same
+  kernel (`sha256 0d9917ca…`); only `selinux_state` differs from yingtian
+  (`0xffffffc082958630`), `init_user_ns` is identical. This is static analysis
+  only — no O1 device has run the chain. The three built-in LKMs are unchanged (all were the latest
   upstream on 2026-10-29 except SukiSU, which has v4.3.0 — see
   `python3 tools/check_lkm_updates.py`).
   v1.8 (relink-only) and v1.9 remain in the git history.
@@ -64,7 +67,7 @@ bash scripts/fetch-toolchain.sh   # android.jar, build-tools r34, Shizuku jars, 
 
 # payload  (needs an NDK clang)
 NDK_CC=/path/to/ndk/.../aarch64-linux-android35-clang bash payload/build-payload.sh
-# reference result: 77,736 B payload; libo3p.so 1,496,452 B (three LKMs), sha256 35a44ef6…ea96
+# reference result: 77,928 B payload; libo3p.so 1,496,644 B (three LKMs), sha256 0d3d4dd5…0701
 
 # app (needs SDK + Shizuku jars + your keystore; see docs/BUILD.md)
 ANDROID_JAR=... BUILD_TOOLS=... SHIZUKU_JARS=... \
@@ -73,7 +76,7 @@ KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
 # test build (hidden root console; version/versionCode are overridable)
 ANDROID_JAR=... BUILD_TOOLS=... SHIZUKU_JARS=... \
 KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... \
-PAYLOAD=... BETA=1 BETA_VERSION=3.3-o1-test BETA_CODE=19 bash app/build.sh
+PAYLOAD=... BETA=1 BETA_VERSION=3.3.1-o1-test BETA_CODE=21 bash app/build.sh
 ```
 
 ## Map
@@ -231,10 +234,11 @@ Negative results — don't repeat without a new idea (details in
    once so rootd is running, long-press the version row, and pass the three
    confirmations; `id` must print `uid=0`. Stable must show no console entry
    on the same long press.
-8. O1 (`dijun` / `jinghu` / `violin`): follow `docs/TESTING_O1.md`. Expect the
-   gate line `固件门禁通过（O1 实验性：<codename> / 6.18.21-…-g1d099fcb35e0-…）`
-   and `SELINUX_PROFILE kernel=… base=0xffffffc082958630`; report the export
-   even when it fails. There is no O1 device here — never claim it works.
+8. O1 (`dijun` / `jinghu` / `violin`): follow `docs/TESTING_O1.md`. The analysed
+   build logs `固件门禁通过（O1 实验性：…）`; another OS4.0.0.x build logs
+   `固件门禁通过（O1 宽松模式：…）`. Expect
+   `SELINUX_PROFILE kernel=… base=0xffffffc082958630 src=env|uname`; report the
+   export even when it fails. There is no O1 device here — never claim it works.
 
 | symptom | meaning / action |
 |---|---|

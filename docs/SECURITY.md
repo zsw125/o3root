@@ -37,19 +37,23 @@ the kernel**, so treat it as code, not data:
   `Android/data/o3.st.root1/files`) and restored on the next
   launch, so a module you once selected is executed again — clear the row
   (long press) after trying an untrusted build.
-- The test builds (v3.2.1-console and v3.3-o1-test) also ship a hidden root console (long press the
+- The test builds (v3.2.1-console and v3.3.1-o1-test) also ship a hidden root console (long press the
   version row): after three non-skippable confirmations it runs arbitrary
   commands through the rootd socket. This adds no privilege (the stable build
   can start the payload anyway), but it puts root command execution one gesture
   away; the hidden entry is not a security boundary, and the stable build
   contains no console code at all.
-- v3.3-o1-test adds an experimental O1 (XRING) kernel profile for `dijun` /
+- v3.3.1-o1-test adds an experimental O1 (XRING) kernel profile for `dijun` /
   `jinghu` / `violin`. It is based on a static comparison of the O1 kernel and
   the yingtian kernel (same kernel series 6.18.21, identical BTF/config, same
   `begin_new_exec` timer cleanup order, one different `selinux_state` address).
   No O1 device has run it; the O1 `posix_cpu_timer_del` is the older
-  implementation and may change UAF timing. Treat every run as a potential
-  panic/boot-loop and only test devices you own and can recover.
+  implementation and may change UAF timing. The relaxed gate also accepts
+  other OS4.0.0.x builds in the `6.18.21-android17…-4k` series without a
+  per-build comparison and reuses the O1 `selinux_state` address, so a
+  shifted static can turn a run into a kernel write to the wrong page. Treat
+  every run as a potential panic/boot-loop and only test devices you own and
+  can recover.
 
 
 ## Threat model

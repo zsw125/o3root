@@ -319,9 +319,17 @@ static unsigned long long selinux_state_static(void){
  static unsigned long long v=0;
  if(v)return v;
  v=SELINUX_STATE_STATIC;
- {struct utsname u;
-  if(uname(&u)==0&&(strstr(u.release,"g1d099fcb35e0")||strstr(u.release,"abogki538445360")))v=SELINUX_STATE_O1_STATIC;
-  printf("SELINUX_PROFILE kernel=%s base=0x%llx\n",u.release,v);}
+ {struct utsname u;const char *pf=getenv("O3P_SELINUX_PROFILE");
+  const char *src="uname";int o1=0;
+  if(pf&&!strcmp(pf,"o1")){o1=1;src="env";}
+  if(uname(&u)==0){
+   if(!o1&&(strstr(u.release,"g1d099fcb35e0")||strstr(u.release,"abogki538445360"))){o1=1;src="uname";}
+   if(o1)v=SELINUX_STATE_O1_STATIC;
+   printf("SELINUX_PROFILE kernel=%s base=0x%llx src=%s\n",u.release,v,src);
+  }else{
+   if(o1)v=SELINUX_STATE_O1_STATIC;
+   printf("SELINUX_PROFILE uname-fail base=0x%llx src=%s\n",v,src);
+  }}
  fflush(stdout);return v;
 }
 static unsigned long long g_cred=0,g_tg[4]={0,0,0,0};

@@ -34,7 +34,7 @@ rebuilds the payload/APK when the toolchain environment is set.
 | | |
 |---|---|
 | release | **v3.2** (`release/o3root2-v3.2.apk`, 14,239,248 B, sha256 `64bbc654…`) |
-| O1 test build | **v3.3-o1-test** (`release/test/o3root2-v3.3-o1-test.apk`, 14,247,440 B, sha256 `45764d99…`): v3.2 plus an **experimental O1 (XRING) profile** (`dijun` / `jinghu` / `violin`) and the hidden root console — for testers only, never hardware-validated |
+| O1 test build | **v3.3.1-o1-test** (`release/test/o3root2-v3.3.1-o1-test.apk`, 14,247,440 B, sha256 `4ae9fcd5…`): v3.2 plus an **experimental O1 (XRING) profile** (`dijun` / `jinghu` / `violin`) and the hidden root console. Accepts any OS4.0.0.x build on the `6.18.21-android17…-4k` kernel series: the analysed build is the verified path, other builds run in relaxed mode with a warning; for testers only, never hardware-validated |
 | previous test build | **v3.2.1-console** (`release/beta/o3root2-v3.2.1-console.apk`, 14,243,344 B, sha256 `9cba365a…`): stable v3.2 plus a hidden root console (long-press the version row; three confirmations) |
 | O1 devices | Xiaomi O1 SoC `dijun` / `jinghu` / `violin` on OS4.0.0.x: all three ship the **same** 6.18.21 kernel (`sha256 0d9917ca…`, `g1d099fcb35e0`); static analysis says the chain applies, no device test yet |
 | custom LKM | optional user-supplied KernelSU-family .ko (basic compatibility check; falls back to the built-in adaptive module; the choice is saved and restored on launch — long-press the row to clear) |
@@ -90,10 +90,13 @@ primitive, the KernelSU patch and the porting guide.
    `★ KSU_MODULE LIVE`, and the KernelSU manager opens automatically.
 
 Testing on an O1 device (`dijun` / `jinghu` / `violin`)? Install
-[`release/test/o3root2-v3.3-o1-test.apk`](release/test/o3root2-v3.3-o1-test.apk)
-instead and follow [docs/TESTING_O1.md](docs/TESTING_O1.md). The app logs
-`SELINUX_PROFILE kernel=…` from the payload, so the report only needs the
-exported log.
+[`release/test/o3root2-v3.3.1-o1-test.apk`](release/test/o3root2-v3.3.1-o1-test.apk)
+instead and follow [docs/TESTING_O1.md](docs/TESTING_O1.md). The gate accepts
+the three codenames on any `6.18.21-android17…-4k` kernel (OS4.0.0.x); the
+analysed build `g1d099fcb35e0` gets the verified path, other builds log
+`固件门禁通过（O1 宽松模式：…）` and reuse the O1 address with a warning. The
+payload logs `SELINUX_PROFILE kernel=… base=… src=env|uname`, so the report
+only needs the exported log.
 
 No manager installed? The button turns into **Install KernelSU manager** and
 installs the bundled APK (accept the system prompts).
@@ -144,7 +147,10 @@ Full prerequisites and troubleshooting: [`docs/BUILD.md`](docs/BUILD.md).
   treat it as a production root solution.
 - **Profile-bound**: offsets/addresses are compiled for this exact kernel. A
   different build needs a new profile (see the porting section in
-  `docs/ARCHITECTURE.md`).
+  `docs/ARCHITECTURE.md`). The O1 test build is the one guarded exception: it
+  accepts any OS4.0.0.x build in the `6.18.21-android17…-4k` series, reuses the
+  analysed O1 `selinux_state` address, and warns that other statics were not
+  compared.
 
 ## Evidence
 

@@ -9,8 +9,8 @@
 
 > 当前发布件是 **v3.2**：`release/o3root2-v3.2.apk`（14,239,248 B，sha256
 > `64bbc65420181babd69b826de7b86be99409963dd29253b72a2930d7a7ff6cfd`）；实验性
-> O1 测试构建 `release/test/o3root2-v3.3-o1-test.apk`（14,247,440 B，sha256
-> `45764d9911403c39c21c1bad2bfe14366093df403b76ddcbf51b8cbccdf138ab`）；上一测试
+> O1 测试构建 `release/test/o3root2-v3.3.1-o1-test.apk`（14,247,440 B，sha256
+> `4ae9fcd5a4d0e209bc2e62e5061970bbeafb9f48769443a253842af02b6d4ad7`）；上一测试
 > 构建 `release/beta/o3root2-v3.2.1-console.apk`（14,243,344 B，sha256
 > `9cba365a36344a3e6994100a6d3276b220f15bc4de7d7ce2bde74a6999674f8e`）。下表的
 > 13,973,008 B/`0d7c5ea8…` 仅指 v1.8 的 APK，保留作历史记录。
@@ -690,18 +690,20 @@ after the first `D3ADDR`; it stays behind `O3P_D3V3` for analysis only.
   等一致；`do_timer_create+0x68` 落在同一条 `cbz`。差异：`posix_cpu_timer_del`
   O1 为旧实现（`__rcu_read_lock`+`pid_task`+`__lock_task_sighand`），yingtian 为
   `timer_lock_sighand` 版——这是最需要在真机验证的时序风险。
-- 载荷改动：`payload/o3p.c:313-324` 增加 `SELINUX_STATE_O1_STATIC` 与
-  `selinux_state_static()`（读 `uname().release`，含 `g1d099fcb35e0` 或
-  `abogki538445360` 用 O1 基址），两处 `g_sel` 改用它，启动时打印
-  `SELINUX_PROFILE kernel=… base=0x…`。`INIT_USER_NS_STATIC` 不变。
-- App 改动：`Main.checkFirmware()` 增加 O1 内核字符串与三代号白名单，通过时打印
-  `固件门禁通过（O1 实验性：…）` 并提示“仅静态分析、失败请导出日志”；未识别内核
-  仍失败。versionCode 20 / versionName 3.3；测试构建用
-  `BETA_VERSION=3.3-o1-test BETA_CODE=19`。
-- 产物：payload 77,736 B；`libo3p.so` 1,496,452 B sha256
-  `35a44ef6…`；正式版 3.3 APK 14,239,248 B sha256 `a8a6d684…`（未发布）；
-  测试 APK `release/test/o3root2-v3.3-o1-test.apk` 14,247,440 B sha256
-  `45764d99…`（versionCode 19，含控制台）。
+- 载荷改动：`payload/o3p.c:313-330` 增加 `SELINUX_STATE_O1_STATIC` 与
+  `selinux_state_static()`（优先读 `O3P_SELINUX_PROFILE`，否则读
+  `uname().release`，含 `g1d099fcb35e0` 或 `abogki538445360` 用 O1 基址），
+  两处 `g_sel` 改用它，启动时打印
+  `SELINUX_PROFILE kernel=… base=0x… src=env|uname`。`INIT_USER_NS_STATIC` 不变。
+- App 改动：`Main.checkFirmware()` 对三代号接受已分析 O1 内核（实验路径）或
+  OS4.0.0.x 的任意 `6.18.21-android17…-4k` 内核（宽松路径），分别打印
+  `固件门禁通过（O1 实验性/宽松模式：…）`；系列外内核仍失败。识别为 O1 时
+  `PayloadRunner` 导出 `O3P_SELINUX_PROFILE=o1`。versionCode 20 / versionName
+  3.3；测试构建用 `BETA_VERSION=3.3.1-o1-test BETA_CODE=21`。
+- 产物：payload 77,928 B；`libo3p.so` 1,496,644 B sha256
+  `0d3d4dd5…`；正式版 3.3 APK 14,239,248 B sha256 `55cb478c…`（未发布）；
+  测试 APK `release/test/o3root2-v3.3.1-o1-test.apk` 14,247,440 B sha256
+  `4ae9fcd5…`（versionCode 21，含控制台）。
 - 未真机验证：构建时无 O1 设备（设备当时不在 adb 上），也没有
   在 O3 机器上回归 3.3（设备断连）。测试指南：
   `docs/TESTING_O1.md` / `docs/TESTING_O1.zh-CN.md`。

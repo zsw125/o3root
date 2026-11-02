@@ -14,6 +14,7 @@ public class PayloadRunner implements Runnable {
     private final String customKoLabel;
     private final String customKoExtPath;
     private final boolean customKoForce;
+    private final String selinuxProfile;
 
     public PayloadRunner(String payloadPath, PayloadSink sink) {
         this(payloadPath, sink, null, null, null, null, false);
@@ -26,6 +27,13 @@ public class PayloadRunner implements Runnable {
     public PayloadRunner(String payloadPath, PayloadSink sink, String fork,
                          byte[] customKo, String customKoLabel, String customKoExtPath,
                          boolean customKoForce) {
+        this(payloadPath, sink, fork, customKo, customKoLabel, customKoExtPath,
+                customKoForce, null);
+    }
+
+    public PayloadRunner(String payloadPath, PayloadSink sink, String fork,
+                         byte[] customKo, String customKoLabel, String customKoExtPath,
+                         boolean customKoForce, String selinuxProfile) {
         this.payloadPath = payloadPath;
         this.sink = sink;
         this.fork = fork;
@@ -33,11 +41,15 @@ public class PayloadRunner implements Runnable {
         this.customKoLabel = customKoLabel;
         this.customKoExtPath = customKoExtPath;
         this.customKoForce = customKoForce;
+        this.selinuxProfile = selinuxProfile;
     }
 
     public void run() {
         try {
             String env = fork == null ? "" : ("export O3P_KSU_FORK=" + fork + "; ");
+            if (selinuxProfile != null && selinuxProfile.length() > 0) {
+                env = env + "export O3P_SELINUX_PROFILE='" + selinuxProfile + "'; ";
+            }
             String customPath = null;
             if (customKo != null && customKo.length > 0) {
                 customPath = stageCustomKo(customKo, customKoLabel, customKoExtPath);

@@ -27,7 +27,7 @@ licenses and redistribution terms.
     for GKI `android17-6.18` (release asset, aarch64).
   - `app/assets/ksu-manager.apk` — KernelSU manager APK from the same release.
   - The release APKs (`release/o3root2-v3.2.apk`,
-    `release/test/o3root2-v3.3-o1-test.apk`) embed both the manager APK and the unmodified
+    `release/test/o3root2-v3.3.1-o1-test.apk`) embed both the manager APK and the unmodified
     official LKM; the payload generates a *runtime copy* with rebased symbols
     (via `/proc/kallsyms`); v3 applies no init patch by default (legacy
     `O3P_CODEPATCH=1` restores it), then loads that copy. The offline `payload/ksu/relink_ksu.py` does the same rebasing.
@@ -63,7 +63,7 @@ licenses and redistribution terms.
   fetched from Maven Central by `scripts/fetch-toolchain.sh`.
 - Not committed to this repository; compiled classes from these jars are
   embedded in the release APKs (`release/o3root2-v3.2.apk`,
-  `release/test/o3root2-v3.3-o1-test.apk`).
+  `release/test/o3root2-v3.3.1-o1-test.apk`).
 
 ## Android SDK (Android SDK License)
 
