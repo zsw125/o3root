@@ -426,6 +426,12 @@ The payload can be tested standalone (root or shell): push `libo3p.so` as
   `release/test/o3root2-v3.3.4-o1-test.apk`, 14,247,440 B, sha256 `1a298929…`.
 - Reported by the device owner: (a) auto-scroll jumped to the top; (b) a
   user-selected SukiSU 4.3.0 LKM logged `CUSTOM_KO fallback reason=load_failed`
-  after `insmod … No such file or directory`. Not re-tested on hardware here
-  (no device attached); the loader fix is verified by disassembly of the module
-  and by the section count/symbol tables.
+  after `insmod … No such file or directory`.
+- Hardware re-check on yingtian (2026-11-05, cold boot, payload run directly
+  from adb shell with `O3P_CUSTOM_KO=/data/local/tmp/ksu430.ko`):
+  `KSU_LOADER kallsyms found=251 missing=0`, `KSU_CODEPATCH skip`,
+  `KSU_WROTE /data/local/tmp/o3p_ksu.ko 614424`, `KSU_INSMOD_OUT:[rc=0`,
+  `KSU_MODULE LIVE`, `/proc/modules` shows `kernelsu 503808 … Live`, Enforcing.
+  The same run needed 9 attempts (`VERDICT NO_RECLAIM` is normal/retryable).
+  LogBox: 50 appends kept the newest line pinned to the bottom; after
+  scrolling up, a further append did not jump the view.

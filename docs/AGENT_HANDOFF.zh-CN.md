@@ -381,4 +381,10 @@ adb shell 'tail -f /data/data/o3.st.root1/files/run.log'   # 仅 debuggable 构�
   `release/test/o3root2-v3.3.4-o1-test.apk`，14,247,440 B，sha256 `1a298929…`。
 - 由设备机主报告：(a) 自动滚动跳到顶部；(b) 自选 SukiSU 4.3.0 LKM 在
   `insmod … No such file or directory` 后记录 `CUSTOM_KO fallback reason=load_failed`。
-  本机无设备，未做真机复测；加载器修复依据模块反汇编、节数与符号表验证。
+- 已回 yingtian 真机复验（2026-11-05，冷启动，直接由 adb shell 跑载荷并设
+  `O3P_CUSTOM_KO=/data/local/tmp/ksu430.ko`）：
+  `KSU_LOADER kallsyms found=251 missing=0`、`KSU_CODEPATCH skip`、
+  `KSU_WROTE /data/local/tmp/o3p_ksu.ko 614424`、`KSU_INSMOD_OUT:[rc=0`、
+  `KSU_MODULE LIVE`，`/proc/modules` 显示 `kernelsu 503808 … Live`，Enforcing。
+  该次共 9 次尝试成功（`VERDICT NO_RECLAIM` 属正常、可重试）。
+  LogBox：连续 50 次追加都保持在最新行；手动滚到上方后再追加不会被拉回底部。

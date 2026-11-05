@@ -729,4 +729,9 @@ after the first `D3ADDR`; it stays behind `O3P_D3V3` for analysis only.
 - 产物：payload 77,952 B；`libo3p.so` 1,496,668 B sha256 `fef5e065…`；正式版 3.3
   APK 14,243,344 B sha256 `0153846d…`（未发布）；测试 APK
   `release/test/o3root2-v3.3.4-o1-test.apk` 14,247,440 B sha256 `1a298929…`
-  （versionCode 24，含控制台）。本轮无设备连接，未真机复测。
+  （versionCode 24，含控制台）。
+- 真机复验（yingtian，2026-11-05，冷启动后 adb shell 直跑载荷 + `O3P_CUSTOM_KO`）：
+  SukiSU 4.3.0 模块（614,424 B，65 节）走 kallsyms 路径
+  （`KSU_LOADER kallsyms found=251 missing=0`），`insmod` rc=0、`KSU_MODULE LIVE`，
+  `/proc/modules` 中 `kernelsu 503808 … Live`、Enforcing；第 9 次尝试拿到 UID 0。
+  LogBox：连续追加 50 行始终停在底部；手动上滚后再追加不会被拉回。

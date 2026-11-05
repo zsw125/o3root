@@ -167,7 +167,11 @@ not exercised on hardware (the forced
 module still loaded) and remains desktop-tested. The v3.3 O1 profile is
 **static-analysis-only**: the O1 kernel and the yingtian kernel were compared
 symbol-by-symbol/BTF/config/instruction-wise (see `docs/AGENT_HANDOFF.md`),
-but no O1 device has run either the payload or the KernelSU LKM. v1.8–v2.1 had
+but no O1 device has run either the payload or the KernelSU LKM. v3.3.4 was
+re-checked on yingtian (2026-11-05): a 65-section SukiSU 4.3.0 LKM loads via
+the kallsyms path (`KSU_LOADER kallsyms found=251 missing=0`, `KSU_INSMOD_OUT:
+[rc=0`, `KSU_MODULE LIVE`), and the LogBox keeps the newest line pinned at the
+bottom while leaving a manually scrolled-up view alone. v1.8–v2.1 had
 additionally verified the old guard/recovery UI and network health while
 Permissive (both removed in v3.0). The v2.0 release APK was cold-boot tested; v2.1 was cold-boot tested with a revoked Shizuku permission (grant → probe → automatic payload)
 end-to-end on three images (only the tiann manager, only KernelSU-Next, only

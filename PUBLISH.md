@@ -6,7 +6,8 @@ secrets or device identifiers — the script scans both text and binaries.
 
 ## Current publication state (2026-11-03)
 
-- `main` head: the v3.3.4-o1-test commit; tags `v3.2` (stable),
+- `main` head: the v3.3.4-o1-test tag points at `d72e6fb`; later docs-only
+  commits sit on top. Tags `v3.2` (stable),
   `v3.2.1-console` and `v3.3.4-o1-test` (experimental O1) point at their own
   commits. The short-lived `v3.3-o1-test` tag/release was deleted and replaced
   by `v3.3.4-o1-test` (relaxed OS4.0.0 series gate). Earlier tags `v3.1.1`

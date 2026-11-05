@@ -123,6 +123,9 @@ PAYLOAD=... BETA=1 BETA_VERSION=3.3.4-o1-test BETA_CODE=24 bash app/build.sh
 （这两项在 v3.0 已移除）。v2.1 发布 APK（权限感知探测：先查授权、本地识别管理器、授权后先探测再跑载荷）
 已在三种管理器镜像上冷启动验证（仅 tiann / 仅 KernelSU-Next / 仅 SukiSU）：
 应用识别管理器、载荷从内置 LKM 中选对应版本、对应管理器被拉到前台。
+v3.3.4 于 2026-11-05 在 yingtian 复验：65 节的 SukiSU 4.3.0 LKM 经 kallsyms
+路径加载成功（`KSU_LOADER kallsyms found=251 missing=0`、`KSU_INSMOD_OUT:[rc=0`、
+`KSU_MODULE LIVE`）；LogBox 连续追加 50 行保持底部，手动上滚后追加不再被拉回。
 
 未验证：**O1 实机**（dijun/jinghu/violin —— 见 `docs/TESTING_O1.md`）；
 `lhasa` 实机；**原版 Shizuku**（我们用的是官方 `dev.rikka.shizuku`
