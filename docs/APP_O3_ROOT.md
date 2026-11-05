@@ -9,8 +9,8 @@
 
 > 当前发布件是 **v3.2**：`release/o3root2-v3.2.apk`（14,239,248 B，sha256
 > `64bbc65420181babd69b826de7b86be99409963dd29253b72a2930d7a7ff6cfd`）；实验性
-> O1 测试构建 `release/test/o3root2-v3.3.3-o1-test.apk`（14,247,440 B，sha256
-> `62411f7219a047afcb83aa42831d530e80ad79e57be716f34f0c0300481fbcbe`）；上一测试
+> O1 测试构建 `release/test/o3root2-v3.3.4-o1-test.apk`（14,247,440 B，sha256
+> `1a298929f203d718d5328a398a03603efd664f7612f5eaacf7dc46bfb5daafeb`）；上一测试
 > 构建 `release/beta/o3root2-v3.2.1-console.apk`（14,243,344 B，sha256
 > `9cba365a36344a3e6994100a6d3276b220f15bc4de7d7ce2bde74a6999674f8e`）。下表的
 > 13,973,008 B/`0d7c5ea8…` 仅指 v1.8 的 APK，保留作历史记录。
@@ -699,11 +699,11 @@ after the first `D3ADDR`; it stays behind `O3P_D3V3` for analysis only.
   OS4.0.0.x 的任意 `6.18.21-android17…-4k` 内核（宽松路径），分别打印
   `固件门禁通过（O1 实验性/宽松模式：…）`；系列外内核仍失败。识别为 O1 时
   `PayloadRunner` 导出 `O3P_SELINUX_PROFILE=o1`。versionCode 20 / versionName
-  3.3；测试构建用 `BETA_VERSION=3.3.3-o1-test BETA_CODE=23`。
-- 产物：payload 77,928 B；`libo3p.so` 1,496,644 B sha256
-  `0d3d4dd5…`；正式版 3.3 APK 14,243,344 B sha256 `00ac0081…`（未发布）；
-  测试 APK `release/test/o3root2-v3.3.3-o1-test.apk` 14,247,440 B sha256
-  `62411f72…`（versionCode 23，含控制台）。
+  3.3；测试构建用 `BETA_VERSION=3.3.4-o1-test BETA_CODE=24`。
+- 产物：payload 77,952 B；`libo3p.so` 1,496,668 B sha256
+  `fef5e065…`；正式版 3.3 APK 14,243,344 B sha256 `0153846d…`（未发布）；
+  测试 APK `release/test/o3root2-v3.3.4-o1-test.apk` 14,247,440 B sha256
+  `1a298929…`（versionCode 24，含控制台）。
 - v3.3.3 修复门禁回归：已验证 yingtian/lhasa 内核也满足 O1 的 6.18.21-android17
   系列，原先会进入 O1 分支并报“O1 内核但设备代号未知”；现在 O1 分支要求设备
   代号属于 dijun/jinghu/violin，O3 设备恢复走原门禁。用户截图（v3.3.2）报障，
@@ -711,3 +711,22 @@ after the first `D3ADDR`; it stays behind `O3P_D3V3` for analysis only.
 - 未真机验证：构建时无 O1 设备（设备当时不在 adb 上），也没有
   在 O3 机器上回归 3.3（设备断连）。测试指南：
   `docs/TESTING_O1.md` / `docs/TESTING_O1.zh-CN.md`。
+
+## v3.3.4 —— LogBox 滚动修复 + 现代自定义 LKM 加载（2026-11-05）
+
+- 设备机主报告两个问题：LogBox 自动滚动跳到顶部；自选 SukiSU 4.3.0 LKM 时
+  `insmod` 报 `No such file or directory` 并回退到内置模块。
+- 滚动：`appendNow()` 原来在 `setText` 后调用 `fullScroll(FOCUS_DOWN)`；可选中
+  TextView 在部分 ROM 上会把这一调用落到焦点视图顶部。改为先记录
+  `nearBottom()`，仅在跟随底部时用 `scrollTo` 显式滚到
+  `logView.getBottom() - logScroll.getHeight()`，并连发两次，避开首次布局尚未完成。
+- LKM：SukiSU 4.3.0 的模块有 65 个节，`kallsyms_patch()`/`ksu_patch()` 的 64 节
+  上限让 kallsyms 路径返回 `r=-2`；更关键的是 relink 回退在未设 `O3P_CODEPATCH` 时
+  被 `KSU_CODEPATCH skip` 提前返回，等于没有重写任何 UNDEF 符号，模块写出后内核
+  报 `-ENOENT`。现在两处上限为 512，`ksu_patch()` 增加 `relink` 参数：仅补丁调用
+  才受 codepatch 守卫影响，relink 模式独立重写符号，日志输出
+  `KSU_PATCH … relink=%d`。
+- 产物：payload 77,952 B；`libo3p.so` 1,496,668 B sha256 `fef5e065…`；正式版 3.3
+  APK 14,243,344 B sha256 `0153846d…`（未发布）；测试 APK
+  `release/test/o3root2-v3.3.4-o1-test.apk` 14,247,440 B sha256 `1a298929…`
+  （versionCode 24，含控制台）。本轮无设备连接，未真机复测。

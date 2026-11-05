@@ -12,10 +12,10 @@ and leaves a root daemon for the current boot. Read this file first, then
 
 - Release **v3.2** (latest stable), `release/o3root2-v3.2.apk`
   (`14,239,248 B`, `sha256 64bbc65420181babd69b826de7b86be99409963dd29253b72a2930d7a7ff6cfd`).
-- **Experimental test build v3.3.3-o1-test**, `release/test/o3root2-v3.3.3-o1-test.apk`
-  (`14,247,440 B`, `sha256 62411f7219a047afcb83aa42831d530e80ad79e57be716f34f0c0300481fbcbe`):
+- **Experimental test build v3.3.4-o1-test**, `release/test/o3root2-v3.3.4-o1-test.apk`
+  (`14,247,440 B`, `sha256 1a298929f203d718d5328a398a03603efd664f7612f5eaacf7dc46bfb5daafeb`):
   v3.2 plus an O1 (XRING) kernel profile and the hidden root console
-  (versionCode 23 / `3.3.3-o1-test`). Static-analysis-only support for
+  (versionCode 24 / `3.3.4-o1-test`). Static-analysis-only support for
   `dijun` / `jinghu` / `violin`; not hardware-validated.
   Previous test build `release/beta/o3root2-v3.2.1-console.apk`
   (`14,243,344 B`, `sha256 9cba365a…`) remains in the tree as history.
@@ -70,7 +70,7 @@ bash scripts/fetch-toolchain.sh   # android.jar, build-tools r34, Shizuku jars, 
 
 # payload  (needs an NDK clang)
 NDK_CC=/path/to/ndk/.../aarch64-linux-android35-clang bash payload/build-payload.sh
-# reference result: 77,928 B payload; libo3p.so 1,496,644 B (three LKMs), sha256 0d3d4dd5…0701
+# reference result: 77,952 B payload; libo3p.so 1,496,668 B (three LKMs), sha256 fef5e065…0701
 
 # app (needs SDK + Shizuku jars + your keystore; see docs/BUILD.md)
 ANDROID_JAR=... BUILD_TOOLS=... SHIZUKU_JARS=... \
@@ -79,7 +79,7 @@ KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
 # test build (hidden root console; version/versionCode are overridable)
 ANDROID_JAR=... BUILD_TOOLS=... SHIZUKU_JARS=... \
 KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... \
-PAYLOAD=... BETA=1 BETA_VERSION=3.3.3-o1-test BETA_CODE=23 bash app/build.sh
+PAYLOAD=... BETA=1 BETA_VERSION=3.3.4-o1-test BETA_CODE=24 bash app/build.sh
 ```
 
 ## Map

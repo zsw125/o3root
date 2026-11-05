@@ -364,10 +364,16 @@ public class Main extends Activity implements PayloadSink {
                 logSpan.delete(0, 80000);
             }
         }
+        boolean follow = nearBottom();
         logBuf.append(line).append('\n');
         logSpan.append(decor(line)).append('\n');
         logView.setText(logSpan);
-        logScroll.post(new ScrollBottom(this));
+        if (follow) {
+            /* fullScroll(FOCUS_DOWN) jumps to the focused (selectable) view's
+               top on some OEM builds; scroll to the real bottom instead. */
+            logView.post(new ScrollBottom(this));
+            logView.postDelayed(new ScrollBottom(this), 60);
+        }
     }
 
     private CharSequence decor(String line) {
@@ -428,9 +434,11 @@ public class Main extends Activity implements PayloadSink {
     }
 
     void scrollBottomNow() {
-        if (nearBottom()) {
-            logScroll.fullScroll(ScrollView.FOCUS_DOWN);
+        int y = logView.getBottom() - logScroll.getHeight();
+        if (y < 0) {
+            y = 0;
         }
+        logScroll.scrollTo(0, y);
     }
 
     boolean nearBottom() {

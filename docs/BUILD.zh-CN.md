@@ -63,14 +63,14 @@ PAYLOAD=.../payload/build/libo3p.so           # 默认即此
 
 ```bash
 bash payload/build-payload.sh
-# build/o3p.bin      77,928 B（载荷）
+# build/o3p.bin      77,952 B（载荷）
 # build/libo3p.so    载荷 + 三个 LKM（blob v2 trailer）
 ```
 
 `build-payload.sh` 只需要 `NDK_CC`。KernelSU LKM 位于
 `payload/lkm/lkm-aarch64-android17-6.18_kernelsu.ko`；默认输出与
-`release/test/o3root2-v3.3.3-o1-test.apk` 里的参考构建一致（`libo3p.so` 的
-`sha256 0d3d4dd5…`）。仓库里已发布的 v3.2 APK 用的是旧载荷（`e479e539…`），
+`release/test/o3root2-v3.3.4-o1-test.apk` 里的参考构建一致（`libo3p.so` 的
+`sha256 fef5e065…`）。仓库里已发布的 v3.2 APK 用的是旧载荷（`e479e539…`），
 保持原样不动。
 
 你也可以直接在设备上（root/shell）运行载荷：
@@ -141,12 +141,12 @@ App 的 LogBox 会显示载荷每个阶段；用 **导出日志** 写到
 
 ## 可复现性
 
-参考构建（v3.3.3-o1-test，release/test/o3root2-v3.3.3-o1-test.apk）：
+参考构建（v3.3.4-o1-test，release/test/o3root2-v3.3.4-o1-test.apk）：
 
 - APK `14,247,440` 字节
-- `sha256 62411f7219a047afcb83aa42831d530e80ad79e57be716f34f0c0300481fbcbe`
-- payload `libo3p.so` `1,496,644` 字节（配官方 LKM），
-  `sha256 0d3d4dd592b2b487e274fc699466fc3851f4fa363745d778b31b9a9296200701`
+- `sha256 1a298929f203d718d5328a398a03603efd664f7612f5eaacf7dc46bfb5daafeb`
+- payload `libo3p.so` `1,496,668` 字节（配官方 LKM），
+  `sha256 fef5e065fb20e07b39ab4246eb1ef0d8e637f0a9cc77465c395e2432d9ebadeb`
 
 已发布的稳定版 `release/o3root2-v3.2.apk` 仍是
 `14,239,248` B / `sha256 64bbc654…`，内含旧载荷（`e479e539…`）；在 O1
@@ -170,5 +170,5 @@ v3.3 增加实验性 O1（XRING）内核 profile：载荷运行时根据 `uname(
 选择 `selinux_state` 链接地址（日志 `SELINUX_PROFILE kernel=… base=…`），
 `Main.checkFirmware()` 接受 `dijun` / `jinghu` / `violin` 与 O1 内核串。正式版
 版本为 3.3（versionCode 20）；测试构建用
-`BETA=1 BETA_VERSION=3.3.3-o1-test BETA_CODE=23 bash app/build.sh`
-（versionName `3.3.3-o1-test`，versionCode 23，含隐藏控制台）。
+`BETA=1 BETA_VERSION=3.3.4-o1-test BETA_CODE=24 bash app/build.sh`
+（versionName `3.3.4-o1-test`，versionCode 24，含隐藏控制台）。

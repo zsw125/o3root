@@ -65,14 +65,14 @@ PAYLOAD=.../payload/build/libo3p.so           # default is this
 
 ```bash
 bash payload/build-payload.sh
-# build/o3p.bin      77,928 B (payload)
+# build/o3p.bin      77,952 B (payload)
 # build/libo3p.so    payload + three LKMs (blob v2 trailer)
 ```
 
 `build-payload.sh` only needs `NDK_CC`. The KernelSU LKM is in
 `payload/lkm/lkm-aarch64-android17-6.18_kernelsu.ko`; the default output matches
-the reference build in `release/test/o3root2-v3.3.3-o1-test.apk`
-(`sha256 0d3d4dd5…` for `libo3p.so`). The committed v3.2 release APK was
+the reference build in `release/test/o3root2-v3.3.4-o1-test.apk`
+(`sha256 fef5e065…` for `libo3p.so`). The committed v3.2 release APK was
 built with the previous payload (`e479e539…`) and stays published as-is.
 
 v3.1/v3.1.1 only add Java sources (`CustomKo`, `KoResult`, `KoChoice`,
@@ -91,8 +91,8 @@ v3.3 adds the experimental O1 (XRING) kernel profile: the payload picks the
 (`SELINUX_PROFILE kernel=… base=…`), and `Main.checkFirmware()` accepts
 `dijun` / `jinghu` / `violin` with the O1 kernel string. The stable version
 is 3.3 (versionCode 20); the tester build is
-`BETA=1 BETA_VERSION=3.3.3-o1-test BETA_CODE=23 bash app/build.sh`
-(versionName `3.3.3-o1-test`, versionCode 23, hidden console).
+`BETA=1 BETA_VERSION=3.3.4-o1-test BETA_CODE=24 bash app/build.sh`
+(versionName `3.3.4-o1-test`, versionCode 24, hidden console).
 
 You can run the payload directly on the device (root/shell):
 
@@ -167,12 +167,12 @@ The app's LogBox shows every payload stage; use **Export log** to write
 
 ## Reproducibility
 
-Reference build (v3.3.3-o1-test, release/test/o3root2-v3.3.3-o1-test.apk):
+Reference build (v3.3.4-o1-test, release/test/o3root2-v3.3.4-o1-test.apk):
 
 - APK `14,247,440` bytes
-- `sha256 62411f7219a047afcb83aa42831d530e80ad79e57be716f34f0c0300481fbcbe`
-- payload `libo3p.so` `1,496,644` bytes (with the stock LKM),
-  `sha256 0d3d4dd592b2b487e274fc699466fc3851f4fa363745d778b31b9a9296200701`
+- `sha256 1a298929f203d718d5328a398a03603efd664f7612f5eaacf7dc46bfb5daafeb`
+- payload `libo3p.so` `1,496,668` bytes (with the stock LKM),
+  `sha256 fef5e065fb20e07b39ab4246eb1ef0d8e637f0a9cc77465c395e2432d9ebadeb`
 
 The published stable `release/o3root2-v3.2.apk` is still
 `14,239,248` B / `sha256 64bbc654…` and contains the previous payload

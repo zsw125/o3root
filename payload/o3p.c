@@ -667,7 +667,6 @@ static void root_proof(void){
 
 /* ==== KernelSU LKM: runtime relink + finit_module ==== */
 #define KSU_SHN_ABS 0xfff1
-static int g_relink_skip_syms=0;
 
 static void stage_note(const char *s){
   int fd=open("/data/local/tmp/o3p_stage.txt",O_WRONLY|O_CREAT|O_APPEND,0644);
@@ -792,18 +791,19 @@ static unsigned char *ksu_blob_load(size_t *plen) {
   return b;
 }
 
-static int ksu_patch(unsigned char *d,size_t len,unsigned long long slide){
-  if(nocodepatch_mode()){printf("KSU_CODEPATCH skip\n");fflush(stdout);return 0;}
+static int ksu_patch(unsigned char *d,size_t len,unsigned long long slide,int relink){
+  if(!relink && nocodepatch_mode()){printf("KSU_CODEPATCH skip\n");fflush(stdout);return 0;}
   unsigned long long shoff; unsigned short shentsize=0,shnum=0;
   if(len<64||d[0]!=0x7f||d[1]!='E')return -1;
   memcpy(&shoff,d+0x28,8); memcpy(&shentsize,d+0x3a,2); memcpy(&shnum,d+0x3c,2);
-  if(shentsize<64||shnum==0||shnum>64)return -2;
+  /* modern LKMs carry more than 64 sections (SukiSU 4.3.0 has 65) */
+  if(shentsize<64||shnum==0||shnum>512)return -2;
   if(shoff+(unsigned long long)shentsize*shnum>len)return -3;
   int found=0,missing=0,strs=0;
   for(int i=0;i<shnum;i++){
     unsigned char *sh=d+shoff+(size_t)i*shentsize;
     unsigned int type; memcpy(&type,sh+4,4);
-    if(type!=2||g_relink_skip_syms)continue;
+    if(type!=2||!relink)continue;
     unsigned long long soff,ssize,entsize; unsigned int link;
     memcpy(&soff,sh+0x18,8); memcpy(&ssize,sh+0x20,8); memcpy(&link,sh+0x28,4); memcpy(&entsize,sh+0x38,8);
     if(entsize<24||link>=shnum||soff+ssize>len)return -4;
@@ -828,7 +828,8 @@ static int ksu_patch(unsigned char *d,size_t len,unsigned long long slide){
     }
     strs++;
   }
-  { unsigned int shstrndx=0; memcpy(&shstrndx,d+0x3e,2);
+  if(nocodepatch_mode()){printf("KSU_CODEPATCH skip\n");fflush(stdout);}
+  else { unsigned int shstrndx=0; memcpy(&shstrndx,d+0x3e,2);
     int cd_patch=-1; unsigned long long cd_off=0;
     unsigned int init_idx=0xffffffffu; unsigned long long init_off=0,init_size=0;
     if(shstrndx<shnum){ unsigned char *shs=d+shoff+(size_t)shstrndx*shentsize; unsigned long long so=0,ss=0;
@@ -883,9 +884,9 @@ static int ksu_patch(unsigned char *d,size_t len,unsigned long long slide){
     }
     printf("KSU_CODEPATCH mov_w0_zero=%d off=0x%llx",cd_patch,cd_off);putchar(10);fflush(stdout);
     {char m2[128];snprintf(m2,sizeof m2,"KSU_CODEPATCH r=%d off=0x%llx",cd_patch,cd_off);stage_note(m2);} }
-  printf("KSU_PATCH symtabs=%d found=%d missing=%d skip=%d\n",strs,found,missing,g_relink_skip_syms);fflush(stdout);
+  printf("KSU_PATCH symtabs=%d found=%d missing=%d relink=%d\n",strs,found,missing,relink);fflush(stdout);
   {char m[96];snprintf(m,sizeof m,"KSU_PATCH_OK found=%d missing=%d",found,missing);stage_note(m);}
-  return g_relink_skip_syms?0:(found>0?0:-6);
+  return relink?(found>0?0:-6):0;
 }
 
 static int ksu_module_live(void){
@@ -1008,7 +1009,8 @@ static int kallsyms_patch(unsigned char *d,size_t len,int *pfound,int *pmissing)
   if(len<64||d[0]!=0x7f)return -1;
   unsigned long long shoff; unsigned short shentsize=0,shnum=0;
   memcpy(&shoff,d+0x28,8); memcpy(&shentsize,d+0x3a,2); memcpy(&shnum,d+0x3c,2);
-  if(shentsize<64||shnum==0||shnum>64)return -2;
+  /* modern LKMs carry more than 64 sections (SukiSU 4.3.0 has 65) */
+  if(shentsize<64||shnum==0||shnum>512)return -2;
   if(shoff+(unsigned long long)shentsize*shnum>len)return -3;
   int tcount=0,found=0,missing=0,i,k;
   for(i=0;i<shnum;i++){
@@ -1075,13 +1077,15 @@ static int ksu_try_load(unsigned char *b,size_t len,unsigned long long slide,con
   int ksf=0,ksm=0,ksfound=0;
   int kres=-1;
   if(!getenv("O3P_RELINK_ONLY")){ kres=kallsyms_patch(b,len,&ksfound,&ksm); }
-  if(kres==0 && ksm==0){ printf("KSU_LOADER kallsyms found=%d missing=0",ksfound); putchar(10); fflush(stdout); stage_note("KSU_LOADER_KALLSYMS"); }
-  else {
+  if(kres==0 && ksm==0){
+    printf("KSU_LOADER kallsyms found=%d missing=0",ksfound); putchar(10); fflush(stdout); stage_note("KSU_LOADER_KALLSYMS");
+    int r=ksu_patch(b,len,slide,0);   /* symbols are absolute; codepatch/skip only */
+    if(r){ printf("KSU_PATCH_FAIL r=%d",r); putchar(10); fflush(stdout); free(b); return -1; }
+  } else {
     printf("KSU_LOADER relink (kallsyms r=%d missing=%d)",kres,ksm); putchar(10); fflush(stdout);
-    int r=ksu_patch(b,len,slide);
+    int r=ksu_patch(b,len,slide,1);   /* rewrite UNDEF symbols from the 248-symbol union */
     if(r){ printf("KSU_PATCH_FAIL r=%d",r); putchar(10); fflush(stdout); free(b); return -1; }
   }
-  if(kres==0 && ksm==0){ g_relink_skip_syms=1; ksu_patch(b,len,slide); g_relink_skip_syms=0; }
   const char *out="/data/local/tmp/o3p_ksu.ko";
   int fd=open(out,O_WRONLY|O_CREAT|O_TRUNC,0644);
   if(fd<0){ printf("KSU_WRITE_FAIL errno=%d",errno); putchar(10); fflush(stdout); free(b); return -1; }

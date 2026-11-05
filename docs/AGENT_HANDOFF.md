@@ -13,7 +13,7 @@ work with rough effort estimates.
 |---|---|
 | release | v3.2, `release/o3root2-v3.2.apk` (14,239,248 B, sha256 `64bbc654…`) |
 | test build | v3.2.1-console, `release/beta/o3root2-v3.2.1-console.apk` (14,243,344 B, sha256 `9cba365a…`; hidden root console) |
-| O1 test build | v3.3.3-o1-test, `release/test/o3root2-v3.3.3-o1-test.apk` (14,247,440 B, sha256 `62411f72…`; O1 profile + hidden console; **static-analysis only**) |
+| O1 test build | v3.3.4-o1-test, `release/test/o3root2-v3.3.4-o1-test.apk` (14,247,440 B, sha256 `1a298929…`; O1 profile + hidden console; **static-analysis only**) |
 | verified device | Xiaomi Pad 9 Pro Max `yingtian`, HyperOS `OS4.0.16.0.XBMCNXM`, kernel `6.18.21-android17-5-g805aa6adea19-abogki565292102-4k` |
 | second target | `lhasa` (Xiaomi 18 Fold) `OS4.0.26.0.XPNCNXM` — same kernel sha256 `cde87cd7…` (boot header/ramdisk differ); **not device-tested** |
 | persistence | none (current boot only) |
@@ -371,15 +371,15 @@ The payload can be tested standalone (root or shell): push `libo3p.so` as
 - Payload: `SELINUX_STATE_O1_STATIC` + `selinux_state_static()`; the base is
   chosen at runtime from `O3P_SELINUX_PROFILE` (app hint) or `uname().release`
   and logged as `SELINUX_PROFILE kernel=… base=0x… src=env|uname`. Payload
-  77,928 B; `libo3p.so` 1,496,644 B sha256 `0d3d4dd5…`.
+  77,952 B; `libo3p.so` 1,496,668 B sha256 `fef5e065…`.
 - App: `Main.checkFirmware()` accepts the three codenames with the analysed O1
   kernel (`固件门禁通过（O1 实验性：…）`) or with any OS4.0.0.x
   `6.18.21-android17…-4k` kernel (`固件门禁通过（O1 宽松模式：…）`); both show
   a warning, and kernels outside the series fail closed. Stable 3.3: 14,243,344 B
-  sha256 `00ac0081…` (not published).
-- Test build: `BETA=1 BETA_VERSION=3.3.3-o1-test BETA_CODE=23` →
-  `release/test/o3root2-v3.3.3-o1-test.apk`, 14,247,440 B, sha256 `62411f72…`,
-  versionCode 23, includes the hidden console.
+  sha256 `0153846d…` (not published).
+- Test build: `BETA=1 BETA_VERSION=3.3.4-o1-test BETA_CODE=24` →
+  `release/test/o3root2-v3.3.4-o1-test.apk`, 14,247,440 B, sha256 `1a298929…`,
+  versionCode 24, includes the hidden console.
 - App (v3.3.3): before any payload run on a recognised O1 device, a two-step
   confirmation appears (risk dialog, then a checkbox that enables 开始提权);
   cancelling leaves the device untouched. Implemented in `Main` +
@@ -399,3 +399,33 @@ The payload can be tested standalone (root or shell): push `libo3p.so` as
   older O1 `posix_cpu_timer_del` (`__rcu_read_lock` + `pid_task` +
   `__lock_task_sighand` instead of `timer_lock_sighand`), which can change UAF
   timing. Tester guide: `docs/TESTING_O1.md`.
+
+## v3.3.4 — LogBox scroll direction + modern custom LKMs (2026-11-05)
+
+- LogBox: `appendNow()` used `fullScroll(FOCUS_DOWN)` after every line. With a
+  selectable `TextView` some builds move that call to the focused view's *top*,
+  so the box appeared to jump upwards. The view now records `nearBottom()`
+  before the text change and scrolls explicitly with
+  `scrollTo(0, logView.getBottom() - logScroll.getHeight())` (posted twice so
+  the first layout pass counts); no `fullScroll` remains.
+- Custom-LKM loader, two independent defects fixed:
+  1. `kallsyms_patch()` and `ksu_patch()` rejected section counts above 64, so
+     SukiSU 4.3.0's LKM (65 sections) fell through to the relink path
+     (`KSU_LOADER relink (kallsyms r=-2 …)`). Both limits are now 512.
+  2. The relink path was a silent no-op whenever `O3P_CODEPATCH` was unset:
+     `ksu_patch()` returned at the `KSU_CODEPATCH skip` guard before rewriting
+     any UNDEF symbol, so the module was written with unresolved symbols and
+     `insmod` failed with `No such file or directory` (kernel `-ENOENT`).
+     `ksu_patch()` now takes an explicit `relink` flag: the guard only applies
+     to the codepatch-only call, symbol rewriting happens only in relink mode,
+     and the return value is `relink ? (found>0?0:-6) : 0`. The kallsyms-success
+     call passes 0; the fallback passes 1. `KSU_PATCH … relink=%d` is logged.
+- Payload 77,952 B; `libo3p.so` 1,496,668 B sha256 `fef5e065…`. Stable 3.3 APK
+  14,243,344 B sha256 `0153846d…` (not published). Test build
+  `BETA=1 BETA_VERSION=3.3.4-o1-test BETA_CODE=24` →
+  `release/test/o3root2-v3.3.4-o1-test.apk`, 14,247,440 B, sha256 `1a298929…`.
+- Reported by the device owner: (a) auto-scroll jumped to the top; (b) a
+  user-selected SukiSU 4.3.0 LKM logged `CUSTOM_KO fallback reason=load_failed`
+  after `insmod … No such file or directory`. Not re-tested on hardware here
+  (no device attached); the loader fix is verified by disassembly of the module
+  and by the section count/symbol tables.

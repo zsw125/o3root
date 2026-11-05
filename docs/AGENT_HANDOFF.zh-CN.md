@@ -12,7 +12,7 @@
 |---|---|
 | 发布 | v3.2，`release/o3root2-v3.2.apk`（14,239,248 B，sha256 `64bbc654…`） |
 | 测试构建 | v3.2.1-console，`release/beta/o3root2-v3.2.1-console.apk`（14,243,344 B，sha256 `9cba365a…`；隐藏 root 控制台） |
-| O1 测试构建 | v3.3.3-o1-test，`release/test/o3root2-v3.3.3-o1-test.apk`（14,247,440 B，sha256 `62411f72…`；O1 profile + 隐藏控制台；**仅静态分析**） |
+| O1 测试构建 | v3.3.4-o1-test，`release/test/o3root2-v3.3.4-o1-test.apk`（14,247,440 B，sha256 `1a298929…`；O1 profile + 隐藏控制台；**仅静态分析**） |
 | 已验证设备 | 小米 Pad 9 Pro Max `yingtian`，HyperOS `OS4.0.16.0.XBMCNXM`，内核 `6.18.21-android17-5-g805aa6adea19-abogki565292102-4k` |
 | 第二目标 | `lhasa`（Xiaomi 18 Fold）`OS4.0.26.0.XPNCNXM` —— 同内核 sha256 `cde87cd7…`（boot header/ramdisk 不同）；**未实机测试** |
 | 持久化 | 无（仅当前 boot） |
@@ -332,16 +332,16 @@ adb shell 'tail -f /data/data/o3.st.root1/files/run.log'   # 仅 debuggable 构�
   （`0xffffffc082958630` vs `…959630`），`init_user_ns` 相同。
 - 载荷：新增 `SELINUX_STATE_O1_STATIC` 与 `selinux_state_static()`，运行时优先按
   `O3P_SELINUX_PROFILE`（App 提示）、否则按 `uname().release` 选基址并打印
-  `SELINUX_PROFILE kernel=… base=0x… src=env|uname`。载荷 77,928 B；`libo3p.so`
-  1,496,644 B sha256 `0d3d4dd5…`。
+  `SELINUX_PROFILE kernel=… base=0x… src=env|uname`。载荷 77,952 B；`libo3p.so`
+  1,496,668 B sha256 `fef5e065…`。
 - App：`Main.checkFirmware()` 对三个代号接受已分析 O1 内核（实验路径）或
   OS4.0.0.x 的任意 `6.18.21-android17…-4k` 内核（宽松路径），分别打印
   `固件门禁通过（O1 实验性/宽松模式：…）`；系列外内核仍被拒绝。识别为 O1 时
   `PayloadRunner` 导出 `O3P_SELINUX_PROFILE=o1`。正式版 3.3 的 APK：14,243,344 B
-  sha256 `00ac0081…`（未发布）。
-- 测试构建：`BETA=1 BETA_VERSION=3.3.3-o1-test BETA_CODE=23` →
-  `release/test/o3root2-v3.3.3-o1-test.apk`，14,247,440 B，sha256 `62411f72…`，
-  versionCode 23，含隐藏控制台。
+  sha256 `0153846d…`（未发布）。
+- 测试构建：`BETA=1 BETA_VERSION=3.3.4-o1-test BETA_CODE=24` →
+  `release/test/o3root2-v3.3.4-o1-test.apk`，14,247,440 B，sha256 `1a298929…`，
+  versionCode 24，含隐藏控制台。
 - App（v3.3.3）：识别到 O1 机型时，启动载荷前会先弹出两步警告确认（风险
   说明，然后勾选后启用“开始提权”）；取消不会改动设备。实现在 `Main` +
   `O1Warning.java`（顶层监听器）。
@@ -357,3 +357,28 @@ adb shell 'tail -f /data/data/o3.st.root1/files/run.log'   # 仅 debuggable 构�
   `posix_cpu_timer_del`（`__rcu_read_lock` + `pid_task` +
   `__lock_task_sighand`，而非 `timer_lock_sighand`），可能影响 UAF 时序。测试
   指南见 `docs/TESTING_O1.md`。
+
+## v3.3.4 —— LogBox 滚动方向 + 现代自定义 LKM（2026-11-05）
+
+- LogBox：`appendNow()` 每行都调用 `fullScroll(FOCUS_DOWN)`。在可选中
+  `TextView` 上，某些 ROM 会把该调用变成“滚到焦点视图的顶部”，所以看起来向上跳。
+  现在在改文本前记录 `nearBottom()`，改完用
+  `scrollTo(0, logView.getBottom() - logScroll.getHeight())` 显式滚到底（连发两次，
+  确保首次布局完成），不再使用 `fullScroll`。
+- 自定义 LKM 加载器的两个独立缺陷：
+  1. `kallsyms_patch()` 与 `ksu_patch()` 都拒绝超过 64 个节，SukiSU 4.3.0 的
+     LKM（65 节）因此掉进 relink 路径（`KSU_LOADER relink (kallsyms r=-2 …)`）。
+     两处上限现改为 512。
+  2. 未设 `O3P_CODEPATCH` 时 relink 路径是静默空操作：`ksu_patch()` 在
+     `KSU_CODEPATCH skip` 处提前返回，一个 UNDEF 符号都没重写，模块带着未解析符号
+     写出，`insmod` 报 `No such file or directory`（内核 `-ENOENT`）。
+     现在 `ksu_patch()` 显式接收 `relink` 参数：该守卫只用于“仅补丁”调用，符号重写
+     只在 relink 模式执行，返回值为 `relink ? (found>0?0:-6) : 0`。kallsyms 成功的
+     调用传 0，回退传 1；日志新增 `KSU_PATCH … relink=%d`。
+- 载荷 77,952 B；`libo3p.so` 1,496,668 B sha256 `fef5e065…`。正式版 3.3 APK
+  14,243,344 B sha256 `0153846d…`（未发布）。测试构建
+  `BETA=1 BETA_VERSION=3.3.4-o1-test BETA_CODE=24` →
+  `release/test/o3root2-v3.3.4-o1-test.apk`，14,247,440 B，sha256 `1a298929…`。
+- 由设备机主报告：(a) 自动滚动跳到顶部；(b) 自选 SukiSU 4.3.0 LKM 在
+  `insmod … No such file or directory` 后记录 `CUSTOM_KO fallback reason=load_failed`。
+  本机无设备，未做真机复测；加载器修复依据模块反汇编、节数与符号表验证。

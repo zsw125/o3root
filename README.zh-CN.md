@@ -32,7 +32,7 @@ Max）与 **lhasa**（Xiaomi 18 Fold）系列，做本地提权 + KernelSU。整
 | | |
 |---|---|
 | 发布 | **v3.2**（`release/o3root2-v3.2.apk`，14,239,248 B，sha256 `64bbc654…`） |
-| O1 测试构建 | **v3.3.3-o1-test**（`release/test/o3root2-v3.3.3-o1-test.apk`，14,247,440 B，sha256 `62411f72…`）：v3.2 功能 + **实验性 O1（XRING）profile**（`dijun` / `jinghu` / `violin`）+ 隐藏 root 控制台。接受 OS4.0.0.x 的任意 `6.18.21-android17…-4k` 内核：已分析构建走验证路径，其他构建走宽松模式并警告；仅供测试，从未真机验证 |
+| O1 测试构建 | **v3.3.4-o1-test**（`release/test/o3root2-v3.3.4-o1-test.apk`，14,247,440 B，sha256 `1a298929…`）：v3.2 功能 + **实验性 O1（XRING）profile**（`dijun` / `jinghu` / `violin`）+ 隐藏 root 控制台。接受 OS4.0.0.x 的任意 `6.18.21-android17…-4k` 内核：已分析构建走验证路径，其他构建走宽松模式并警告；仅供测试，从未真机验证 |
 | 旧测试构建 | **v3.2.1-console**（`release/beta/o3root2-v3.2.1-console.apk`，14,243,344 B，sha256 `9cba365a…`）：正式版 + 隐藏 root 控制台（长按版本行，三道确认） |
 | O1 设备 | 小米 O1 SoC 的 `dijun` / `jinghu` / `violin`（OS4.0.0.x）：三台共用**同一颗** 6.18.21 内核（`sha256 0d9917ca…`，`g1d099fcb35e0`）；静态分析认为链路可用，尚未实机验证 |
 | 自定义 LKM | 可选：任意 KernelSU 系列 .ko（基础兼容性检查；未通过可退回自适应内置模块；选择会保存并在下次启动恢复，长按该行可清除） |
@@ -82,7 +82,7 @@ Max）与 **lhasa**（Xiaomi 18 Fold）系列，做本地提权 + KernelSU。整
    `★ UIDNOW uid=0`、`★ KSU_MODULE LIVE`，随后 KernelSU 管理器自动打开。
 
 O1 设备（`dijun` / `jinghu` / `violin`）测试：请安装
-[`release/test/o3root2-v3.3.3-o1-test.apk`](release/test/o3root2-v3.3.3-o1-test.apk)，
+[`release/test/o3root2-v3.3.4-o1-test.apk`](release/test/o3root2-v3.3.4-o1-test.apk)，
 并按 [docs/TESTING_O1.md](docs/TESTING_O1.md) 操作。门禁接受三个代号下任意
 `6.18.21-android17…-4k` 内核（OS4.0.0.x）；已分析的 `g1d099fcb35e0` 构建走验证
 路径，其他构建会打印 `固件门禁通过（O1 宽松模式：…）` 并带警告沿用 O1 地址。
