@@ -10,11 +10,15 @@ and leaves a root daemon for the current boot. Read this file first, then
 
 ## State
 
-- Release **v3.2** (latest stable), `release/o3root2-v3.2.apk`
-  (`14,239,248 B`, `sha256 64bbc65420181babd69b826de7b86be99409963dd29253b72a2930d7a7ff6cfd`).
+- Release **v3.3** (latest stable), `release/o3root2-v3.3.apk`
+  (`14,243,344 B`, `sha256 c98a9ced675abd5086da3c0bd05ff8fd836ae948e3bcaf1895a73414ad3bd21e`). It carries the O1 profile, the two-step
+  confirmation, and the v3.3.4 LogBox + custom-LKM loader fixes; no console.
+  Previous stable v3.2 (`release/o3root2-v3.2.apk`, `14,239,248 B`, sha256
+  `64bbc654…`) remains in git history at tag `v3.2`.
 - **Experimental test build v3.3.4-o1-test**, `release/test/o3root2-v3.3.4-o1-test.apk`
   (`14,247,440 B`, `sha256 1a298929f203d718d5328a398a03603efd664f7612f5eaacf7dc46bfb5daafeb`):
-  v3.2 plus an O1 (XRING) kernel profile and the hidden root console
+  v3.3 plus the hidden root console (the O1 profile and confirmation are in
+  the stable build as well)
   (versionCode 24 / `3.3.4-o1-test`). Static-analysis-only support for
   `dijun` / `jinghu` / `violin`; not hardware-validated.
   Previous test build `release/beta/o3root2-v3.2.1-console.apk`
@@ -223,7 +227,7 @@ Negative results — don't repeat without a new idea (details in
 
 1. Shizuku running in shell mode: `ps -A -o UID,LABEL,ARGS | grep shizuku_plus_server`
    → `2000 u:r:shell:s0`.
-2. Install: `adb install -r release/o3root2-v3.2.apk`; if MIUI says
+2. Install: `adb install -r release/o3root2-v3.3.apk`; if MIUI says
    `INSTALL_FAILED_USER_RESTRICTED`, allow install-via-USB or, with root,
    `pm install -r -d`.
 3. Open the app, grant Shizuku permission, press Continue; wait 20–120 s.

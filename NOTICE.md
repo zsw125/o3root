@@ -26,7 +26,7 @@ licenses and redistribution terms.
   - `payload/lkm/lkm-aarch64-android17-6.18_kernelsu.ko` — official prebuilt LKM
     for GKI `android17-6.18` (release asset, aarch64).
   - `app/assets/ksu-manager.apk` — KernelSU manager APK from the same release.
-  - The release APKs (`release/o3root2-v3.2.apk`,
+  - The release APKs (`release/o3root2-v3.3.apk`,
     `release/test/o3root2-v3.3.4-o1-test.apk`) embed both the manager APK and the unmodified
     official LKM; the payload generates a *runtime copy* with rebased symbols
     (via `/proc/kallsyms`); v3 applies no init patch by default (legacy
@@ -62,7 +62,7 @@ licenses and redistribution terms.
 - Artifacts: `dev.rikka.shizuku:api`, `:provider`, `:aidl`, `:shared` (13.1.5),
   fetched from Maven Central by `scripts/fetch-toolchain.sh`.
 - Not committed to this repository; compiled classes from these jars are
-  embedded in the release APKs (`release/o3root2-v3.2.apk`,
+  embedded in the release APKs (`release/o3root2-v3.3.apk`,
   `release/test/o3root2-v3.3.4-o1-test.apk`).
 
 ## Android SDK (Android SDK License)

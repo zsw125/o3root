@@ -12,11 +12,13 @@
 
 ## 状态
 
-- 发布 **v3.2**（最新稳定版）：`release/o3root2-v3.2.apk`
-  （`14,239,248 B`，`sha256 64bbc65420181babd69b826de7b86be99409963dd29253b72a2930d7a7ff6cfd`）。
+- 发布 **v3.3**（最新稳定版）：`release/o3root2-v3.3.apk`
+  （`14,243,344 B`，`sha256 c98a9ced675abd5086da3c0bd05ff8fd836ae948e3bcaf1895a73414ad3bd21e`）。含 O1 profile、两步确认，以及 v3.3.4 的
+  LogBox / 自定义 LKM 加载修复；不含控制台。上一稳定版 v3.2
+  （`release/o3root2-v3.2.apk`，`14,239,248 B`，sha256 `64bbc654…`）保留在 tag `v3.2`。
 - **实验性测试构建 v3.3.4-o1-test**：`release/test/o3root2-v3.3.4-o1-test.apk`
   （`14,247,440 B`，`sha256 1a298929f203d718d5328a398a03603efd664f7612f5eaacf7dc46bfb5daafeb`）：
-  v3.2 + O1（XRING）内核 profile + 隐藏 root 控制台（versionCode 24 / `3.3.4-o1-test`）；
+  v3.3 + 隐藏 root 控制台（O1 profile 与两步确认已在正式版中）（versionCode 24 / `3.3.4-o1-test`）；
   `dijun` / `jinghu` / `violin` 仅经静态分析，未真机验证。上一测试构建
   `release/beta/o3root2-v3.2.1-console.apk`（`14,243,344 B`，`sha256 9cba365a…`）
   留在树里作为历史。
@@ -160,7 +162,7 @@ root 请求后才出现。
 
 1. 确认 Shizuku 以 shell 模式运行：
    `ps -A -o UID,LABEL,ARGS | grep shizuku_plus_server` → `2000 u:r:shell:s0`。
-2. 安装：`adb install -r release/o3root2-v3.2.apk`；MIUI 若报
+2. 安装：`adb install -r release/o3root2-v3.3.apk`；MIUI 若报
    `INSTALL_FAILED_USER_RESTRICTED`，允许“USB 安装”或用 root 执行
    `pm install -r -d`。
 3. 打开 App，授予 Shizuku 权限，点 Continue；等待 20–120 秒。

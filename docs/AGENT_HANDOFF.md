@@ -11,7 +11,7 @@ work with rough effort estimates.
 
 | item | value |
 |---|---|
-| release | v3.2, `release/o3root2-v3.2.apk` (14,239,248 B, sha256 `64bbc654…`) |
+| release | v3.3, `release/o3root2-v3.3.apk` (14,243,344 B, sha256 `c98a9ced…`; O1 profile + confirmation + LogBox/LKM fixes, no console). Previous stable v3.2 stays at tag `v3.2` |
 | test build | v3.2.1-console, `release/beta/o3root2-v3.2.1-console.apk` (14,243,344 B, sha256 `9cba365a…`; hidden root console) |
 | O1 test build | v3.3.4-o1-test, `release/test/o3root2-v3.3.4-o1-test.apk` (14,247,440 B, sha256 `1a298929…`; O1 profile + hidden console; **static-analysis only**) |
 | verified device | Xiaomi Pad 9 Pro Max `yingtian`, HyperOS `OS4.0.16.0.XBMCNXM`, kernel `6.18.21-android17-5-g805aa6adea19-abogki565292102-4k` |

@@ -10,7 +10,7 @@
 
 | 项 | 值 |
 |---|---|
-| 发布 | v3.2，`release/o3root2-v3.2.apk`（14,239,248 B，sha256 `64bbc654…`） |
+| 发布 | v3.3，`release/o3root2-v3.3.apk`（14,243,344 B，sha256 `c98a9ced…`；O1 profile + 两步确认 + LogBox/LKM 修复，无控制台）。上一稳定版 v3.2 保留在 tag `v3.2` |
 | 测试构建 | v3.2.1-console，`release/beta/o3root2-v3.2.1-console.apk`（14,243,344 B，sha256 `9cba365a…`；隐藏 root 控制台） |
 | O1 测试构建 | v3.3.4-o1-test，`release/test/o3root2-v3.3.4-o1-test.apk`（14,247,440 B，sha256 `1a298929…`；O1 profile + 隐藏控制台；**仅静态分析**） |
 | 已验证设备 | 小米 Pad 9 Pro Max `yingtian`，HyperOS `OS4.0.16.0.XBMCNXM`，内核 `6.18.21-android17-5-g805aa6adea19-abogki565292102-4k` |

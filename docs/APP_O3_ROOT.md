@@ -7,8 +7,8 @@
 
 ## 产物（v1.8，历史）
 
-> 当前发布件是 **v3.2**：`release/o3root2-v3.2.apk`（14,239,248 B，sha256
-> `64bbc65420181babd69b826de7b86be99409963dd29253b72a2930d7a7ff6cfd`）；实验性
+> 当前发布件是 **v3.3**（稳定版）：`release/o3root2-v3.3.apk`（14,243,344 B，sha256
+> `c98a9ced675abd5086da3c0bd05ff8fd836ae948e3bcaf1895a73414ad3bd21e`）；实验性
 > O1 测试构建 `release/test/o3root2-v3.3.4-o1-test.apk`（14,247,440 B，sha256
 > `1a298929f203d718d5328a398a03603efd664f7612f5eaacf7dc46bfb5daafeb`）；上一测试
 > 构建 `release/beta/o3root2-v3.2.1-console.apk`（14,243,344 B，sha256

@@ -70,8 +70,8 @@ bash payload/build-payload.sh
 `build-payload.sh` 只需要 `NDK_CC`。KernelSU LKM 位于
 `payload/lkm/lkm-aarch64-android17-6.18_kernelsu.ko`；默认输出与
 `release/test/o3root2-v3.3.4-o1-test.apk` 里的参考构建一致（`libo3p.so` 的
-`sha256 fef5e065…`）。仓库里已发布的 v3.2 APK 用的是旧载荷（`e479e539…`），
-保持原样不动。
+`sha256 fef5e065…`）。已发布的 v3.3 APK 内嵌同一载荷；v3.2（旧载荷
+`e479e539…`）保留在 tag `v3.2`。
 
 你也可以直接在设备上（root/shell）运行载荷：
 
@@ -141,16 +141,16 @@ App 的 LogBox 会显示载荷每个阶段；用 **导出日志** 写到
 
 ## 可复现性
 
-参考构建（v3.3.4-o1-test，release/test/o3root2-v3.3.4-o1-test.apk）：
+参考构建（v3.3，release/o3root2-v3.3.apk）：
 
-- APK `14,247,440` 字节
-- `sha256 1a298929f203d718d5328a398a03603efd664f7612f5eaacf7dc46bfb5daafeb`
+- APK `14,243,344` 字节
+- `sha256 c98a9ced675abd5086da3c0bd05ff8fd836ae948e3bcaf1895a73414ad3bd21e`
 - payload `libo3p.so` `1,496,668` 字节（配官方 LKM），
   `sha256 fef5e065fb20e07b39ab4246eb1ef0d8e637f0a9cc77465c395e2432d9ebadeb`
 
-已发布的稳定版 `release/o3root2-v3.2.apk` 仍是
-`14,239,248` B / `sha256 64bbc654…`，内含旧载荷（`e479e539…`）；在 O1
-验证完成前它仍是 Latest。
+测试构建（v3.3.4-o1-test，`release/test/o3root2-v3.3.4-o1-test.apk`）为
+`14,247,440` B / `sha256 1a298929…`，只多出控制台类与 manifest 条目；v3.2
+保留在 tag `v3.2`。
 
 上面的 APK 哈希是提交进仓库产物的指纹。`app/build.sh` 每次会重新打包（新时间戳）
 并重新签名，所以用相同源码重建会得到不同的 APK 哈希，但 dex、资源与 `libo3p.so`

@@ -31,8 +31,8 @@ Max）与 **lhasa**（Xiaomi 18 Fold）系列，做本地提权 + KernelSU。整
 
 | | |
 |---|---|
-| 发布 | **v3.2**（`release/o3root2-v3.2.apk`，14,239,248 B，sha256 `64bbc654…`） |
-| O1 测试构建 | **v3.3.4-o1-test**（`release/test/o3root2-v3.3.4-o1-test.apk`，14,247,440 B，sha256 `1a298929…`）：v3.2 功能 + **实验性 O1（XRING）profile**（`dijun` / `jinghu` / `violin`）+ 隐藏 root 控制台。接受 OS4.0.0.x 的任意 `6.18.21-android17…-4k` 内核：已分析构建走验证路径，其他构建走宽松模式并警告；仅供测试，从未真机验证 |
+| 发布 | **v3.3**（`release/o3root2-v3.3.apk`，14,243,344 B，sha256 `c98a9ced…`） |
+| O1 测试构建 | **v3.3.4-o1-test**（`release/test/o3root2-v3.3.4-o1-test.apk`，14,247,440 B，sha256 `1a298929…`）：v3.3 功能 + 隐藏 root 控制台（正式版 v3.3 已含 **实验性 O1（XRING）profile**：`dijun` / `jinghu` / `violin`）。接受 OS4.0.0.x 的任意 `6.18.21-android17…-4k` 内核：已分析构建走验证路径，其他构建走宽松模式并警告；仅供测试，从未真机验证 |
 | 旧测试构建 | **v3.2.1-console**（`release/beta/o3root2-v3.2.1-console.apk`，14,243,344 B，sha256 `9cba365a…`）：正式版 + 隐藏 root 控制台（长按版本行，三道确认） |
 | O1 设备 | 小米 O1 SoC 的 `dijun` / `jinghu` / `violin`（OS4.0.0.x）：三台共用**同一颗** 6.18.21 内核（`sha256 0d9917ca…`，`g1d099fcb35e0`）；静态分析认为链路可用，尚未实机验证 |
 | 自定义 LKM | 可选：任意 KernelSU 系列 .ko（基础兼容性检查；未通过可退回自适应内置模块；选择会保存并在下次启动恢复，长按该行可清除） |
@@ -77,7 +77,7 @@ Max）与 **lhasa**（Xiaomi 18 Fold）系列，做本地提权 + KernelSU。整
 1. 设备上：开启开发者选项 → 无线调试（或 ADB）。安装 **Shizuku** / ShizukuX，
    并以 **shell 模式** 启动：`shizuku_plus_server` 必须是 `uid=2000`、
    `u:r:shell:s0`。
-2. 安装 `release/o3root2-v3.2.apk`（MIUI 可能需要允许“USB 安装”）。
+2. 安装 `release/o3root2-v3.3.apk`（MIUI 可能需要允许“USB 安装”）。
 3. 打开 **O3 Root**，授予 Shizuku 权限，点 **Continue to UID 0**。日志会显示
    `★ UIDNOW uid=0`、`★ KSU_MODULE LIVE`，随后 KernelSU 管理器自动打开。
 

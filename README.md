@@ -33,8 +33,8 @@ rebuilds the payload/APK when the toolchain environment is set.
 
 | | |
 |---|---|
-| release | **v3.2** (`release/o3root2-v3.2.apk`, 14,239,248 B, sha256 `64bbc654…`) |
-| O1 test build | **v3.3.4-o1-test** (`release/test/o3root2-v3.3.4-o1-test.apk`, 14,247,440 B, sha256 `1a298929…`): v3.2 plus an **experimental O1 (XRING) profile** (`dijun` / `jinghu` / `violin`) and the hidden root console. Accepts any OS4.0.0.x build on the `6.18.21-android17…-4k` kernel series: the analysed build is the verified path, other builds run in relaxed mode with a warning; for testers only, never hardware-validated |
+| release | **v3.3** (`release/o3root2-v3.3.apk`, 14,243,344 B, sha256 `c98a9ced…`) |
+| O1 test build | **v3.3.4-o1-test** (`release/test/o3root2-v3.3.4-o1-test.apk`, 14,247,440 B, sha256 `1a298929…`): v3.3 plus the hidden root console (stable v3.3 already includes the **experimental O1 (XRING) profile** for `dijun` / `jinghu` / `violin`). Accepts any OS4.0.0.x build on the `6.18.21-android17…-4k` kernel series: the analysed build is the verified path, other builds run in relaxed mode with a warning; for testers only, never hardware-validated |
 | previous test build | **v3.2.1-console** (`release/beta/o3root2-v3.2.1-console.apk`, 14,243,344 B, sha256 `9cba365a…`): stable v3.2 plus a hidden root console (long-press the version row; three confirmations) |
 | O1 devices | Xiaomi O1 SoC `dijun` / `jinghu` / `violin` on OS4.0.0.x: all three ship the **same** 6.18.21 kernel (`sha256 0d9917ca…`, `g1d099fcb35e0`); static analysis says the chain applies, no device test yet |
 | custom LKM | optional user-supplied KernelSU-family .ko (basic compatibility check; falls back to the built-in adaptive module; the choice is saved and restored on launch — long-press the row to clear) |
@@ -85,7 +85,7 @@ primitive, the KernelSU patch and the porting guide.
 1. On the device: enable Developer options → Wireless debugging (or ADB).
    Install **Shizuku** / ShizukuX and start it in **shell mode**:
    `shizuku_plus_server` must run as `uid=2000`, `u:r:shell:s0`.
-2. Install `release/o3root2-v3.2.apk` (MIUI may need "Install via USB" allowed).
+2. Install `release/o3root2-v3.3.apk` (MIUI may need "Install via USB" allowed).
 3. Open **O3 Root**, grant the Shizuku permission, press
    **Continue to UID 0**. The log shows `★ UIDNOW uid=0`,
    `★ KSU_MODULE LIVE`, and the KernelSU manager opens automatically.
