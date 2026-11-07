@@ -7,13 +7,17 @@
 
 ## 产物（v1.8，历史）
 
-> 当前发布件是 **v3.3**（稳定版）：`release/o3root2-v3.3.apk`（14,243,344 B，sha256
-> `c98a9ced675abd5086da3c0bd05ff8fd836ae948e3bcaf1895a73414ad3bd21e`）；实验性
-> O1 测试构建 `release/test/o3root2-v3.3.4-o1-test.apk`（14,247,440 B，sha256
-> `1a298929f203d718d5328a398a03603efd664f7612f5eaacf7dc46bfb5daafeb`）；上一测试
-> 构建 `release/beta/o3root2-v3.2.1-console.apk`（14,243,344 B，sha256
-> `9cba365a36344a3e6994100a6d3276b220f15bc4de7d7ce2bde74a6999674f8e`）。下表的
-> 13,973,008 B/`0d7c5ea8…` 仅指 v1.8 的 APK，保留作历史记录。
+> 当前发布件是 **v3.3.5**（稳定版）：`release/o3root2-v3.3.5.apk`（14,243,344 B，
+> sha256 `28dd6652d23511953d983f607b7691871aa568378026e745e8feabe055096e56`，
+> versionCode 25）；上一稳定版 **v3.3**：`release/o3root2-v3.3.apk`（14,243,344 B，
+> sha256 `c98a9ced675abd5086da3c0bd05ff8fd836ae948e3bcaf1895a73414ad3bd21e`，
+> tag `v3.3`）；实验性 O1 测试构建 `release/test/o3root2-v3.3.5-o1-test.apk`
+> （14,247,440 B，sha256
+> `405158cc9fbbd140da1ef38a83d8590e47a09b5480265554c54c3fa18a5ee6a8`，
+> versionCode 26；社区实测于 `jinghu`，维护者未独立复验）；上一 O1 测试
+> `release/test/o3root2-v3.3.4-o1-test.apk`（14,247,440 B，sha256 `1a298929…`）与
+> 上一测试构建 `release/beta/o3root2-v3.2.1-console.apk`（14,243,344 B，sha256
+> `9cba365a…`）。下表的 13,973,008 B/`0d7c5ea8…` 仅指 v1.8 的 APK，保留作历史记录。
 
 | 文件 | 大小 | sha256 |
 |---|---|---|
@@ -735,3 +739,55 @@ after the first `D3ADDR`; it stays behind `O3P_D3V3` for analysis only.
   （`KSU_LOADER kallsyms found=251 missing=0`），`insmod` rc=0、`KSU_MODULE LIVE`，
   `/proc/modules` 中 `kernelsu 503808 … Live`、Enforcing；第 9 次尝试拿到 UID 0。
   LogBox：连续追加 50 行始终停在底部；手动上滚后再追加不会被拉回。
+
+## v3.3.5（2026-11-08）—— O1 社区实测反馈 + 默认跳过内置 KernelSU LKM
+
+- 反馈来源：GitHub issue #2，@Silas-02 于 2026-11-07 评论，小米 Pad 7 Ultra
+  `jinghu`，HyperOS `OS4.0.0.16.XOXCNXM`，Android 17 / API 37，内核
+  `6.18.21-android17-5-g1d099fcb35e0-abogki538445360-4k`，bootloader 锁定 /
+  vbmeta green。两次干净启动都在 10 s 内取得 `uid=0` + `@o3p_rootd`
+  （attempts 1–2）。这是**唯一**的 O1 结果：维护者没有独立复现，`dijun` /
+  `violin` 与宽松 OS4.0.0.x 门禁均未测试，措辞统一为“社区实测（issue #2，仅
+  jinghu）/ 维护者未独立复验”。
+- 报告中的两条“缺陷”声明经源码核对不成立：①所谓缺少的属性检测函数并不存在
+  于本代码库的该路径；②rootd 的 fd 重定向其实已经实现。二者都不作为事实重复，
+  也不据此改代码。
+- 根因：v3.3.4-o1-test 在 O1 上首次真实运行即暴露问题——第二次运行起 pid 1、
+  zygote 与 uid 2000 的 `execve`/`newfstatat` 等系统调用返回 `-ENOSYS`，直到
+  重启。O1 的 `sys_call_table` VA → PA（例如 `…ffee40d60d60` → `0x01560d60`）
+  落在 `Kernel code` 物理区间 `00200000-023bffff`，被 EL2 XHEE hypervisor
+  （`kmod_protect`）强制只读；KernelSU LKM 的 `stop_machine` 文本补丁无法落地，
+  但 `sys_enter` tracepoint hook 仍把 `pt_regs->syscallno` 改写到
+  `ksu_dispatcher_nr` 槽，而该槽保持 `__arm64_sys_ni_syscall`。
+- 改动（只有 App 侧 Java，payload 二进制未变）：`PayloadRunner` 在 SELinux
+  profile 为 `o1` 时导出 `O3P_NOKSU=1`；`o3p.c` 看到该变量就不加载 KernelSU
+  LKM，root 仅由 `@o3p_rootd` 提供。App 在 O1 上跳过管理器安装提示，成功判定
+  改为 UID 0 + rootd；自定义 `.ko` 被拒绝
+  （`O1 模式不支持自定义内核模块`），模块行显示
+  `内核模块: O1 模式不加载 LKM（@o3p_rootd 提供 root）`，按钮为 `再次运行`。
+- 日志：启动
+  `O1 模式：跳过内置 KernelSU LKM（sys_call_table 受 EL2 保护），root 由 @o3p_rootd 提供`；
+  成功 `✔ 已获得 UID 0（O1 模式：@o3p_rootd 常驻；KernelSU 未加载）`；
+  警告 `⚠ O1 支持为社区实测（jinghu / OS4.0.0.16）反馈可用，维护者未独立复验；
+  O1 模式不加载 KernelSU，root 由 @o3p_rootd 提供`。
+- 产物：正式版 `release/o3root2-v3.3.5.apk` 14,243,344 B，sha256
+  `28dd6652d23511953d983f607b7691871aa568378026e745e8feabe055096e56`，
+  versionCode 25 / versionName 3.3.5，tag `v3.3.5`，GitHub release **Latest**；
+  O1 测试 `release/test/o3root2-v3.3.5-o1-test.apk` 14,247,440 B，sha256
+  `405158cc9fbbd140da1ef38a83d8590e47a09b5480265554c54c3fa18a5ee6a8`，
+  versionCode 26 / versionName 3.3.5-o1-test，tag `v3.3.5-o1-test`，pre-release。
+  两个目录的 `SHA256SUMS` 已同步更新。载荷未变：`o3p.bin` 77,952 B；
+  `libo3p.so` 1,496,668 B，sha256
+  `fef5e065fb20e07b39ab4246eb1ef0d8e637f0a9cc77465c395e2432d9ebadeb`。
+- O1 上的预期与终态：能看到 `固件门禁通过（O1 实验性：…）`、
+  `SELINUX_PROFILE kernel=… base=0x… src=env`、`SLIDE_CALC …`、`SELWRITE …
+  SEL_OK` + `ENFORCE:[0]`、`CREDPTR … PTR_OK`、`UIDNOW uid=0`、
+  `ROOTD fork` / `ROOTD sock ready` / `FULLROOT armed`、`CLIENT …` / `SHELL …`；
+  **不会**出现 `KSU_MODULE LIVE`，也没有 KernelSU 管理器或 `/system/bin/su`——
+  这是设计行为，不是缺陷。SELinux 终态为 Permissive（stage 0 清 `enforcing`，
+  `policycap` 完好），root 在重启后消失。
+- 上游备注：Shizuku 13.5.4 在 Android 17 上崩溃
+  （`java.lang.AbstractMethodError: IProcessObserver.onProcessStarted(int,int,int,String,String)`），
+  O1 测试者需要打过补丁的 Shizuku server；本项目不发布、也不修 Shizuku。
+- 待办：维护者独立复验 O1（目前仅一条 jinghu 社区报告）；`dijun` / `violin`；
+  宽松门禁；O1 上第二次运行与长时稳定性测试。

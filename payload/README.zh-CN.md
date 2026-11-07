@@ -49,6 +49,8 @@ KernelSU-Next v3.4.2、SukiSU v4.2.1-r2）+ 每项 24 字节的 tag 表 +
    248 符号并集 + address+slide。v3 默认加载**未修改**的模块（不打 init 补丁）：`policycap` 干净，KernelSU
    自己的 `setenforce(1)` 无害（`O3P_CODEPATCH=1` 可回退旧补丁）。随后写
    `/data/local/tmp/o3p_ksu.ko`，从 fork 出的 `/system/bin/sh` 执行 `insmod`。
+   v3.3.5 起 O1 profile 会导出 `O3P_NOKSU=1`，在 O1 上不会加载任何内置 LKM
+   （`sys_call_table` 受 EL2 只读保护），root 由 `@o3p_rootd` 提供。
 7. **rootd**：fork 一个脱离的 root 守护进程；父进程以 `--rootd` exec 载荷，后者
    监听抽象 unix socket `@o3p_rootd`，只接受 uid 0 或 2000 的对端
    （SO_PEERCRED）。客户端：`--shell "<cmd>"`。
@@ -62,7 +64,7 @@ KernelSU-Next v3.4.2、SukiSU v4.2.1-r2）+ 每项 24 字节的 tag 表 +
 | `O3P_SELDIRTY` | `1` | 旧 stage-0 写：在 `selinux_state` 写 8 字节（污染 `policycap[]`、终态 Permissive，Enforcing 回来会断网）。v3 默认是 `selinux_state-7` 的干净非对齐零写。 |
 | `O3P_CODEPATCH` | `1` | 旧 KernelSU init 补丁（`mov w0,#1`→`#0`）；v3 默认加载未修改模块。 |
 | `O3P_NOSEL` | `1` | 跳过 stage 0（SELinux）——仅调试。 |
-| `O3P_NOKSU` | `1` | 跳过 KernelSU blob 加载。 |
+| `O3P_NOKSU` | `1` | 跳过 KernelSU blob 加载。O1 profile 会自动设置：其 `sys_call_table` 在 EL2 hypervisor 下无法打补丁，因此 root 只由 `@o3p_rootd` 提供。 |
 | `O3P_RELINK_ONLY` | `1` | 绕过 `/proc/kallsyms`，用内置 248 符号表 + slide 重链接。 |
 | `O3P_KSU_FORK` | `tiann`/`next`/`sukisu` | 强制使用某个内置 LKM，而非按管理器选择。 |
 | `O3P_CUSTOM_KO` | 路径 | 加载用户自选的 `.ko`（v3.1），替代内置 blob。载荷先做基础校验（ELF64 AArch64 `ET_REL`、`.modinfo` 的 `name=kernelsu`、同一内核系列）；文件不可读、被拒绝或 `insmod` 失败时自动退回内置自适应 LKM。 |
@@ -94,3 +96,8 @@ KernelSU-Next v3.4.2、SukiSU v4.2.1-r2）+ 每项 24 字节的 tag 表 +
   pending/tail 字节），`initialized`/`policycap[]` 原样保留，所以重新开启 Enforcing 是安全的，App
   不再带恢复守护。只有旧 `O3P_SELDIRTY=1` 路径会破坏 `policycap[]`（第 2..7
   字节），并在 Enforcing 回来时可能弄坏网络；见 `docs/SECURITY.md`。
+- 二进制在 v3.3.5 中未变（`libo3p.so` 1,496,668 B，sha256 `fef5e065…`）；O1
+  改动仅在 App 侧 —— O1 profile 导出 `O3P_NOKSU=1`。O1 上内置 LKM 必须保持不
+  加载：tracepoint hook 一旦生效，其 dispatcher 槽仍是 `__arm64_sys_ni_syscall`，
+  pid 1/zygote/uid 2000 的系统调用会在第二次运行后返回 `-ENOSYS` 直到重启；
+  `@o3p_rootd` 仍提供 uid 0。见 `docs/TESTING_O1.md`。

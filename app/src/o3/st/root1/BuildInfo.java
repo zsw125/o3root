@@ -7,5 +7,5 @@ package o3.st.root1;
  */
 final class BuildInfo {
     static final boolean CONSOLE = false;
-    static final String VERSION = "3.3";
+    static final String VERSION = "3.3.5";
 }

@@ -71,10 +71,10 @@ bash payload/build-payload.sh
 
 `build-payload.sh` only needs `NDK_CC`. The KernelSU LKM is in
 `payload/lkm/lkm-aarch64-android17-6.18_kernelsu.ko`; the default output matches
-the reference build in `release/o3root2-v3.3.apk`
-(`sha256 fef5e065…` for `libo3p.so`). The published v3.3 release APK embeds
-the same payload; v3.2 (previous payload `e479e539…`) stays in git history at
-tag `v3.2`.
+the reference build in `release/o3root2-v3.3.5.apk`
+(`sha256 fef5e065…` for `libo3p.so`). The published v3.3.5 release APK embeds
+the same payload (unchanged since v3.3); v3.3 (`sha256 c98a9ced…`) and v3.2
+(previous payload `e479e539…`) stay in git history at tags `v3.3` / `v3.2`.
 
 v3.1/v3.1.1 only add Java sources (`CustomKo`, `KoResult`, `KoChoice`,
 `KoReadTask`, `KoApplyTask`, `ClickPickKo`, `LongClearKo`) plus
@@ -82,19 +82,25 @@ v3.1/v3.1.1 only add Java sources (`CustomKo`, `KoResult`, `KoChoice`,
 are unchanged. v3.2 adds `BuildInfo` (version + console switch) and
 `ClickCopyLog`, and makes the LogBox selectable/copyable. The test variant is
 built with `BETA=1` plus `BETA_VERSION`/`BETA_CODE` (defaults
-`3.2.1-console`/18; current test build `3.3.4-o1-test`/24), generating
+`3.2.1-console`/18; current test build `3.3.5-o1-test`/26), generating
 `build/gen/BuildInfo.java` and `build/AndroidManifest.xml` with a hidden
 `ConsoleActivity`; the stable build compiles the tracked `BuildInfo.java`
-(`CONSOLE=false`, `3.3`) and excludes `ConsoleActivity.java`/`ConsoleGate.java`.
+(`CONSOLE=false`, `3.3.5`) and excludes `ConsoleActivity.java`/`ConsoleGate.java`.
 `VERIFY_BETA=1 bash scripts/verify.sh` builds and checks both variants.
 
 v3.3 adds the experimental O1 (XRING) kernel profile: the payload picks the
-`selinux_state` link address at runtime from `uname().release`
-(`SELINUX_PROFILE kernel=… base=…`), and `Main.checkFirmware()` accepts
-`dijun` / `jinghu` / `violin` with the O1 kernel string. The stable version
-is 3.3 (versionCode 20); the tester build is
-`BETA=1 BETA_VERSION=3.3.4-o1-test BETA_CODE=24 bash app/build.sh`
-(versionName `3.3.4-o1-test`, versionCode 24, hidden console).
+`selinux_state` link address at runtime from `uname().release` or
+`O3P_SELINUX_PROFILE` (`SELINUX_PROFILE kernel=… base=… src=env|uname`), and
+`Main.checkFirmware()` accepts `dijun` / `jinghu` / `violin` with the O1 kernel
+string. v3.3.5 makes that profile set `O3P_NOKSU=1`: the KernelSU LKM's
+`sys_call_table` page patch cannot land under the O1 EL2 hypervisor (the page
+is read-only), so the embedded LKMs are not loaded, root comes only from
+`@o3p_rootd`, and SELinux ends Permissive — expect no `KSU_MODULE LIVE` and no
+manager on O1. The O1 path is community-tested only (issue #2, `jinghu`); see
+`docs/TESTING_O1.md`. The stable version is 3.3.5 (versionCode 25); the
+tester build is
+`BETA=1 BETA_VERSION=3.3.5-o1-test BETA_CODE=26 bash app/build.sh`
+(versionName `3.3.5-o1-test`, versionCode 26, hidden console).
 
 You can run the payload directly on the device (root/shell):
 
@@ -139,7 +145,8 @@ keytool -genkeypair -keystore release.p12 -storetype PKCS12 \
    Shizuku permission when asked.
 4. Press **Continue to UID 0** and wait. A successful run logs
    `★ UIDNOW uid=0`, `KSU_INSMOD_OUT:[rc=0]`, `★ KSU_MODULE LIVE`,
-   then opens the KernelSU manager.
+   then opens the KernelSU manager. On O1 there is no `KSU_MODULE LIVE` and
+   no manager: success is `★ UIDNOW uid=0` plus the `@o3p_rootd` lines.
 5. If the built-in KernelSU manager is missing, the button becomes
    **Install KernelSU manager** and installs the bundled APK (you must accept
    the system installer prompts).
@@ -169,16 +176,20 @@ The app's LogBox shows every payload stage; use **Export log** to write
 
 ## Reproducibility
 
-Reference build (v3.3, release/o3root2-v3.3.apk):
+Reference build (v3.3.5, `release/o3root2-v3.3.5.apk`):
 
 - APK `14,243,344` bytes
-- `sha256 c98a9ced675abd5086da3c0bd05ff8fd836ae948e3bcaf1895a73414ad3bd21e`
+- `sha256 28dd6652d23511953d983f607b7691871aa568378026e745e8feabe055096e56`
 - payload `libo3p.so` `1,496,668` bytes (with the stock LKM),
   `sha256 fef5e065fb20e07b39ab4246eb1ef0d8e637f0a9cc77465c395e2432d9ebadeb`
+  — unchanged since v3.3, which stays in git history at tag `v3.3`
+  (14,243,344 B, `sha256 c98a9ced…`).
 
-The test build (v3.3.4-o1-test, `release/test/o3root2-v3.3.4-o1-test.apk`)
-is `14,247,440` B / `sha256 1a298929…` and differs only by the console
-classes/manifest; v3.2 remains in git history at tag `v3.2`.
+The test build (v3.3.5-o1-test, `release/test/o3root2-v3.3.5-o1-test.apk`)
+is `14,247,440` B /
+`sha256 405158cc9fbbd140da1ef38a83d8590e47a09b5480265554c54c3fa18a5ee6a8`
+and differs only by the console classes/manifest; the previous O1 test build
+(`v3.3.4-o1-test`, `sha256 1a298929…`) stays as history.
 
 The APK hash above pins the committed artifact. `app/build.sh` re-zips with
 fresh entry timestamps and re-signs, so a rebuild from identical sources

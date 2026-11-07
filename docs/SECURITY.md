@@ -2,7 +2,7 @@
 
 > Chinese translation: [`SECURITY.zh-CN.md`](SECURITY.zh-CN.md) — a translation of this file; if the two disagree, this English file is authoritative.
 
-**Scope:** v3.3 (2026-11-03); legacy v1.7–v2.1 behaviour is called out explicitly.
+**Scope:** v3.3.5 (2026-11-08); legacy v1.7–v2.1 behaviour is called out explicitly.
 
 ## Read this first
 
@@ -40,23 +40,30 @@ the kernel**, so treat it as code, not data:
   `Android/data/o3.st.root1/files`) and restored on the next
   launch, so a module you once selected is executed again — clear the row
   (long press) after trying an untrusted build.
-- The test builds (v3.2.1-console and v3.3.4-o1-test) also ship a hidden root console (long press the
+- The test builds (v3.2.1-console and v3.3.5-o1-test) also ship a hidden root console (long press the
   version row): after three non-skippable confirmations it runs arbitrary
   commands through the rootd socket. This adds no privilege (the stable build
   can start the payload anyway), but it puts root command execution one gesture
   away; the hidden entry is not a security boundary, and the stable build
   contains no console code at all.
-- v3.3.4-o1-test adds an experimental O1 (XRING) kernel profile for `dijun` /
-  `jinghu` / `violin`. It is based on a static comparison of the O1 kernel and
-  the yingtian kernel (same kernel series 6.18.21, identical BTF/config, same
-  `begin_new_exec` timer cleanup order, one different `selinux_state` address).
-  No O1 device has run it; the O1 `posix_cpu_timer_del` is the older
-  implementation and may change UAF timing. The relaxed gate also accepts
-  other OS4.0.0.x builds in the `6.18.21-android17…-4k` series without a
-  per-build comparison and reuses the O1 `selinux_state` address, so a
-  shifted static can turn a run into a kernel write to the wrong page. Treat
-  every run as a potential panic/boot-loop and only test devices you own and
-  can recover.
+- v3.3.5 adds an experimental O1 (XRING) kernel profile for `dijun` / `jinghu` /
+  `violin`, based on a comparison of the O1 kernel and the yingtian kernel
+  (same kernel series 6.18.21, identical BTF/config, same `begin_new_exec`
+  timer cleanup order, one different `selinux_state` address). It is
+  **community-tested once** — GitHub issue #2, `jinghu` / OS4.0.0.16, two clean
+  boots with `uid=0` + `@o3p_rootd` — but the maintainer has **not**
+  independently reproduced it, `dijun`/`violin` are untested, and the O1
+  `posix_cpu_timer_del` is the older implementation and may change UAF timing.
+  On O1 the profile sets `O3P_NOKSU=1`: the KernelSU LKM's `sys_call_table`
+  page patch cannot land under the EL2 hypervisor (the page is read-only), so
+  the embedded LKMs are not loaded, no manager or `/system/bin/su` appears,
+  root comes only from `@o3p_rootd`, and SELinux ends Permissive. A custom
+  `.ko` is rejected on O1. The relaxed gate also accepts other OS4.0.0.x
+  builds in the `6.18.21-android17…-4k` series without a per-build comparison
+  and reuses the O1 `selinux_state` address, so a shifted static can turn a
+  run into a kernel write to the wrong page. Treat every run as a potential
+  panic/boot-loop and only test devices you own and can recover; see
+  `docs/TESTING_O1.md`.
 
 
 ## Threat model
@@ -87,7 +94,9 @@ The payload modifies kernel memory only:
 3. Loads a KernelSU LKM (relinked at runtime for the current KASLR slide) with
    **no init patch** by default; because `policycap` is clean, KernelSU's own
    `setenforce(1)` does not break networking. `O3P_CODEPATCH=1` restores the
-   legacy patch (which then needs the old dirty-write caveats below).
+   legacy patch (which then needs the old dirty-write caveats below). On O1
+   (v3.3.5+) this step is skipped entirely (`O3P_NOKSU=1`): no LKM is loaded
+   and root exists only through rootd.
 
 Nothing is written to disk except:
 - `/data/local/tmp/o3p_<millis>.bin` (the app's copy of the payload, mode 0755)
@@ -117,18 +126,20 @@ RX continues, all traffic dies. Recovery:
 v1.8–v2.1 shipped a probe/warning and a one-click `su -c setenforce 0`; v3.0
 removed them because the default no longer corrupts `policycap`.
 
-### Global permissive SELinux (legacy paths only)
+### Global permissive SELinux (legacy paths, and O1 by design)
 
-The v3 default ends in Enforcing with MAC on. Only `O3P_SELDIRTY=1` (or a manual
-`setenforce 0`) leaves the device Permissive; then all SELinux MAC checks are
-disabled:
+The v3 default ends in Enforcing with MAC on. Two cases leave the device
+Permissive: the legacy `O3P_SELDIRTY=1` path (or a manual `setenforce 0`) on
+yingtian/lhasa, and the O1 profile, whose stage 0 clears enforcing and which
+loads no LKM to restore it. With MAC off:
 
 - SELinux domain isolation is gone; a local app compromise is much easier to
   turn into root (tracefs/kprobe interfaces are 0777 and only SELinux stops
   them).
 - Some system components behave differently (e.g. zygote/`powerkeeper`
   `selinux_android_setcontext` failures observed in logs).
-- Detection: `getenforce`, KernelSU manager's "permissive" badge.
+- Detection: `getenforce` (on O1 there is no KernelSU manager; `getenforce`
+  prints `Permissive` and nothing restores Enforcing until reboot).
 
 This is not a normal daily-driver posture. Reboot when done.
 
@@ -137,7 +148,8 @@ This is not a normal daily-driver posture. Reboot when done.
 The KernelSU LKM was built by upstream for `android17-6.18`
 (`6.18.32-4k-g47cc22554442-dirty`) but is loaded on `6.18.21-…`. The runtime
 relink bypasses symbol/CRC namespace checks; the module is tainted (`(O)` in
-`/proc/modules`). Treat this as a research setup, not a production root.
+`/proc/modules`). Treat this as a research setup, not a production root. On O1
+no LKM is loaded, so this taint does not apply there.
 
 ### Leftover files and labels
 

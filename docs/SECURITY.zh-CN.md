@@ -2,7 +2,7 @@
 
 > 英文原版：[`SECURITY.md`](SECURITY.md)。若两者不一致，以英文版为准并同步本文件。
 
-**适用范围：** v3.3（2026-11-03）；旧 v1.7–v2.1 行为会单独标注。
+**适用范围：** v3.3.5（2026-11-08）；旧 v1.7–v2.1 行为会单独标注。
 
 ## 先读这一节
 
@@ -31,17 +31,23 @@ v3.1 允许操作者加载自选 `.ko`。这个文件会**在内核里执行**�
   提醒，不是安全保证。
 - v3.1.1 起选中的模块会持久化在应用专用 files 目录（外部存储 `Android/data/o3.st.root1/files`，`custom-ko.ko` +
   `custom-ko.meta`），下次启动恢复，因此试过不可信模块后应长按模块行清除。
-- 测试版（v3.2.1-console / v3.3.4-o1-test）还带一个隐藏的 root 控制台（长按版本行）：通过三道不可跳过的
+- 测试版（v3.2.1-console / v3.3.5-o1-test）还带一个隐藏的 root 控制台（长按版本行）：通过三道不可跳过的
   确认后可经 rootd socket 执行任意命令。它不新增权限（正式版本来也能启动载荷），
   但把 root 命令执行缩短到一次手势；隐藏入口不是安全边界，正式版则完全不含控制台
   代码。
-- v3.3.4-o1-test 增加实验性 O1（XRING）内核 profile，适用 `dijun` / `jinghu` /
-  `violin`。它基于 O1 内核与 yingtian 内核的静态对比（同为 6.18.21、BTF/config
-  一致、`begin_new_exec` 清理顺序相同，只有 `selinux_state` 地址不同）。没有
-  O1 真机跑过；O1 的 `posix_cpu_timer_del` 是旧实现，可能影响 UAF 时序。宽松门禁还接受
-  OS4.0.0.x 中 `6.18.21-android17…-4k` 系列的其他构建而不逐构建比对，沿用 O1 的
-  `selinux_state` 地址；静态地址若移动，可能把内核写落到错误页。每次运行都可能
-  panic/启动循环，只在自己拥有且能恢复的设备上测试。
+- v3.3.5 增加实验性 O1（XRING）内核 profile，适用 `dijun` / `jinghu` /
+  `violin`。它基于 O1 内核与 yingtian 内核的对比（同为 6.18.21 系列、BTF/config
+  一致、`begin_new_exec` 清理顺序相同，只有 `selinux_state` 地址不同）。它已
+  **社区实测一次** —— GitHub issue #2，`jinghu` / OS4.0.0.16，两次干净启动取得
+  `uid=0` + `@o3p_rootd` —— 但维护者**未**独立复现，`dijun`/`violin` 未测试，且
+  O1 的 `posix_cpu_timer_del` 是旧实现，可能影响 UAF 时序。O1 上 profile 设置
+  `O3P_NOKSU=1`：KernelSU LKM 的 `sys_call_table` 页补丁在 EL2 hypervisor 下无法
+  落地（该页只读），因此不加载内置 LKM，不出现管理器或 `/system/bin/su`，root 只
+  由 `@o3p_rootd` 提供，SELinux 终态为 Permissive。O1 上自定义 `.ko` 会被拒绝。
+  宽松门禁还接受 OS4.0.0.x 中 `6.18.21-android17…-4k` 系列的其他构建而不逐构建
+  比对，沿用 O1 的 `selinux_state` 地址；静态地址若移动，可能把内核写落到错误页。
+  每次运行都可能 panic/启动循环，只在自己拥有且能恢复的设备上测试；见
+  `docs/TESTING_O1.md`。
 
 
 ## 威胁模型
@@ -69,7 +75,9 @@ root 并加载 KernelSU。
    full capabilities，SELinux blob 沿用原来的（仍是 shell 域）。
 3. 加载一个 KernelSU LKM（运行时按当前 KASLR slide 重链接），**默认不打 init
    补丁**；`policycap` 干净，所以 KSU 自己 `setenforce(1)` 不影响网络。
-   `O3P_CODEPATCH=1` 才会回退旧补丁（那时才需要下面的旧脏写注意事项）。
+   `O3P_CODEPATCH=1` 才会回退旧补丁（那时才需要下面的旧脏写注意事项）。O1
+   （v3.3.5+）上这一步被完全跳过（`O3P_NOKSU=1`）：不加载任何 LKM，root 只经
+   rootd 提供。
 
 除了以下文件，不写磁盘：
 
@@ -98,15 +106,19 @@ v3 默认不碰 `policycap[]`。只有旧的脏写（`O3P_SELDIRTY=1`）无法�
 v1.8–v2.1 会探测并告警、提供一键 `su -c setenforce 0`；v3.0 已移除，因为默认
 路径不再污染 `policycap`。
 
-### 全局 Permissive SELinux
+### 全局 Permissive SELinux（旧路径，以及 O1 的设计行为）
 
-设备停留在 Permissive 期间，所有 SELinux MAC 检查都关闭：
+v3 默认终态是 Enforcing、MAC 开启。有两种情况会让设备停在 Permissive：旧
+`O3P_SELDIRTY=1` 路径（或手动 `setenforce 0`）下的 yingtian/lhasa，以及 O1
+profile —— 其 stage 0 清掉 enforcing，且没有加载 LKM 去恢复它。MAC 关闭期间：
 
 - SELinux 域隔离消失；本地 App 被攻破后更容易变成 root（tracefs/kprobe 接口是
   0777，只靠 SELinux 拦着）。
 - 某些系统组件行为会变（例如日志里观察到 zygote/`powerkeeper` 的
   `selinux_android_setcontext` 失败）。
-- 可检测：`getenforce`、KernelSU 管理器的“宽容模式”标记。
+- 可检测：`getenforce`（O1 上没有 KernelSU 管理器；`getenforce` 打印
+  `Permissive`，重启前没有东西会恢复 Enforcing）、KernelSU 管理器的“宽容模式”
+  标记。
 
 这不是日常主力机该有的姿态。用完请重启。
 
@@ -115,7 +127,7 @@ v1.8–v2.1 会探测并告警、提供一键 `su -c setenforce 0`；v3.0 已移
 KernelSU LKM 是上游为 `android17-6.18`
 （`6.18.32-4k-g47cc22554442-dirty`）构建的，却加载在 `6.18.21-…` 上。运行时
 重链接绕过了符号/CRC 命名空间检查；模块处于 tainted 状态（`/proc/modules` 里的
-`(O)`）。请把它当研究环境，而不是生产级 root。
+`(O)`）。请把它当研究环境，而不是生产级 root。O1 上不加载 LKM，因此该 taint 不适用。
 
 ### 残留文件与标签
 

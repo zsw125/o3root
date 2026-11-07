@@ -11,9 +11,9 @@ work with rough effort estimates.
 
 | item | value |
 |---|---|
-| release | v3.3, `release/o3root2-v3.3.apk` (14,243,344 B, sha256 `c98a9ced…`; O1 profile + confirmation + LogBox/LKM fixes, no console). Previous stable v3.2 stays at tag `v3.2` |
+| release | v3.3.5, `release/o3root2-v3.3.5.apk` (14,243,344 B, sha256 `28dd6652…`; O1 profile skips the KernelSU LKM and gets root only from `@o3p_rootd`; two-step confirmation; LogBox/LKM fixes; no console). Previous stable v3.3 (14,243,344 B, sha256 `c98a9ced…`) stays at tag `v3.3`, v3.2 at `v3.2` |
 | test build | v3.2.1-console, `release/beta/o3root2-v3.2.1-console.apk` (14,243,344 B, sha256 `9cba365a…`; hidden root console) |
-| O1 test build | v3.3.4-o1-test, `release/test/o3root2-v3.3.4-o1-test.apk` (14,247,440 B, sha256 `1a298929…`; O1 profile + hidden console; **static-analysis only**) |
+| O1 test build | v3.3.5-o1-test, `release/test/o3root2-v3.3.5-o1-test.apk` (14,247,440 B, sha256 `405158cc…`; v3.3.5 + hidden console; **community-tested on `jinghu`, maintainer not independently verified**). Previous O1 test build v3.3.4-o1-test stays at `release/test/o3root2-v3.3.4-o1-test.apk` (14,247,440 B, sha256 `1a298929…`) |
 | verified device | Xiaomi Pad 9 Pro Max `yingtian`, HyperOS `OS4.0.16.0.XBMCNXM`, kernel `6.18.21-android17-5-g805aa6adea19-abogki565292102-4k` |
 | second target | `lhasa` (Xiaomi 18 Fold) `OS4.0.26.0.XPNCNXM` — same kernel sha256 `cde87cd7…` (boot header/ramdisk differ); **not device-tested** |
 | persistence | none (current boot only) |
@@ -22,8 +22,12 @@ work with rough effort estimates.
 Success markers in the app log (in order):
 `★ UIDNOW uid=0` → `KSU_INSMOD_OUT:[rc=0]` → `★ KSU_MODULE LIVE` →
 `✔ 全部完成，正在打开 KernelSU…` → `top -> …me.weishu.kernelsu/.ui.MainActivity`.
-Health: `getenforce` = `Enforcing` (v3; legacy `O3P_SELDIRTY=1` ends
-Permissive), network works, `boot_id` unchanged.
+On O1 the LKM is skipped: `SELINUX_PROFILE kernel=… base=…` → `CREDPTR … PTR_OK`
+→ `★ UIDNOW uid=0` → rootd (`fork` / `sock ready` / `FULLROOT armed`) →
+`CLIENT …` / `SHELL …`; there is no `KSU_MODULE LIVE` and no manager.
+Health: `getenforce` = `Enforcing` on yingtian/lhasa (v3; legacy
+`O3P_SELDIRTY=1` ends Permissive) and `Permissive` on O1 by design;
+network works, `boot_id` unchanged.
 Dates/commits/credits: `docs/PRIOR-ART.md` §5–7; superseded reports:
 `docs/history/README.md`.
 
@@ -145,6 +149,10 @@ runs create correctly labeled `shell_data_file` files.
 - Shizuku must be **shell mode**; with `su` present ShizukuX restarts in root
   mode (`uid=0`, `u:r:ksu:s0`) and the chain cannot exec the payload from that
   bounded domain. Test cold boots that way.
+- Shizuku **13.5.4** crashes on Android 17 with
+  `java.lang.AbstractMethodError: IProcessObserver.onProcessStarted(int,int,int,String,String)`;
+  O1 testers need a patched Shizuku server. This project ships no Shizuku
+  fix and does not control that release.
 - `/system/bin/su` appears only after KernelSU's first root request (manager
   "superuser" grant); absence before that is expected.
 - MIUI: `adb install` may return `INSTALL_FAILED_USER_RESTRICTED`; allow
@@ -198,6 +206,11 @@ research-grade improvements.
    relinked and loaded on `6.18.21`. Building the module from KernelSU source
    against this kernel's config (or a matching GKI) would remove the ABI
    mismatch and the "modified module" concern; needs kernel sources/config.
+10. **Independent O1 verification** (easy, needs hardware). The only O1 result
+    so far is one community report on `jinghu` (issue #2, two clean boots);
+    the maintainer has not reproduced it, `dijun`/`violin` are untested, and
+    the relaxed OS4.0.0.x gate has never run. Verify on owned O1 hardware and
+    record the raw log (`SELINUX_PROFILE`, `UIDNOW`, rootd lines, `getenforce`).
 
 ## Reproduction workflow (dev loop)
 
@@ -379,7 +392,8 @@ The payload can be tested standalone (root or shell): push `libo3p.so` as
   sha256 `0153846d…` (not published).
 - Test build: `BETA=1 BETA_VERSION=3.3.4-o1-test BETA_CODE=24` →
   `release/test/o3root2-v3.3.4-o1-test.apk`, 14,247,440 B, sha256 `1a298929…`,
-  versionCode 24, includes the hidden console.
+  versionCode 24, includes the hidden console (previous O1 test build;
+  superseded by `v3.3.5-o1-test`).
 - App (v3.3.3): before any payload run on a recognised O1 device, a two-step
   confirmation appears (risk dialog, then a checkbox that enables 开始提权);
   cancelling leaves the device untouched. Implemented in `Main` +
@@ -395,10 +409,11 @@ The payload can be tested standalone (root or shell): push `libo3p.so` as
 - Supersedes v3.3.1 (same relaxed gate, plus the two-step O1 confirmation) and
   v3.3-o1-test (which accepted only the exact O1 kernel). The older tags and
   GitHub releases were removed.
-- **Not hardware-validated**: no O1 device was available; the main risk is the
-  older O1 `posix_cpu_timer_del` (`__rcu_read_lock` + `pid_task` +
-  `__lock_task_sighand` instead of `timer_lock_sighand`), which can change UAF
-  timing. Tester guide: `docs/TESTING_O1.md`.
+- **Not hardware-validated at the time**: the profile was built before any O1
+  run; the main risk is the older O1 `posix_cpu_timer_del` (`__rcu_read_lock` +
+  `pid_task` + `__lock_task_sighand` instead of `timer_lock_sighand`), which can
+  change UAF timing. Tester guide: `docs/TESTING_O1.md`. (Later superseded —
+  see the v3.3.4 and v3.3.5 sections.)
 
 ## v3.3.4 — LogBox scroll direction + modern custom LKMs (2026-11-05)
 
@@ -423,7 +438,8 @@ The payload can be tested standalone (root or shell): push `libo3p.so` as
 - Payload 77,952 B; `libo3p.so` 1,496,668 B sha256 `fef5e065…`. Stable 3.3 APK
   14,243,344 B sha256 `0153846d…` (not published). Test build
   `BETA=1 BETA_VERSION=3.3.4-o1-test BETA_CODE=24` →
-  `release/test/o3root2-v3.3.4-o1-test.apk`, 14,247,440 B, sha256 `1a298929…`.
+  `release/test/o3root2-v3.3.4-o1-test.apk`, 14,247,440 B, sha256 `1a298929…`
+  (previous O1 test build; superseded by `v3.3.5-o1-test`).
 - Reported by the device owner: (a) auto-scroll jumped to the top; (b) a
   user-selected SukiSU 4.3.0 LKM logged `CUSTOM_KO fallback reason=load_failed`
   after `insmod … No such file or directory`.
@@ -435,3 +451,45 @@ The payload can be tested standalone (root or shell): push `libo3p.so` as
   The same run needed 9 attempts (`VERDICT NO_RECLAIM` is normal/retryable).
   LogBox: 50 appends kept the newest line pinned to the bottom; after
   scrolling up, a further append did not jump the view.
+
+## v3.3.5 — O1 skips the KernelSU LKM + O1 community test (2026-11-08)
+
+- Why: the first O1 run (v3.3.4-o1-test, `jinghu`) hit `-ENOSYS` on
+  `execve`/`newfstatat` for pid 1, zygote and uid 2000 after the second run.
+  The O1 `sys_call_table` VA → PA (e.g. `…ffee40d60d60` → `0x01560d60`) sits
+  in the `Kernel code` physical range `00200000-023bffff`, which the EL2 XHEE
+  hypervisor (`kmod_protect`) keeps read-only, so the LKM's `stop_machine`
+  text patch cannot land. The `sys_enter` tracepoint hook then still rewrites
+  `pt_regs->syscallno` to the dispatcher slot, which remains
+  `__arm64_sys_ni_syscall`, hence `-ENOSYS` until reboot.
+- App (`PayloadRunner`): when the SELinux profile is `o1`, export
+  `O3P_NOKSU=1`; skip the manager-install prompt and judge success by
+  `uid=0` + rootd. UI on O1: custom `.ko` rejected
+  (`O1 模式不支持自定义内核模块`), module row
+  `内核模块: O1 模式不加载 LKM（@o3p_rootd 提供 root）`, KSU state
+  `O1 不加载` / `O1 模式`, button `再次运行`.
+- Log lines: start
+  `O1 模式：跳过内置 KernelSU LKM（sys_call_table 受 EL2 保护），root 由 @o3p_rootd 提供`;
+  success `✔ 已获得 UID 0（O1 模式：@o3p_rootd 常驻；KernelSU 未加载）`;
+  warning `⚠ O1 支持为社区实测（jinghu / OS4.0.0.16）反馈可用，维护者未独立复验；…`.
+- Payload binary unchanged: `libo3p.so` 1,496,668 B sha256 `fef5e065…`;
+  `o3p.bin` 77,952 B. Only app-side Java changed.
+- Releases: stable v3.3.5 `release/o3root2-v3.3.5.apk` 14,243,344 B
+  sha256 `28dd6652…`, versionCode 25, tag `v3.3.5`, GitHub **Latest**; O1 test
+  `release/test/o3root2-v3.3.5-o1-test.apk` 14,247,440 B sha256 `405158cc…`,
+  versionCode 26, tag `v3.3.5-o1-test`, pre-release.
+- Community report: GitHub issue #2 by @Silas-02 (2026-11-07), Xiaomi Pad 7
+  Ultra `jinghu`, HyperOS `OS4.0.0.16.XOXCNXM`, Android 17 / API 37, kernel
+  `6.18.21-android17-5-g1d099fcb35e0-abogki538445360-4k`, locked bootloader /
+  vbmeta green: two clean boots reached `uid=0` + `@o3p_rootd` in under 10 s
+  (attempts 1–2). The maintainer has **not** independently reproduced it;
+  `dijun`/`violin` and the relaxed OS4.0.0.x gate are untested.
+- O1 end state: no KernelSU manager or `/system/bin/su`, custom `.ko`
+  rejected, SELinux Permissive (stage 0 clears `enforcing`; `policycap`
+  untouched), root only through `@o3p_rootd`. Expected markers are listed in
+  `docs/TESTING_O1.md`.
+- Upstream note: Shizuku 13.5.4 crashes on Android 17
+  (`AbstractMethodError: IProcessObserver.onProcessStarted`); O1 testers need
+  a patched Shizuku server. We do not ship or fix Shizuku.
+- Open: maintainer independent O1 verification; `dijun`/`violin`; the relaxed
+  gate; second-run behaviour and long-session stability on O1.

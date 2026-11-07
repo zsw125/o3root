@@ -31,12 +31,13 @@ Max）与 **lhasa**（Xiaomi 18 Fold）系列，做本地提权 + KernelSU。整
 
 | | |
 |---|---|
-| 发布 | **v3.3**（`release/o3root2-v3.3.apk`，14,243,344 B，sha256 `c98a9ced…`） |
-| O1 测试构建 | **v3.3.4-o1-test**（`release/test/o3root2-v3.3.4-o1-test.apk`，14,247,440 B，sha256 `1a298929…`）：v3.3 功能 + 隐藏 root 控制台（正式版 v3.3 已含 **实验性 O1（XRING）profile**：`dijun` / `jinghu` / `violin`）。接受 OS4.0.0.x 的任意 `6.18.21-android17…-4k` 内核：已分析构建走验证路径，其他构建走宽松模式并警告；仅供测试，从未真机验证 |
+| 发布 | **v3.3.5**（`release/o3root2-v3.3.5.apk`，14,243,344 B，sha256 `28dd6652…`，versionCode 25，tag `v3.3.5`，GitHub release Latest）：仅 App 侧 O1 改动 —— O1 上现在跳过 KernelSU LKM、改由 `@o3p_rootd` 提权；payload 二进制未变。上一稳定版 v3.3（`release/o3root2-v3.3.apk`，14,243,344 B，sha256 `c98a9ced…`）保留在 tag `v3.3` |
+| O1 测试构建 | **v3.3.5-o1-test**（`release/test/o3root2-v3.3.5-o1-test.apk`，14,247,440 B，sha256 `405158cc…`，versionCode 26，pre-release）：v3.3.5 + 隐藏 root 控制台；已在 GitHub issue #2 的 `jinghu`（Xiaomi Pad 7 Ultra，OS4.0.0.16）上**社区实测** —— 维护者**未**独立复验。O1 profile 刻意不加载 KernelSU：root 仅由 `@o3p_rootd` 提供，因此**不要**期待 `KSU_MODULE LIVE` 或管理器 |
+| 上一 O1 测试构建 | **v3.3.4-o1-test**（`release/test/o3root2-v3.3.4-o1-test.apk`，14,247,440 B，sha256 `1a298929…`，versionCode 24）：首个 O1 实机运行构建；它暴露了 EL2 `sys_call_table` 问题，v3.3.5 已修复，保留作历史 |
 | 旧测试构建 | **v3.2.1-console**（`release/beta/o3root2-v3.2.1-console.apk`，14,243,344 B，sha256 `9cba365a…`）：正式版 + 隐藏 root 控制台（长按版本行，三道确认） |
-| O1 设备 | 小米 O1 SoC 的 `dijun` / `jinghu` / `violin`（OS4.0.0.x）：三台共用**同一颗** 6.18.21 内核（`sha256 0d9917ca…`，`g1d099fcb35e0`）；静态分析认为链路可用，尚未实机验证 |
-| 自定义 LKM | 可选：任意 KernelSU 系列 .ko（基础兼容性检查；未通过可退回自适应内置模块；选择会保存并在下次启动恢复，长按该行可清除） |
-| 链路 | Shizuku shell → CVE-2026-98260 → `uid=0` + full caps → 对应 KernelSU LKM（KernelSU / KernelSU-Next / SukiSU）→ rootd |
+| O1 设备 | 小米 O1 SoC 的 `dijun` / `jinghu` / `violin`（OS4.0.0.x）：三台内置**同一颗** 6.18.21 内核（`sha256 0d9917ca…`，`g1d099fcb35e0`）；`jinghu` 社区实测一次（issue #2，2026-11-07），`dijun`/`violin` 未测试，维护者未独立复验 |
+| 自定义 LKM | 可选：任意 KernelSU 系列 .ko（基础兼容性检查；未通过可退回自适应内置模块；选择会保存并在下次启动恢复，长按该行可清除）。O1 上不可用：该 profile 完全跳过 KernelSU |
+| 链路 | Shizuku shell → CVE-2026-98260 → `uid=0` + full caps → 对应 KernelSU LKM（KernelSU / KernelSU-Next / SukiSU）→ rootd；O1 上跳过 LKM（`sys_call_table` 受 EL2 只读保护），root 仅由 `@o3p_rootd` 提供 |
 | 持久化 | 无（仅当前 boot） |
 | 已验证设备 | 小米 Pad 9 Pro Max `yingtian`，HyperOS `OS4.0.16.0.XBMCNXM` |
 | 第二设备 | `lhasa`（Xiaomi 18 Fold，`OS4.0.26.0.XPNCNXM`）：其 boot 内核与 yingtian **逐位相同**（`sha256 cde87cd7…`），因此同一载荷适用；未实机测试 |
@@ -77,20 +78,26 @@ Max）与 **lhasa**（Xiaomi 18 Fold）系列，做本地提权 + KernelSU。整
 1. 设备上：开启开发者选项 → 无线调试（或 ADB）。安装 **Shizuku** / ShizukuX，
    并以 **shell 模式** 启动：`shizuku_plus_server` 必须是 `uid=2000`、
    `u:r:shell:s0`。
-2. 安装 `release/o3root2-v3.3.apk`（MIUI 可能需要允许“USB 安装”）。
+2. 安装 `release/o3root2-v3.3.5.apk`（MIUI 可能需要允许“USB 安装”）。
 3. 打开 **O3 Root**，授予 Shizuku 权限，点 **Continue to UID 0**。日志会显示
-   `★ UIDNOW uid=0`、`★ KSU_MODULE LIVE`，随后 KernelSU 管理器自动打开。
+   `★ UIDNOW uid=0`、`★ KSU_MODULE LIVE`，随后 KernelSU 管理器自动打开
+   （O1 上见下文：那里按设计跳过 KernelSU）。
 
 O1 设备（`dijun` / `jinghu` / `violin`）测试：请安装
-[`release/test/o3root2-v3.3.4-o1-test.apk`](release/test/o3root2-v3.3.4-o1-test.apk)，
-并按 [docs/TESTING_O1.md](docs/TESTING_O1.md) 操作。门禁接受三个代号下任意
-`6.18.21-android17…-4k` 内核（OS4.0.0.x）；已分析的 `g1d099fcb35e0` 构建走验证
-路径，其他构建会打印 `固件门禁通过（O1 宽松模式：…）` 并带警告沿用 O1 地址。
-载荷会打印 `SELINUX_PROFILE kernel=… base=… src=env|uname`，所以反馈只需附上
-导出的日志。
+[`release/test/o3root2-v3.3.5-o1-test.apk`](release/test/o3root2-v3.3.5-o1-test.apk)，
+并按 [docs/TESTING_O1.zh-CN.md](docs/TESTING_O1.zh-CN.md) 操作。该 profile 已
+**社区实测一次**（issue #2：`jinghu` / OS4.0.0.16，两次干净启动均在 10 s 内取得
+`uid=0` + `@o3p_rootd`）；维护者**未**独立复验，`dijun` / `violin` 仍未测试。O1 上
+App 导出 `O3P_NOKSU=1`，因此**不加载 KernelSU LKM**：root 由 `@o3p_rootd` 提供，
+KernelSU 管理器既非预期也不会安装，运行终态为 SELinux **Permissive**（stage 0
+清掉 enforcing）。门禁接受三个代号下任意 `6.18.21-android17…-4k` 内核
+（OS4.0.0.x）；已分析的 `g1d099fcb35e0` 构建走实验路径，其他构建会打印
+`固件门禁通过（O1 宽松模式：…）` 并带警告沿用 O1 地址。载荷会打印
+`SELINUX_PROFILE kernel=… base=… src=env|uname`，所以反馈只需附上导出的日志。
 
 没装管理器？按钮会变成 **安装 KernelSU 管理器**，点击后安装内置 APK（按系统
-提示确认即可）。
+提示确认即可）。O1 上不适用：该模式不加载 KernelSU，因此既没有管理器可装，
+也没有 `su`。
 
 ## 仓库结构
 
@@ -126,16 +133,23 @@ bash app/build.sh                                # -> app/build/o3root2.apk
   有帮助。
 - **SELinux 姿态**：v3 终态是 **Enforcing**，`selinux_state` 干净（`policycap`
   不变），MAC 保持开启。只有旧路径 `O3P_SELDIRTY=1` 会停在 Permissive（全系统
-  MAC 关闭）；见安全说明。
+  MAC 关闭）；见安全说明。O1 上按设计停 **Permissive**：stage 0 清掉
+  `enforcing`，没有 KernelSU 去重新开启，`policycap` 不变，重启可干净恢复
+  Enforcing。
+- **O1 没有 KernelSU**：O1 上内置 LKM 被跳过（`sys_call_table` 受 EL2 只读
+  保护），root 仅由 `@o3p_rootd` 提供。没有 KernelSU 管理器、没有 `su`、没有
+  KSU allow-list；重启即失去 root。唯一的 O1 硬件证据是一份社区报告
+  （`jinghu`，issue #2）——维护者未独立复验。
 - **旧 policycap 副作用**：仅 `O3P_SELDIRTY=1` 时存在。该路径仍写旧的脏值，任何
   `setenforce 1` 都会让 Wi-Fi TX 卡住，直到 `setenforce 0` 或重启；v3 默认不碰
   `policycap`、也不再带恢复 UI（v1.8–v2.1 有守护与一键恢复）。
 - **KernelSU LKM ABI**：上游模块是为 `6.18.32-4k` 构建的；这里为 `6.18.21`
   内核重链接，因此会污染内核（taint）。不要把它当生产级 root 方案。
 - **绑定 profile**：偏移/地址是按这个确切内核编译的。换内核构建需要新的
-  profile（见 `docs/ARCHITECTURE.md` 的移植章节）。O1 测试构建是唯一受控例外：
+  profile（见 `docs/ARCHITECTURE.md` 的移植章节）。O1 profile 是唯一受控例外：
   接受 OS4.0.0.x 中 `6.18.21-android17…-4k` 系列的任意构建，沿用已分析的 O1
-  `selinux_state` 地址，并警告其他静态地址未做比对。
+  `selinux_state` 地址，并警告其他静态地址未做比对。它仅在 `jinghu` 上社区实测，
+  维护者未独立复验。
 
 ## 证据
 

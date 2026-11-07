@@ -10,9 +10,9 @@
 
 | 项 | 值 |
 |---|---|
-| 发布 | v3.3，`release/o3root2-v3.3.apk`（14,243,344 B，sha256 `c98a9ced…`；O1 profile + 两步确认 + LogBox/LKM 修复，无控制台）。上一稳定版 v3.2 保留在 tag `v3.2` |
+| 发布 | v3.3.5，`release/o3root2-v3.3.5.apk`（14,243,344 B，sha256 `28dd6652…`；O1 profile 跳过 KernelSU LKM、root 只来自 `@o3p_rootd`；两步确认；LogBox/LKM 修复；无控制台）。上一稳定版 v3.3（14,243,344 B，sha256 `c98a9ced…`）保留在 tag `v3.3`，v3.2 在 `v3.2` |
 | 测试构建 | v3.2.1-console，`release/beta/o3root2-v3.2.1-console.apk`（14,243,344 B，sha256 `9cba365a…`；隐藏 root 控制台） |
-| O1 测试构建 | v3.3.4-o1-test，`release/test/o3root2-v3.3.4-o1-test.apk`（14,247,440 B，sha256 `1a298929…`；O1 profile + 隐藏控制台；**仅静态分析**） |
+| O1 测试构建 | v3.3.5-o1-test，`release/test/o3root2-v3.3.5-o1-test.apk`（14,247,440 B，sha256 `405158cc…`；v3.3.5 + 隐藏控制台；**社区实测于 `jinghu`，维护者未独立复验**）。上一 O1 测试构建 v3.3.4-o1-test 保留在 `release/test/o3root2-v3.3.4-o1-test.apk`（14,247,440 B，sha256 `1a298929…`） |
 | 已验证设备 | 小米 Pad 9 Pro Max `yingtian`，HyperOS `OS4.0.16.0.XBMCNXM`，内核 `6.18.21-android17-5-g805aa6adea19-abogki565292102-4k` |
 | 第二目标 | `lhasa`（Xiaomi 18 Fold）`OS4.0.26.0.XPNCNXM` —— 同内核 sha256 `cde87cd7…`（boot header/ramdisk 不同）；**未实机测试** |
 | 持久化 | 无（仅当前 boot） |
@@ -21,8 +21,12 @@
 App 日志中的成功标记（按顺序）：
 `★ UIDNOW uid=0` → `KSU_INSMOD_OUT:[rc=0]` → `★ KSU_MODULE LIVE` →
 `✔ 全部完成，正在打开 KernelSU…` → `top -> …me.weishu.kernelsu/.ui.MainActivity`。
-健康状态：`getenforce` = `Enforcing`（v3；旧路径 `O3P_SELDIRTY=1` 会停在
-Permissive）、网络可用、`boot_id` 未变。
+O1 上会跳过 LKM：`SELINUX_PROFILE kernel=… base=…` → `CREDPTR … PTR_OK` →
+`★ UIDNOW uid=0` → rootd（`fork` / `sock ready` / `FULLROOT armed`）→
+`CLIENT …` / `SHELL …`；没有 `KSU_MODULE LIVE`，也没有管理器。
+健康状态：`getenforce` = `Enforcing`（yingtian/lhasa，v3；旧路径
+`O3P_SELDIRTY=1` 会停在 Permissive），O1 上按设计为 `Permissive`；网络可用、
+`boot_id` 未变。
 日期/提交/致谢见 `docs/PRIOR-ART.md` §5–7；历史报告索引见 `docs/history/README.md`。
 
 ## 它是怎么走到这里的（压缩时间线）
@@ -136,6 +140,9 @@ xattr）；`restorecon -R` 会跳过该目录本身。正常 v1.7+ 流程（含 
 - Shizuku 必须是 **shell 模式**；一旦有 `su`，ShizukuX 会以 root 模式重启
   （`uid=0`，`u:r:ksu:s0`），而该 bounded 域无法 exec 载荷。冷启动测试要按这个
   前提做。
+- Shizuku **13.5.4** 在 Android 17 上崩溃：
+  `java.lang.AbstractMethodError: IProcessObserver.onProcessStarted(int,int,int,String,String)`；
+  O1 测试者需要打过补丁的 Shizuku server。本项目不发布也不修 Shizuku 的这个版本。
 - `/system/bin/su` 只在 KernelSU 首次 root 请求之后出现（管理器“超级用户”授权）；
   在此之前缺失是正常的。
 - MIUI：`adb install` 可能返回 `INSTALL_FAILED_USER_RESTRICTED`；允许“USB
@@ -182,6 +189,10 @@ xattr）；`restorecon -R` 会跳过该目录本身。正常 v1.7+ 流程（含 
 9. **LKM ABI 风险**（困难）：上游 LKM 是为 `6.18.32-4k` 构建的，被重链接后加载
    到 `6.18.21`。用 KernelSU 源码针对本内核配置（或匹配的 GKI）构建，可消除
    ABI 错配与“修改过的模块”顾虑；需要内核源码/配置。
+10. **独立复验 O1**（容易，需要硬件）。目前唯一的 O1 结果是一条社区报告
+    （`jinghu`，issue #2，两次干净启动）；维护者没有复现，`dijun`/`violin`
+    未测试，宽松 OS4.0.0.x 门禁也从未跑过。在自己的 O1 设备上验证并记录原始
+    日志（`SELINUX_PROFILE`、`UIDNOW`、rootd 行、`getenforce`）。
 
 ## 复现工作流（开发循环）
 
@@ -211,6 +222,10 @@ adb shell 'tail -f /data/data/o3.st.root1/files/run.log'   # 仅 debuggable 构�
 - 不要在无法重启或 `su` 恢复的设备上使用旧路径 `O3P_SELDIRTY=1`；v3 默认终态
   是 Enforcing，是安全的。
 - 不要在非本人设备上运行；见 `docs/SECURITY.md`。
+- 不要在 O1 上把“跳过内置 KernelSU LKM”改成加载 LKM：O1 的 `sys_call_table`
+  在 EL2 下只读，LKM 的文本补丁落不下去，`sys_enter` hook 会把系统调用改写到
+  仍是 `__arm64_sys_ni_syscall` 的槽，让 pid 1/zygote/uid 2000 直到重启前
+  持续 `-ENOSYS`。O1 的 root 只由 `@o3p_rootd` 提供（`O3P_NOKSU=1`）。
 
 ## v2.0 — 自适应 LKM（2026-10-25）
 
@@ -356,7 +371,7 @@ adb shell 'tail -f /data/data/o3.st.root1/files/run.log'   # 仅 debuggable 构�
 - **未做真机验证**：没有 O1 设备；主要风险是 O1 的旧实现
   `posix_cpu_timer_del`（`__rcu_read_lock` + `pid_task` +
   `__lock_task_sighand`，而非 `timer_lock_sighand`），可能影响 UAF 时序。测试
-  指南见 `docs/TESTING_O1.md`。
+  指南见 `docs/TESTING_O1.md`。（后已被 v3.3.4 与 v3.3.5 小节取代。）
 
 ## v3.3.4 —— LogBox 滚动方向 + 现代自定义 LKM（2026-11-05）
 
@@ -379,6 +394,7 @@ adb shell 'tail -f /data/data/o3.st.root1/files/run.log'   # 仅 debuggable 构�
   14,243,344 B sha256 `0153846d…`（未发布）。测试构建
   `BETA=1 BETA_VERSION=3.3.4-o1-test BETA_CODE=24` →
   `release/test/o3root2-v3.3.4-o1-test.apk`，14,247,440 B，sha256 `1a298929…`。
+  （上一 O1 测试构建；已被 `v3.3.5-o1-test` 取代。）
 - 由设备机主报告：(a) 自动滚动跳到顶部；(b) 自选 SukiSU 4.3.0 LKM 在
   `insmod … No such file or directory` 后记录 `CUSTOM_KO fallback reason=load_failed`。
 - 已回 yingtian 真机复验（2026-11-05，冷启动，直接由 adb shell 跑载荷并设
@@ -388,3 +404,44 @@ adb shell 'tail -f /data/data/o3.st.root1/files/run.log'   # 仅 debuggable 构�
   `KSU_MODULE LIVE`，`/proc/modules` 显示 `kernelsu 503808 … Live`，Enforcing。
   该次共 9 次尝试成功（`VERDICT NO_RECLAIM` 属正常、可重试）。
   LogBox：连续 50 次追加都保持在最新行；手动滚到上方后再追加不会被拉回底部。
+
+## v3.3.5 —— O1 跳过 KernelSU LKM + O1 社区实测（2026-11-08）
+
+- 起因：第一次 O1 真机运行（v3.3.4-o1-test，`jinghu`）在第二次运行后出现
+  pid 1、zygote 与 uid 2000 的 `execve`/`newfstatat` 返回 `-ENOSYS`。O1 的
+  `sys_call_table` VA → PA（例如 `…ffee40d60d60` → `0x01560d60`）落在
+  `Kernel code` 物理区间 `00200000-023bffff`，被 EL2 XHEE hypervisor
+  （`kmod_protect`）强制只读，LKM 的 `stop_machine` 文本补丁无法落地；而
+  `sys_enter` tracepoint hook 仍把 `pt_regs->syscallno` 改写到 dispatcher 槽，
+  该槽保持 `__arm64_sys_ni_syscall`，于是直到重启前都是 `-ENOSYS`。
+- App（`PayloadRunner`）：SELinux profile 为 `o1` 时导出 `O3P_NOKSU=1`；
+  跳过管理器安装提示，成功判定改为 `uid=0` + rootd。O1 上的 UI：自定义 `.ko`
+  被拒绝（`O1 模式不支持自定义内核模块`），模块行
+  `内核模块: O1 模式不加载 LKM（@o3p_rootd 提供 root）`，KSU 状态
+  `O1 不加载` / `O1 模式`，按钮 `再次运行`。
+- 日志：启动
+  `O1 模式：跳过内置 KernelSU LKM（sys_call_table 受 EL2 保护），root 由 @o3p_rootd 提供`；
+  成功 `✔ 已获得 UID 0（O1 模式：@o3p_rootd 常驻；KernelSU 未加载）`；
+  警告 `⚠ O1 支持为社区实测（jinghu / OS4.0.0.16）反馈可用，维护者未独立复验；…`。
+- 载荷二进制未变：`libo3p.so` 1,496,668 B sha256 `fef5e065…`；`o3p.bin`
+  77,952 B。只有 App 侧 Java 改动。
+- 发布：正式版 v3.3.5 `release/o3root2-v3.3.5.apk` 14,243,344 B
+  sha256 `28dd6652…`，versionCode 25，tag `v3.3.5`，GitHub **Latest**；O1 测试
+  `release/test/o3root2-v3.3.5-o1-test.apk` 14,247,440 B sha256 `405158cc…`，
+  versionCode 26，tag `v3.3.5-o1-test`，pre-release。对应目录的 `SHA256SUMS`
+  同步更新。
+- 社区报告：GitHub issue #2 由 @Silas-02（2026-11-07）提交，小米 Pad 7 Ultra
+  `jinghu`，HyperOS `OS4.0.0.16.XOXCNXM`，Android 17 / API 37，内核
+  `6.18.21-android17-5-g1d099fcb35e0-abogki538445360-4k`，bootloader 锁定 /
+  vbmeta green：两次干净启动都在 10 s 内取得 `uid=0` + `@o3p_rootd`
+  （attempts 1–2）。维护者**没有**独立复现；`dijun`/`violin` 与宽松
+  OS4.0.0.x 门禁均未测试。报告里的两条“缺陷”声明经源码核对不成立：
+  不存在的属性检测函数、rootd fd 重定向其实已存在——不要把这两条当事实重复。
+- O1 终态：没有 KernelSU 管理器或 `/system/bin/su`，自定义 `.ko` 被拒，
+  SELinux Permissive（stage 0 清 `enforcing`；`policycap` 完好），root 只经
+  `@o3p_rootd`。预期标记见 `docs/TESTING_O1.md`。
+- 上游备注：Shizuku 13.5.4 在 Android 17 上崩溃
+  （`AbstractMethodError: IProcessObserver.onProcessStarted`），O1 测试者需要
+  打过补丁的 Shizuku server；本项目不发布也不修 Shizuku。
+- 待办：维护者独立复验 O1；`dijun`/`violin`；宽松门禁；O1 上第二次运行与
+  长时稳定性。

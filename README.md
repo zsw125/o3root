@@ -33,12 +33,13 @@ rebuilds the payload/APK when the toolchain environment is set.
 
 | | |
 |---|---|
-| release | **v3.3** (`release/o3root2-v3.3.apk`, 14,243,344 B, sha256 `c98a9ced…`) |
-| O1 test build | **v3.3.4-o1-test** (`release/test/o3root2-v3.3.4-o1-test.apk`, 14,247,440 B, sha256 `1a298929…`): v3.3 plus the hidden root console (stable v3.3 already includes the **experimental O1 (XRING) profile** for `dijun` / `jinghu` / `violin`). Accepts any OS4.0.0.x build on the `6.18.21-android17…-4k` kernel series: the analysed build is the verified path, other builds run in relaxed mode with a warning; for testers only, never hardware-validated |
+| release | **v3.3.5** (`release/o3root2-v3.3.5.apk`, 14,243,344 B, sha256 `28dd6652…`, versionCode 25): app-only O1 change — on O1 the profile now skips the KernelSU LKM and roots via `@o3p_rootd`; the payload binary is unchanged. Previous stable v3.3 (`release/o3root2-v3.3.apk`, 14,243,344 B, sha256 `c98a9ced…`) stays at tag `v3.3` |
+| O1 test build | **v3.3.5-o1-test** (`release/test/o3root2-v3.3.5-o1-test.apk`, 14,247,440 B, sha256 `405158cc…`, versionCode 26): v3.3.5 plus the hidden root console; **community-tested** in GitHub issue #2 on `jinghu` (Xiaomi Pad 7 Ultra, OS4.0.0.16) — the maintainer has **not** independently verified it. The O1 profile deliberately does not load KernelSU: root is `@o3p_rootd` only, so expect **no** `KSU_MODULE LIVE` and no manager |
+| previous O1 test build | **v3.3.4-o1-test** (`release/test/o3root2-v3.3.4-o1-test.apk`, 14,247,440 B, sha256 `1a298929…`, versionCode 24): first O1 run build; it exposed the EL2 `sys_call_table` problem that v3.3.5 fixes, kept as history |
 | previous test build | **v3.2.1-console** (`release/beta/o3root2-v3.2.1-console.apk`, 14,243,344 B, sha256 `9cba365a…`): stable v3.2 plus a hidden root console (long-press the version row; three confirmations) |
-| O1 devices | Xiaomi O1 SoC `dijun` / `jinghu` / `violin` on OS4.0.0.x: all three ship the **same** 6.18.21 kernel (`sha256 0d9917ca…`, `g1d099fcb35e0`); static analysis says the chain applies, no device test yet |
-| custom LKM | optional user-supplied KernelSU-family .ko (basic compatibility check; falls back to the built-in adaptive module; the choice is saved and restored on launch — long-press the row to clear) |
-| chain | Shizuku shell → CVE-2026-98260 → `uid=0` + full caps → matching KernelSU LKM (KernelSU / KernelSU-Next / SukiSU) → rootd |
+| O1 devices | Xiaomi O1 SoC `dijun` / `jinghu` / `violin` on OS4.0.0.x: all three ship the **same** 6.18.21 kernel (`sha256 0d9917ca…`, `g1d099fcb35e0`); community-tested once on `jinghu` (issue #2, 2026-11-07), `dijun`/`violin` untested, maintainer not independently verified |
+| custom LKM | optional user-supplied KernelSU-family .ko (basic compatibility check; falls back to the built-in adaptive module; the choice is saved and restored on launch — long-press the row to clear). Not available on O1: the profile skips KernelSU entirely |
+| chain | Shizuku shell → CVE-2026-98260 → `uid=0` + full caps → matching KernelSU LKM (KernelSU / KernelSU-Next / SukiSU) → rootd; on O1 the LKM is skipped (`sys_call_table` is EL2-read-only) and `@o3p_rootd` alone provides root |
 | persistence | none (current boot only) |
 | tested device | Xiaomi Pad 9 Pro Max `yingtian`, HyperOS `OS4.0.16.0.XBMCNXM` |
 | second device | `lhasa` (Xiaomi 18 Fold, `OS4.0.26.0.XPNCNXM`): the boot kernel is **bit-identical** to yingtian's (`sha256 cde87cd7…`), so the same payload applies; not device-tested |
@@ -70,8 +71,12 @@ rebuilds the payload/APK when the toolchain environment is set.
    a stale file that no longer validates is dropped, and a long press on the
    module row clears it. Since v3.2 the log box is selectable and has a
    **复制** action that copies the whole log; it only auto-scrolls while you
-   are already near the bottom. On a recognised O1 device the test build
-   asks for a two-step risk confirmation before the payload starts. The test
+   are already near the bottom. On a recognised O1 device the app runs the
+   **experimental O1 profile**: a two-step risk confirmation, then
+   `O3P_NOKSU=1` — the built-in KernelSU LKM is skipped because its
+   `sys_call_table` page patch cannot land under the EL2 hypervisor, and root
+   comes from `@o3p_rootd` alone (see
+   [`docs/TESTING_O1.md`](docs/TESTING_O1.md)). The test
    build additionally hides a root console behind a long press of the
    version row: three non-skippable confirmations, then commands run as root
    through the `rootd` socket (requires one payload run in the current boot).
@@ -85,16 +90,23 @@ primitive, the KernelSU patch and the porting guide.
 1. On the device: enable Developer options → Wireless debugging (or ADB).
    Install **Shizuku** / ShizukuX and start it in **shell mode**:
    `shizuku_plus_server` must run as `uid=2000`, `u:r:shell:s0`.
-2. Install `release/o3root2-v3.3.apk` (MIUI may need "Install via USB" allowed).
+2. Install `release/o3root2-v3.3.5.apk` (MIUI may need "Install via USB" allowed).
 3. Open **O3 Root**, grant the Shizuku permission, press
    **Continue to UID 0**. The log shows `★ UIDNOW uid=0`,
-   `★ KSU_MODULE LIVE`, and the KernelSU manager opens automatically.
+   `★ KSU_MODULE LIVE`, and the KernelSU manager opens (on O1 see the
+   paragraph below — KernelSU is skipped there by design).
 
 Testing on an O1 device (`dijun` / `jinghu` / `violin`)? Install
-[`release/test/o3root2-v3.3.4-o1-test.apk`](release/test/o3root2-v3.3.4-o1-test.apk)
-instead and follow [docs/TESTING_O1.md](docs/TESTING_O1.md). The gate accepts
-the three codenames on any `6.18.21-android17…-4k` kernel (OS4.0.0.x); the
-analysed build `g1d099fcb35e0` gets the verified path, other builds log
+[`release/test/o3root2-v3.3.5-o1-test.apk`](release/test/o3root2-v3.3.5-o1-test.apk)
+instead and follow [docs/TESTING_O1.md](docs/TESTING_O1.md). This profile has
+been **community-tested once** (issue #2: `jinghu` / OS4.0.0.16, two clean
+boots with `uid=0` + `@o3p_rootd` in under 10 s); the maintainer has **not**
+independently verified it, and `dijun` / `violin` remain untested. On O1 the
+app exports `O3P_NOKSU=1`, so **no KernelSU LKM is loaded**: `@o3p_rootd`
+provides root, the KernelSU manager is neither expected nor installed, and the
+run ends with SELinux **Permissive** (stage 0 clears enforcing). The gate
+accepts the three codenames on any `6.18.21-android17…-4k` kernel (OS4.0.0.x);
+the analysed build `g1d099fcb35e0` gets the experimental path, other builds log
 `固件门禁通过（O1 宽松模式：…）` and reuse the O1 address with a warning. The
 payload logs `SELINUX_PROFILE kernel=… base=… src=env|uname`, so the report
 only needs the exported log.
@@ -138,7 +150,15 @@ Full prerequisites and troubleshooting: [`docs/BUILD.md`](docs/BUILD.md).
   app retries; a reboot usually helps.
 - **SELinux posture**: v3 ends in **Enforcing** with a clean `selinux_state`
   (`policycap` untouched), so MAC stays on. Only the legacy `O3P_SELDIRTY=1`
-  path ends Permissive (MAC off system-wide); see the security notes.
+  path ends Permissive (MAC off system-wide); see the security notes. On O1 the
+  profile ends **Permissive** by design: stage 0 clears `enforcing`, there is no
+  KernelSU to re-enable it, and `policycap` is untouched, so a reboot restores
+  Enforcing cleanly.
+- **O1 has no KernelSU**: on O1 the built-in LKM is skipped (EL2-protected
+  `sys_call_table`) and root is `@o3p_rootd` only. There is no KernelSU manager,
+  no `su`, and no KSU allow-list; root disappears at reboot. The only O1
+  hardware evidence is one community report (`jinghu`, issue #2) — the
+  maintainer has not independently verified it.
 - **Legacy policycap side effect**: only with `O3P_SELDIRTY=1`. That path
   still writes the old dirty value, so any `setenforce 1` stalls Wi-Fi TX until
   `setenforce 0` or reboot. The v3 default avoids it and ships no recovery UI
@@ -148,10 +168,11 @@ Full prerequisites and troubleshooting: [`docs/BUILD.md`](docs/BUILD.md).
   treat it as a production root solution.
 - **Profile-bound**: offsets/addresses are compiled for this exact kernel. A
   different build needs a new profile (see the porting section in
-  `docs/ARCHITECTURE.md`). The O1 test build is the one guarded exception: it
-  accepts any OS4.0.0.x build in the `6.18.21-android17…-4k` series, reuses the
+  `docs/ARCHITECTURE.md`). The O1 profile is the guarded exception: it accepts
+  any OS4.0.0.x build in the `6.18.21-android17…-4k` series, reuses the
   analysed O1 `selinux_state` address, and warns that other statics were not
-  compared.
+  compared. It is community-tested on `jinghu` only and not independently
+  verified by the maintainer.
 
 ## Evidence
 

@@ -49,6 +49,14 @@ public class PayloadRunner implements Runnable {
             String env = fork == null ? "" : ("export O3P_KSU_FORK=" + fork + "; ");
             if (selinuxProfile != null && selinuxProfile.length() > 0) {
                 env = env + "export O3P_SELINUX_PROFILE='" + selinuxProfile + "'; ";
+                if ("o1".equals(selinuxProfile)) {
+                    /* O1: sys_call_table is in the EL2-protected "Kernel
+                       code" range, so the KernelSU LKM's text patch cannot
+                       land; its sys_enter tracepoint hook would then turn
+                       execve/newfstatat into -ENOSYS for pid1/zygote/uid2000.
+                       Skip the built-in LKM and use @o3p_rootd instead. */
+                    env = env + "export O3P_NOKSU=1; ";
+                }
             }
             String customPath = null;
             if (customKo != null && customKo.length > 0) {

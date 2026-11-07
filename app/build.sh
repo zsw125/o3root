@@ -66,8 +66,8 @@ import os, sys
 src = open('AndroidManifest.xml', encoding='utf-8').read()
 code = os.environ.get('BETA_CODE', '18')
 name = os.environ.get('BETA_VERSION', '3.2.1-console')
-out = src.replace('android:versionCode="20"', 'android:versionCode="%s"' % code)
-out = out.replace('android:versionName="3.3"', 'android:versionName="%s"' % name)
+out = src.replace('android:versionCode="25"', 'android:versionCode="%s"' % code)
+out = out.replace('android:versionName="3.3.5"', 'android:versionName="%s"' % name)
 act = ('        <activity\n'
        '            android:name=".ConsoleActivity"\n'
        '            android:exported="false"\n'
@@ -76,7 +76,7 @@ out = out.replace('</application>', act + '</application>')
 open(sys.argv[1], 'w', encoding='utf-8').write(out)
 PY
 else
-  echo "variant: stable (no console, 3.3)"
+  echo "variant: stable (no console, 3.3.5)"
   KEEP=()
   for f in "${SRCS[@]}"; do
     case "$f" in

@@ -70,7 +70,7 @@ unset.
 | `O3P_SELDIRTY` | `1` | legacy stage-0 write: 8 bytes at `selinux_state` (dirties `policycap[]`, ends Permissive, network breaks once Enforcing returns). v3 default is the clean unaligned zero at `selinux_state-7`. |
 | `O3P_CODEPATCH` | `1` | legacy KernelSU init patch (`mov w0,#1` → `#0`); v3 default loads the LKM unmodified. |
 | `O3P_NOSEL` | `1` | skip stage 0 (SELinux) entirely — debugging only. |
-| `O3P_NOKSU` | `1` | skip the KernelSU blob load. |
+| `O3P_NOKSU` | `1` | skip the KernelSU blob load. The O1 profile sets this automatically: its `sys_call_table` cannot be patched under the EL2 hypervisor, so root comes only from `@o3p_rootd`. |
 | `O3P_RELINK_ONLY` | `1` | bypass `/proc/kallsyms`; relink with the embedded 248-symbol table + slide. |
 | `O3P_KSU_FORK` | `tiann` / `next` / `sukisu` | force one embedded LKM instead of manager-based selection. |
 | `O3P_CUSTOM_KO` | path | load this user-supplied `.ko` instead of the embedded blob (v3.1). The payload validates it first (ELF64 AArch64 `ET_REL`, `.modinfo` `name=kernelsu`, same kernel series); an unreadable/rejected file or a failed `insmod` falls back to the embedded adaptive LKM automatically. |
@@ -105,3 +105,10 @@ unset.
   Enforcing is safe; the app therefore ships no recovery guard. Only the legacy
   `O3P_SELDIRTY=1` path corrupts `policycap[]` (bytes 2..7) and can break the
   network once Enforcing returns; see `docs/SECURITY.md`.
+- The binary is unchanged in v3.3.5 (`libo3p.so` 1,496,668 B, sha256
+  `fef5e065…`); the O1 change is app-side only — the O1 profile exports
+  `O3P_NOKSU=1`. On O1 the embedded LKMs must stay unloaded: once the
+  tracepoint hook is active its dispatcher slot is still
+  `__arm64_sys_ni_syscall`, so pid 1/zygote/uid 2000 syscalls return
+  `-ENOSYS` after a second run until reboot; `@o3p_rootd` still provides
+  uid 0. See `docs/TESTING_O1.md`.

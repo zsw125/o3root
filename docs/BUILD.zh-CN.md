@@ -69,9 +69,10 @@ bash payload/build-payload.sh
 
 `build-payload.sh` 只需要 `NDK_CC`。KernelSU LKM 位于
 `payload/lkm/lkm-aarch64-android17-6.18_kernelsu.ko`；默认输出与
-`release/test/o3root2-v3.3.4-o1-test.apk` 里的参考构建一致（`libo3p.so` 的
-`sha256 fef5e065…`）。已发布的 v3.3 APK 内嵌同一载荷；v3.2（旧载荷
-`e479e539…`）保留在 tag `v3.2`。
+`release/o3root2-v3.3.5.apk` 里的参考构建一致（`libo3p.so` 的
+`sha256 fef5e065…`）。已发布的 v3.3.5 APK 内嵌同一载荷（自 v3.3 起未变）；
+v3.3（`sha256 c98a9ced…`）与 v3.2（旧载荷 `e479e539…`）保留在 git 历史
+tag `v3.3` / `v3.2`。
 
 你也可以直接在设备上（root/shell）运行载荷：
 
@@ -113,6 +114,8 @@ keytool -genkeypair -keystore release.p12 -storetype PKCS12 \
    release 字符串 + `yingtian`/`lhasa` fingerprint）。按提示授予 Shizuku 权限。
 4. 点 **Continue to UID 0** 等待。成功会打印 `★ UIDNOW uid=0`、
    `KSU_INSMOD_OUT:[rc=0]`、`★ KSU_MODULE LIVE`，然后打开 KernelSU 管理器。
+   O1 上不会出现 `KSU_MODULE LIVE`、也没有管理器：成功标志是
+   `★ UIDNOW uid=0` 加上 `@o3p_rootd` 行。
 5. 如果没装内置 KernelSU 管理器，按钮会变成 **安装 KernelSU 管理器**，点击安装
    内置 APK（需要确认系统安装器提示）。
 
@@ -141,16 +144,19 @@ App 的 LogBox 会显示载荷每个阶段；用 **导出日志** 写到
 
 ## 可复现性
 
-参考构建（v3.3，release/o3root2-v3.3.apk）：
+参考构建（v3.3.5，release/o3root2-v3.3.5.apk）：
 
 - APK `14,243,344` 字节
-- `sha256 c98a9ced675abd5086da3c0bd05ff8fd836ae948e3bcaf1895a73414ad3bd21e`
+- `sha256 28dd6652d23511953d983f607b7691871aa568378026e745e8feabe055096e56`
 - payload `libo3p.so` `1,496,668` 字节（配官方 LKM），
   `sha256 fef5e065fb20e07b39ab4246eb1ef0d8e637f0a9cc77465c395e2432d9ebadeb`
+  —— 自 v3.3 起未变；v3.3（14,243,344 B，`sha256 c98a9ced…`）保留在 tag `v3.3`
 
-测试构建（v3.3.4-o1-test，`release/test/o3root2-v3.3.4-o1-test.apk`）为
-`14,247,440` B / `sha256 1a298929…`，只多出控制台类与 manifest 条目；v3.2
-保留在 tag `v3.2`。
+测试构建（v3.3.5-o1-test，`release/test/o3root2-v3.3.5-o1-test.apk`）为
+`14,247,440` B /
+`sha256 405158cc9fbbd140da1ef38a83d8590e47a09b5480265554c54c3fa18a5ee6a8`，
+只多出控制台类与 manifest 条目；上一 O1 测试构建（`v3.3.4-o1-test`，
+`sha256 1a298929…`）留在历史里。
 
 上面的 APK 哈希是提交进仓库产物的指纹。`app/build.sh` 每次会重新打包（新时间戳）
 并重新签名，所以用相同源码重建会得到不同的 APK 哈希，但 dex、资源与 `libo3p.so`
@@ -160,15 +166,20 @@ v3.1/v3.1.1 只新增 Java 源文件（`CustomKo`、`KoResult`、`KoChoice`、`K
 `KoApplyTask`、`ClickPickKo`、`LongClearKo`）与载荷里的
 `ko_validate()`/`O3P_CUSTOM_KO`；上面两条构建命令不变。v3.2 新增 `BuildInfo`
 （版本 + 控制台开关）与 `ClickCopyLog`，并让 LogBox 可选中/复制。测试变体用
-`BETA=1` 构建（versionCode 18、versionName `3.2.1-console`，生成
-`build/gen/BuildInfo.java` 与带隐藏 `ConsoleActivity` 的
-`build/AndroidManifest.xml`）；正式版编译跟踪的 `BuildInfo.java`
-（`CONSOLE=false`、`3.2`）并排除 `ConsoleActivity.java`/`ConsoleGate.java`。
+`BETA=1` 构建（默认 versionCode 18、versionName `3.2.1-console`；当前测试构建为
+`3.3.5-o1-test` / 26，生成 `build/gen/BuildInfo.java` 与带隐藏
+`ConsoleActivity` 的 `build/AndroidManifest.xml`）；正式版编译跟踪的
+`BuildInfo.java`（`CONSOLE=false`、`3.3.5`）并排除
+`ConsoleActivity.java`/`ConsoleGate.java`。
 `VERIFY_BETA=1 bash scripts/verify.sh` 会同时构建并检查两个变体。
 
 v3.3 增加实验性 O1（XRING）内核 profile：载荷运行时根据 `uname().release`
 选择 `selinux_state` 链接地址（日志 `SELINUX_PROFILE kernel=… base=…`），
-`Main.checkFirmware()` 接受 `dijun` / `jinghu` / `violin` 与 O1 内核串。正式版
-版本为 3.3（versionCode 20）；测试构建用
-`BETA=1 BETA_VERSION=3.3.4-o1-test BETA_CODE=24 bash app/build.sh`
-（versionName `3.3.4-o1-test`，versionCode 24，含隐藏控制台）。
+`Main.checkFirmware()` 接受 `dijun` / `jinghu` / `violin` 与 O1 内核串。
+v3.3.5 让该 profile 设置 `O3P_NOKSU=1`：KernelSU LKM 的 `sys_call_table` 页补丁
+在 O1 EL2 hypervisor 下无法落地（该页只读），因此不加载 LKM，O1 上既没有
+`KSU_MODULE LIVE` 也没有管理器；root 只由 `@o3p_rootd` 提供。O1 路径仅社区实测
+（issue #2，`jinghu`）；见 `docs/TESTING_O1.md`。正式版版本为 3.3.5
+（versionCode 25）；测试构建用
+`BETA=1 BETA_VERSION=3.3.5-o1-test BETA_CODE=26 bash app/build.sh`
+（versionName `3.3.5-o1-test`，versionCode 26，含隐藏控制台）。

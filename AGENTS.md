@@ -10,17 +10,29 @@ and leaves a root daemon for the current boot. Read this file first, then
 
 ## State
 
-- Release **v3.3** (latest stable), `release/o3root2-v3.3.apk`
-  (`14,243,344 B`, `sha256 c98a9ced675abd5086da3c0bd05ff8fd836ae948e3bcaf1895a73414ad3bd21e`). It carries the O1 profile, the two-step
-  confirmation, and the v3.3.4 LogBox + custom-LKM loader fixes; no console.
-  Previous stable v3.2 (`release/o3root2-v3.2.apk`, `14,239,248 B`, sha256
-  `64bbc654…`) remains in git history at tag `v3.2`.
-- **Experimental test build v3.3.4-o1-test**, `release/test/o3root2-v3.3.4-o1-test.apk`
-  (`14,247,440 B`, `sha256 1a298929f203d718d5328a398a03603efd664f7612f5eaacf7dc46bfb5daafeb`):
-  v3.3 plus the hidden root console (the O1 profile and confirmation are in
-  the stable build as well)
-  (versionCode 24 / `3.3.4-o1-test`). Static-analysis-only support for
-  `dijun` / `jinghu` / `violin`; not hardware-validated.
+- Release **v3.3.5** (latest stable), `release/o3root2-v3.3.5.apk`
+  (`14,243,344 B`, `sha256 28dd6652d23511953d983f607b7691871aa568378026e745e8feabe055096e56`,
+  versionCode 25 / `3.3.5`). It carries the O1 profile with the new skip-KSU
+  behaviour (`O3P_NOKSU=1`, root from `@o3p_rootd`), the two-step confirmation,
+  and the v3.3.4 LogBox + custom-LKM loader fixes; no console. The payload
+  binary is unchanged (`libo3p.so` 1,496,668 B, sha256 `fef5e065…`).
+  Previous stable v3.3 (`release/o3root2-v3.3.apk`, 14,243,344 B, sha256
+  `c98a9ced675abd5086da3c0bd05ff8fd836ae948e3bcaf1895a73414ad3bd21e`) remains
+  in git history at tag `v3.3`; v3.2 (`14,239,248 B`, sha256 `64bbc654…`)
+  remains at tag `v3.2`.
+- **Experimental O1 test build v3.3.5-o1-test**,
+  `release/test/o3root2-v3.3.5-o1-test.apk`
+  (`14,247,440 B`, `sha256 405158cc9fbbd140da1ef38a83d8590e47a09b5480265554c54c3fa18a5ee6a8`,
+  versionCode 26 / `3.3.5-o1-test`): v3.3.5 plus the hidden root console (the O1
+  profile and confirmation are in the stable build as well). The O1 chain is
+  **community-tested once** (GitHub issue #2: `jinghu` / OS4.0.0.16, two clean
+  boots with `uid=0` + `@o3p_rootd` in under 10 s); the maintainer has **not**
+  independently verified it, and `dijun` / `violin` remain untested. On O1 the
+  profile now skips the KernelSU LKM (its `sys_call_table` patch cannot land
+  under the EL2 hypervisor) — expect **no** `KSU_MODULE LIVE`, no manager and a
+  Permissive end state. Previous O1 test build
+  `release/test/o3root2-v3.3.4-o1-test.apk` (`14,247,440 B`, sha256
+  `1a298929…`, versionCode 24) remains in the tree as history.
   Previous test build `release/beta/o3root2-v3.2.1-console.apk`
   (`14,243,344 B`, `sha256 9cba365a…`) remains in the tree as history.
   v2.0 added the multi-LKM blob (KernelSU / KernelSU-Next / SukiSU) with
@@ -52,8 +64,14 @@ and leaves a root daemon for the current boot. Read this file first, then
   any other OS4.0.0.x build in the `6.18.21-android17…-4k` series (relaxed mode:
   same O1 address, stronger warning). All three analysed O1 OTAs ship the same
   kernel (`sha256 0d9917ca…`); only `selinux_state` differs from yingtian
-  (`0xffffffc082958630`), `init_user_ns` is identical. This is static analysis
-  only — no O1 device has run the chain. On a recognised O1 device the app
+  (`0xffffffc082958630`), `init_user_ns` is identical. The profile first
+  shipped without an O1 hardware run; the first O1 run (`v3.3.4-o1-test`)
+  then showed that the KernelSU LKM cannot work there, so v3.3.5 makes the
+  O1 profile skip it (`O3P_NOKSU=1`) and rely on `@o3p_rootd` — no manager,
+  no custom `.ko`, and a Permissive end state (see `docs/TESTING_O1.md`).
+  The O1 chain is
+  community-tested once (`jinghu`, issue #2); the maintainer has not
+  independently verified it. On a recognised O1 device the app
   shows a two-step warning before any payload run (risk dialog, then a
   checkbox that enables 开始提权); nothing starts until both are accepted.
   The three built-in LKMs are unchanged (all were the latest
@@ -83,7 +101,7 @@ KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
 # test build (hidden root console; version/versionCode are overridable)
 ANDROID_JAR=... BUILD_TOOLS=... SHIZUKU_JARS=... \
 KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... \
-PAYLOAD=... BETA=1 BETA_VERSION=3.3.4-o1-test BETA_CODE=24 bash app/build.sh
+PAYLOAD=... BETA=1 BETA_VERSION=3.3.5-o1-test BETA_CODE=26 bash app/build.sh
 ```
 
 ## Map
@@ -168,11 +186,15 @@ steps, opened the console with its one-shot token, and ran `id` as uid 0
 through the rootd socket (`[exit 0]`); copying the console output into the
 clipboard was verified by pasting it back. The automatic fallback branch was
 not exercised on hardware (the forced
-module still loaded) and remains desktop-tested. The v3.3 O1 profile is
-**static-analysis-only**: the O1 kernel and the yingtian kernel were compared
-symbol-by-symbol/BTF/config/instruction-wise (see `docs/AGENT_HANDOFF.md`),
-but no O1 device has run either the payload or the KernelSU LKM. v3.3.4 was
-re-checked on yingtian (2026-11-05): a 65-section SukiSU 4.3.0 LKM loads via
+module still loaded) and remains desktop-tested. The v3.3 O1 profile was
+compared with the yingtian kernel symbol-by-symbol/BTF/config/instruction-wise
+(see `docs/AGENT_HANDOFF.md`); it is now **community-tested once**, not
+maintainer-verified: issue #2 reported two clean boots on `jinghu`
+(OS4.0.0.16) with `uid=0` + `@o3p_rootd`. The first O1 run
+(`v3.3.4-o1-test`) showed the KernelSU LKM cannot land under the O1 EL2
+hypervisor, so `v3.3.5-o1-test` sets `O3P_NOKSU=1` on O1 and serves root only
+through `@o3p_rootd` (no manager, no custom `.ko`, Permissive end state).
+v3.3.4 was re-checked on yingtian (2026-11-05): a 65-section SukiSU 4.3.0 LKM loads via
 the kallsyms path (`KSU_LOADER kallsyms found=251 missing=0`, `KSU_INSMOD_OUT:
 [rc=0`, `KSU_MODULE LIVE`), and the LogBox keeps the newest line pinned at the
 bottom while leaving a manually scrolled-up view alone. v1.8–v2.1 had
@@ -183,9 +205,11 @@ SukiSU): each time the app detected the manager, the payload selected the
 matching embedded LKM and the matching manager came to the foreground;
 `O3P_RELINK_ONLY=1` still falls back to the 248-symbol union.
 
-Not verified: **O1 hardware** (dijun/jinghu/violin — see `docs/TESTING_O1.md`);
-`lhasa` hardware; **original Shizuku** (we use the official
-`dev.rikka.shizuku` API, but only ShizukuX 13.7 was exercised); `/system/bin/su`
+Not verified (independently): **O1 hardware** beyond the single community
+`jinghu` report — `dijun`/`violin` untested and the maintainer has not
+reproduced issue #2 (see `docs/TESTING_O1.md`); `lhasa` hardware;
+**original Shizuku** (we use the official `dev.rikka.shizuku` API, but only
+ShizukuX 13.7 was exercised); `/system/bin/su`
 appears only after KernelSU's first root request.
 
 Negative results — don't repeat without a new idea (details in
@@ -215,7 +239,7 @@ Negative results — don't repeat without a new idea (details in
   `VERSION=$BETA_VERSION`, default `3.2.1-console`) and a generated
   `build/AndroidManifest.xml` (versionCode `$BETA_CODE`, default 18,
   `ConsoleActivity` entry). The stable build compiles the tracked
-  `BuildInfo.java` (`CONSOLE=false`, `3.3`) and excludes
+  `BuildInfo.java` (`CONSOLE=false`, `3.3.5`) and excludes
   `ConsoleActivity.java`/`ConsoleGate.java`; `Main` reaches the gate only
   via `ConsoleEntry` reflection, so never link `ConsoleGate` from stable
   code.
@@ -227,12 +251,14 @@ Negative results — don't repeat without a new idea (details in
 
 1. Shizuku running in shell mode: `ps -A -o UID,LABEL,ARGS | grep shizuku_plus_server`
    → `2000 u:r:shell:s0`.
-2. Install: `adb install -r release/o3root2-v3.3.apk`; if MIUI says
+2. Install: `adb install -r release/o3root2-v3.3.5.apk`; if MIUI says
    `INSTALL_FAILED_USER_RESTRICTED`, allow install-via-USB or, with root,
    `pm install -r -d`.
 3. Open the app, grant Shizuku permission, press Continue; wait 20–120 s.
 4. Success markers: `★ UIDNOW uid=0`, `KSU_INSMOD_OUT:[rc=0]`,
    `★ KSU_MODULE LIVE`, manager in foreground (`am start` log + `top ->`).
+   On O1 there is no `KSU_MODULE LIVE` and no manager: success is
+   `★ UIDNOW uid=0` plus the `ROOTD`/`@o3p_rootd` lines (see `docs/TESTING_O1.md`).
 5. Health: `getenforce` = Enforcing (v3; legacy dirty write ends Permissive), `ping <gateway>`, `nc 223.5.5.5 443`,
    `cat /proc/sys/kernel/random/boot_id` unchanged.
 5.5 If the run failed and you want to retry: check `shizuku_plus_server` is
@@ -249,7 +275,11 @@ Negative results — don't repeat without a new idea (details in
    build logs `固件门禁通过（O1 实验性：…）`; another OS4.0.0.x build logs
    `固件门禁通过（O1 宽松模式：…）`. Expect
    `SELINUX_PROFILE kernel=… base=0xffffffc082958630 src=env|uname`; report the
-   export even when it fails. There is no O1 device here — never claim it works.
+   export even when it fails. O1 skips the KernelSU LKM (`O3P_NOKSU=1`): no
+   `KSU_MODULE LIVE`, no manager and no `/system/bin/su`; root comes from
+   `@o3p_rootd` and SELinux ends Permissive. Only one community report exists
+   (`jinghu`, issue #2); the maintainer has not independently verified O1 and
+   `dijun`/`violin` are untested — never claim maintainer verification.
 
 | symptom | meaning / action |
 |---|---|
@@ -298,4 +328,6 @@ because `policycap` stayed clean, so the device ends in Enforcing with working
 Wi-Fi. A single-reap three-write variant was tried and continuously panicked;
 it is kept only behind `O3P_D3V3` for analysis. Cold-boot tested on yingtian
 (`KSU_CODEPATCH skip`, `KALLSYMS_PATCH found=225`, `KSU_MODULE LIVE`,
-Enforcing, `ping`/`nc` OK, manager opened).
+Enforcing, `ping`/`nc` OK, manager opened). On O1 (v3.3.5+) the profile skips
+the LKM entirely (`O3P_NOKSU=1`) and provides root only through `@o3p_rootd`;
+see `docs/TESTING_O1.md`.

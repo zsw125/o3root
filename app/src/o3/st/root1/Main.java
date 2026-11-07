@@ -65,6 +65,7 @@ public class Main extends Activity implements PayloadSink {
     private final SpannableStringBuilder logSpan = new SpannableStringBuilder();
     private String payloadPath;
     private TextView koView;
+    private TextView koPickView;
     private byte[] customKoBytes;
     private String customKoLabel;
     private String customKoExtPath;
@@ -315,9 +316,9 @@ public class Main extends Activity implements PayloadSink {
         koView = text("内核模块: 自适应（内置 KSU / Next / SukiSU）", 11, MUTED, false);
         koRow.addView(koView, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        TextView koPick = text("选择 .ko", 11, ACCENT, false);
-        koPick.setOnClickListener(new ClickPickKo(this));
-        koRow.addView(koPick);
+        koPickView = text("选择 .ko", 11, ACCENT, false);
+        koPickView.setOnClickListener(new ClickPickKo(this));
+        koRow.addView(koPickView);
         koRow.setOnLongClickListener(new LongClearKo(this));
         root.addView(koRow);
 
@@ -542,11 +543,33 @@ public class Main extends Activity implements PayloadSink {
             o1Profile = true;
             o1DevName = o1Dev;
             o1Exact = o1Kernel;
+            /* O1's sys_call_table lives in the EL2-protected "Kernel code"
+               range, so the KernelSU LKM's text patch cannot land; its
+               sys_enter tracepoint hook would then turn execve/newfstatat for
+               pid1/zygote/uid2000 into -ENOSYS. The O1 profile therefore runs
+               with O3P_NOKSU=1 and relies on @o3p_rootd only: no manager
+               install, no custom .ko. */
+            if (customKoBytes != null) {
+                clearCustomKo("O1 模式不支持自定义内核模块（sys_call_table 受 EL2 只读保护）");
+            }
+            if (koView != null) {
+                koView.setText("内核模块: O1 模式不加载 LKM（@o3p_rootd 提供 root）");
+                koView.setTextColor(MUTED);
+            }
+            if (koPickView != null) {
+                koPickView.setText("O1 不支持");
+                koPickView.setTextColor(DEV);
+            }
+            if (tvKsu != null) {
+                tvKsu.setText("O1 不加载");
+                tvKsu.setTextColor(MUTED);
+            }
             if (o1Kernel) {
                 append("固件门禁通过（O1 实验性：" + o1Dev + " / " + kv + "）");
-                append("⚠ O1 支持仅经静态分析，未真机验证；如失败请导出日志反馈");
+                append("⚠ O1 支持为社区实测（jinghu / OS4.0.0.16）反馈可用，维护者未独立复验；"
+                        + "O1 模式不加载 KernelSU，root 由 @o3p_rootd 提供");
                 if (warnView != null) {
-                    warnView.setText("O1 实验性支持（未真机验证）：如失败请导出日志反馈");
+                    warnView.setText("O1 实验性支持（社区实测，维护者未复验）：不加载 KernelSU，root 由 rootd 提供");
                     warnView.setTextColor(WARN);
                 }
             } else {
@@ -702,11 +725,14 @@ public class Main extends Activity implements PayloadSink {
         }
         if (!fwOk) {
             btn.setEnabled(false);
-        } else if (!mgrOk) {
+        } else if (!mgrOk && !o1Profile) {
             btn.setText("安装 KernelSU 管理器");
             btn.setEnabled(true);
         } else if (netRisk) {
             btn.setText("恢复 SELinux 宽容模式");
+            btn.setEnabled(Shizuku.pingBinder());
+        } else if (o1Profile) {
+            btn.setText(rootOk ? "再次运行" : "Continue to UID 0");
             btn.setEnabled(Shizuku.pingBinder());
         } else if (ksuOk) {
             btn.setText("打开 KernelSU");
@@ -772,7 +798,7 @@ public class Main extends Activity implements PayloadSink {
             tvKsu.setTextColor(OK);
         } else if (cnt == 0) {
             ksuOk = false;
-            tvKsu.setText("未加载");
+            tvKsu.setText(o1Profile ? "O1 不加载" : "未加载");
             tvKsu.setTextColor(MUTED);
         }
         boolean risk = false; /* v3: Enforcing is the normal end state (clean policycap) */
@@ -827,7 +853,7 @@ public class Main extends Activity implements PayloadSink {
         if (!mgrOk) {
             adoptManager(detectManager());
         }
-        if (!mgrOk) {
+        if (!mgrOk && !o1Profile) {
             append("KernelSU 管理器未安装：开始安装内置管理器…");
             btn.setEnabled(false);
             btn.setText("正在安装管理器…");
@@ -888,7 +914,7 @@ public class Main extends Activity implements PayloadSink {
             netRisk = false;
             netRiskShown = false;
             btn.setEnabled(true);
-            btn.setText("打开 KernelSU");
+            btn.setText(o1Profile ? "再次运行" : "打开 KernelSU");
             probeState();
         } else {
             append("⚠ su 恢复失败，改为重跑载荷（会重新执行提权链）");
@@ -913,7 +939,11 @@ public class Main extends Activity implements PayloadSink {
         b.setTitle("O1 实验性支持：风险确认");
         b.setMessage("检测到 O1 机型：" + dev + " / " + mode + "\n"
                 + kv + "\n\n"
-                + "该支持仅经过静态分析，没有任何 O1 真机验证。开始前请确认：\n"
+                + "社区测试已在 Xiaomi Pad 7 Ultra（jinghu / OS4.0.0.16）上完成提权，"
+                + "但维护者尚未独立复验；不同 O1 机型 / OEM 构建的内核布局可能不同。"
+                + "开始前请确认：\n"
+                + "• O1 上 KernelSU 系 LKM 的 sys_call_table 补丁被 EL2 只读保护，"
+                + "本应用会自动跳过内置模块，root 由 @o3p_rootd 提供（不是 KernelSU）\n"
                 + "• 若内核布局与本版本假设不一致，写内核页可能失败，导致重启 / panic，"
                 + "极端情况需要 fastboot 或 EDL 恢复\n"
                 + "• 宽松模式的内核没有逐一比对偏移，风险更高\n"
@@ -959,6 +989,12 @@ public class Main extends Activity implements PayloadSink {
         rootOk = false;
         btn.setEnabled(false);
         btn.setText("运行中…");
+        if (o1Profile) {
+            append("O1 模式：跳过内置 KernelSU LKM（sys_call_table 受 EL2 保护），"
+                    + "root 由 @o3p_rootd 提供");
+            tvKsu.setText("O1 模式");
+            tvKsu.setTextColor(MUTED);
+        }
         append("=== running payload as Shizuku shell ===");
         runBootId = readBootId();
         if (runBootId != null) {
@@ -995,7 +1031,12 @@ public class Main extends Activity implements PayloadSink {
         append("payload exit=" + code);
         diagnose();
         btn.setEnabled(true);
-        if (ksuOk) {
+        if (o1Profile && rootOk && !ksuOk) {
+            btn.setText("再次运行");
+            tvKsu.setText("O1 不加载");
+            tvKsu.setTextColor(ACCENT);
+            append("✔ 已获得 UID 0（O1 模式：@o3p_rootd 常驻；KernelSU 未加载）");
+        } else if (ksuOk) {
             btn.setText("打开 KernelSU");
             tvKsu.setText("已加载");
             tvKsu.setTextColor(OK);
@@ -1078,6 +1119,9 @@ public class Main extends Activity implements PayloadSink {
         if (rootOk && ksuOk) {
             return;
         }
+        if (o1Profile && rootOk) {
+            return;
+        }
         String s = logBuf.toString();
         int mark = s.lastIndexOf("=== running payload");
         if (mark >= 0) {
@@ -1126,6 +1170,13 @@ public class Main extends Activity implements PayloadSink {
     // ---- custom .ko (user supplied LKM) ----
 
     void pickKo() {
+        if (o1Profile) {
+            append("O1 模式不支持自定义内核模块：sys_call_table 受 EL2 Stage-2 只读保护，"
+                    + "KernelSU 系 LKM 的 hook 会让 pid1/zygote/adbd 的系统调用返回 -ENOSYS；"
+                    + "本次 root 由 @o3p_rootd 提供");
+            Toast.makeText(this, "O1 模式不支持自定义内核模块", Toast.LENGTH_SHORT).show();
+            return;
+        }
         if (running) {
             append("正在运行，稍后再选择内核模块");
             return;
@@ -1394,6 +1445,11 @@ public class Main extends Activity implements PayloadSink {
 
     void updateKoView() {
         if (koView == null) {
+            return;
+        }
+        if (o1Profile) {
+            koView.setText("内核模块: O1 模式不加载 LKM（@o3p_rootd 提供 root）");
+            koView.setTextColor(MUTED);
             return;
         }
         if (customKoBytes == null || customKoCheck == null) {

@@ -12,22 +12,31 @@
 
 ## 状态
 
-- 发布 **v3.3**（最新稳定版）：`release/o3root2-v3.3.apk`
-  （`14,243,344 B`，`sha256 c98a9ced675abd5086da3c0bd05ff8fd836ae948e3bcaf1895a73414ad3bd21e`）。含 O1 profile、两步确认，以及 v3.3.4 的
-  LogBox / 自定义 LKM 加载修复；不含控制台。上一稳定版 v3.2
-  （`release/o3root2-v3.2.apk`，`14,239,248 B`，sha256 `64bbc654…`）保留在 tag `v3.2`。
-- **实验性测试构建 v3.3.4-o1-test**：`release/test/o3root2-v3.3.4-o1-test.apk`
-  （`14,247,440 B`，`sha256 1a298929f203d718d5328a398a03603efd664f7612f5eaacf7dc46bfb5daafeb`）：
-  v3.3 + 隐藏 root 控制台（O1 profile 与两步确认已在正式版中）（versionCode 24 / `3.3.4-o1-test`）；
-  `dijun` / `jinghu` / `violin` 仅经静态分析，未真机验证。上一测试构建
-  `release/beta/o3root2-v3.2.1-console.apk`（`14,243,344 B`，`sha256 9cba365a…`）
-  留在树里作为历史。
+- 发布 **v3.3.5**（最新稳定版）：`release/o3root2-v3.3.5.apk`
+  （`14,243,344 B`，`sha256 28dd6652d23511953d983f607b7691871aa568378026e745e8feabe055096e56`，
+  versionCode 25 / `3.3.5`）。含带新跳过 KSU 行为的 O1 profile（`O3P_NOKSU=1`，root 来自
+  `@o3p_rootd`）、两步确认，以及 v3.3.4 的 LogBox / 自定义 LKM 加载修复；不含控制台。
+  payload 二进制未变（`libo3p.so` 1,496,668 B，sha256 `fef5e065…`）。
+  上一稳定版 v3.3（`release/o3root2-v3.3.apk`，14,243,344 B，sha256
+  `c98a9ced…`）保留在 git 历史 tag `v3.3`；v3.2（`14,239,248 B`，sha256
+  `64bbc654…`）保留在 tag `v3.2`。
+- **实验性 O1 测试构建 v3.3.5-o1-test**：`release/test/o3root2-v3.3.5-o1-test.apk`
+  （`14,247,440 B`，`sha256 405158cc9fbbd140da1ef38a83d8590e47a09b5480265554c54c3fa18a5ee6a8`，
+  versionCode 26 / `3.3.5-o1-test`）：v3.3.5 + 隐藏 root 控制台（O1 profile 与两步确认
+  也已在正式版中）。O1 链路**社区实测一次**（GitHub issue #2：`jinghu` / OS4.0.0.16，
+  两次干净启动均在 10 s 内取得 `uid=0` + `@o3p_rootd`）；维护者**未**独立复验，
+  `dijun` / `violin` 仍未测试。O1 上 profile 现在跳过 KernelSU LKM（其 `sys_call_table`
+  补丁在 EL2 hypervisor 下无法落地）—— 因此不应期待 `KSU_MODULE LIVE`、管理器，
+  终态为 Permissive。上一 O1 测试构建 `release/test/o3root2-v3.3.4-o1-test.apk`
+  （`14,247,440 B`，sha256 `1a298929…`，versionCode 24）留在树里作为历史。
+  上一测试构建 `release/beta/o3root2-v3.2.1-console.apk`（`14,243,344 B`，
+  `sha256 9cba365a…`）留在树里作为历史。
   载荷内置 tiann / KernelSU-Next / SukiSU 三种 LKM，按已安装的管理器自动选择（`O3P_KSU_FORK` 可覆盖），
 并默认运行时解析符号（kallsyms）；v2.1 让探测先检查 Shizuku 授权、用本地包管理器识别管理器、
 授权后先探测再决定是否跑载荷，并使用唯一载荷文件名；v3.0 改为两段式（`selinux_state-7` 只清
 enforcing + cred 写入），并默认不打 KernelSU init 补丁（`policycap` 干净，KSU 自己的
 `setenforce(1)` 无害）；v3.1 增加自定义 .ko：应用先做 ELF/.modinfo 基础校验（AArch64 ET_REL、name=kernelsu、同一 6.18 系列），未通过时提示并可退回自适应内置模块；载荷会再次校验，文件不可读或加载失败时自动回退。v3.1.1 把选择持久化到应用 files 目录
-（`custom-ko.ko` + `custom-ko.meta`），启动时恢复，失效文件自动丢弃，长按模块行清除。v3.2 让 LogBox 可选中、可复制（LogBox 头部“复制”链接复制全部日志；输出区可选中，只有读到底部附近才自动滚动）。测试构建（v3.2.1-console / v3.3.4-o1-test）额外把 root 控制台藏在长按版本行之后：三道不可跳过的确认（风险对话框、复选框、输入 `I ACCEPT ROOT RISK`）加一次性 token 才能进入；命令在载荷启动后经 rootd socket 执行（接受 uid 0/2000）。正式版不编译控制台类。v3.3 增加第二个内核 profile：载荷优先根据 App 导出的 `O3P_SELINUX_PROFILE`，否则
+（`custom-ko.ko` + `custom-ko.meta`），启动时恢复，失效文件自动丢弃，长按模块行清除。v3.2 让 LogBox 可选中、可复制（LogBox 头部“复制”链接复制全部日志；输出区可选中，只有读到底部附近才自动滚动）。测试构建（v3.2.1-console / v3.3.5-o1-test）额外把 root 控制台藏在长按版本行之后：三道不可跳过的确认（风险对话框、复选框、输入 `I ACCEPT ROOT RISK`）加一次性 token 才能进入；命令在载荷启动后经 rootd socket 执行（接受 uid 0/2000）。正式版不编译控制台类。v3.3 增加第二个内核 profile：载荷优先根据 App 导出的 `O3P_SELINUX_PROFILE`，否则
 按 `uname().release` 选择 `selinux_state` 链接地址（日志
 `SELINUX_PROFILE kernel=… base=… src=env|uname`）。`Main.checkFirmware()` 接受
 `dijun` / `jinghu` / `violin` 配已分析的 O1 内核
@@ -36,17 +45,23 @@ enforcing + cred 写入），并默认不打 KernelSU init 补丁（`policycap` 
 更强警告），系列外仍然拦截。三份 O1 OTA 内核
 逐位相同（`sha256 0d9917ca…`）；相对 yingtian 只有 `selinux_state` 不同
 （`0xffffffc082958630`），`init_user_ns` 相同。识别到 O1 机型时，App 会在启动载荷前弹出两步警告确认（风险说明 + 勾选后
-才能点“开始提权”），确认后才会开始流程。该 profile 仅经静态分析，
-没有任何 O1 真机跑过。三个内置 LKM 未变（2026-10-29 时除 SukiSU 外均为上游最新，SukiSU 现已有 v4.3.0，见 `python3 tools/check_lkm_updates.py`）；v1.8/v1.9 保留在 git 历史里。
+才能点“开始提权”），确认后才会开始流程。该 profile 起初只做过静态分析；首次 O1
+运行（`v3.3.4-o1-test`）随后表明 KernelSU LKM 在 O1 上无法工作，因此 v3.3.5 让
+O1 profile 跳过它（`O3P_NOKSU=1`）并改由 `@o3p_rootd` 提供 root —— 没有管理器、
+没有自定义 `.ko`、终态 Permissive（见 `docs/TESTING_O1.md`）。O1 链路已社区实测
+一次（`jinghu`，issue #2）；维护者未独立复验。三个内置 LKM 未变（2026-10-29 时除 SukiSU 外均为上游最新，SukiSU 现已有 v4.3.0，见 `python3 tools/check_lkm_updates.py`）；v1.8/v1.9 保留在 git 历史里。
 - 已在 `yingtian` / `OS4.0.16.0.XBMCNXM` 实机验证（冷启动、端到端）。v3.1/v3.1.1
   于 2026-11-01 复验：自适应冷启动（`KSU_BLOB v2 tag=3 matched=1`）、自选 tiann
   v3.3.1 `.ko`（警告接受、force-stop 后仍恢复）、强制 6.6.000 模块
   （`CUSTOM_KO force` → relink → `KSU_MODULE LIVE`）、长按清除。自动回退分支因强制
   模块仍能加载而未在真机触发，仍只做过桌面测试。
 - v3.2 / v3.2.1-console 于 2026-11-01 实机验证：正式版显示可选中 LogBox 与“复制”操作，长按版本行无控制台入口；测试版通过三道确认、用一次性 token 打开控制台，并经 rootd 以 uid=0 执行 `id`（`[exit 0]`）；把控制台输出复制到剪贴板后再粘贴回来验证通过。
-- v3.3 的 O1 profile **只做过静态分析**：O1 与 yingtian 内核做了符号/BTF/
-  config/指令级对比（见 `docs/AGENT_HANDOFF.md`），但没有任何 O1 设备跑过
-  载荷或 KernelSU LKM。
+- v3.3 的 O1 profile 与 yingtian 内核做过符号/BTF/config/指令级对比（见
+  `docs/AGENT_HANDOFF.md`）；现在它是**社区实测一次**，而非维护者验证：issue #2
+  报告 `jinghu`（OS4.0.0.16）两次干净启动取得 `uid=0` + `@o3p_rootd`。首次 O1
+  运行（`v3.3.4-o1-test`）表明 KernelSU LKM 无法在 O1 的 EL2 hypervisor 下落地，
+  所以 `v3.3.5-o1-test` 在 O1 上设置 `O3P_NOKSU=1`，只经 `@o3p_rootd` 提供 root
+  （无管理器、无自定义 `.ko`、终态 Permissive）。
 - `lhasa` / `OS4.0.26.0.XPNCNXM` 携带**逐位相同的内核**
   （`sha256 cde87cd7…`）；未实机测试。
 - 仅当前 boot 有效：重启后 root 与 KernelSU 消失（旧 `O3P_SELDIRTY=1` 路径下的 Permissive 也一并消失；v3 默认终态是 Enforcing）。
@@ -68,7 +83,7 @@ KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... bash app/build.sh
 # 测试版构建（隐藏 root 控制台；版本/versionCode 可用环境变量覆盖）
 ANDROID_JAR=... BUILD_TOOLS=... SHIZUKU_JARS=... \
 KEYSTORE=... KS_PASS=... KEY_ALIAS=... KEY_PASS=... \
-PAYLOAD=... BETA=1 BETA_VERSION=3.3.4-o1-test BETA_CODE=24 bash app/build.sh
+PAYLOAD=... BETA=1 BETA_VERSION=3.3.5-o1-test BETA_CODE=26 bash app/build.sh
 ```
 
 ## 目录地图
@@ -116,6 +131,22 @@ PAYLOAD=... BETA=1 BETA_VERSION=3.3.4-o1-test BETA_CODE=24 bash app/build.sh
    Shizuku 运行在 `u:r:ksu:s0`，KSU 的 bounded domain 会拒绝 exec 载荷。
 8. **发布卫生**：`android:debuggable` 保持关闭；`Main.checkFirmware()` 里的
    固件门禁必须与载荷所针对的内核/分支一致（`yingtian`/`lhasa`）。
+9. **自定义 `.ko` 是不可信输入。** `CustomKo.java`（App）与 `ko_validate()`
+   （载荷）是仅有的门禁：保持两者同步；当自定义文件不可读、被拒或加载失败时，
+   绝不能删掉自动回退到内置 blob 的行为。这些是兼容性检查，不是安全边界 ——
+   通过检查的模块仍会在内核中运行。
+10. **KernelSU 默认运行时解析。** `kallsyms_patch()` 收集模块的 UNDEF 符号，
+    临时向 `/proc/sys/kernel/kptr_restrict` 写 `0`，经 `/proc/kallsyms` 解析地址，
+    并在 `insmod` 前始终恢复旧值。`O3P_RELINK_ONLY=1` 强制使用内置 248 符号表 +
+    slide 路径（kallsyms 不再暴露地址时的离线回退）。上游 LKM（tiann、
+    KernelSU-Next、SukiSU）都能加载；它们的管理器包与 ksud 不同，换 fork 也要换
+    管理器 APK/ksud。
+11. **O1 必须跳过内置 KernelSU LKM —— 不要“修复”回去。** O1 的
+    `sys_call_table` 位于 EL2 hypervisor 保护的 `Kernel code` 物理区间（只读），
+    `stop_machine` 文本补丁无法落地；但 `sys_enter` hook 仍会把 syscallno 改到
+    `ksu_dispatcher_nr`，导致 pid1/zygote/uid2000 的 `execve`/`newfstatat` 从第二次
+    运行起返回 `-ENOSYS` 直到重启。v3.3.5 起 O1 profile 导出 `O3P_NOKSU=1`，root 只由
+    `@o3p_rootd` 提供。不要在 O1 上移除该跳过、加载 LKM，或声称有 KernelSU 管理器。
 
 ## 已验证 / 未验证
 
@@ -129,10 +160,10 @@ v3.3.4 于 2026-11-05 在 yingtian 复验：65 节的 SukiSU 4.3.0 LKM 经 kalls
 路径加载成功（`KSU_LOADER kallsyms found=251 missing=0`、`KSU_INSMOD_OUT:[rc=0`、
 `KSU_MODULE LIVE`）；LogBox 连续追加 50 行保持底部，手动上滚后追加不再被拉回。
 
-未验证：**O1 实机**（dijun/jinghu/violin —— 见 `docs/TESTING_O1.md`）；
-`lhasa` 实机；**原版 Shizuku**（我们用的是官方 `dev.rikka.shizuku`
-API，但只实测过 ShizukuX 13.7）；`/system/bin/su` 只在 KernelSU 首次收到
-root 请求后才出现。
+未独立验证：**O1 实机**——除单个 `jinghu` 社区报告外，`dijun`/`violin` 未测试，
+维护者未复现 issue #2（见 `docs/TESTING_O1.md`）；`lhasa` 实机；**原版
+Shizuku**（我们用的是官方 `dev.rikka.shizuku` API，但只实测过 ShizukuX 13.7）；
+`/system/bin/su` 只在 KernelSU 首次收到 root 请求后才出现。
 
 负面结果 —— 没有新思路不要重复（细节见 `docs/AGENT_HANDOFF.md`）：
 
@@ -155,19 +186,21 @@ root 请求后才出现。
 - `aapt2 link` 之前必须先 `aapt2 compile --dir res`；`-A assets` 用来打进
   内置的 KernelSU 管理器。
 - 不要给 `payload/*.c` 提交 CRLF 变更噪音；索引统一为 LF。
-- `BETA=1` 会写 `build/gen/BuildInfo.java`（`CONSOLE=true`、`VERSION=$BETA_VERSION`，默认 `3.2.1-console`）并生成 `build/AndroidManifest.xml`（versionCode `$BETA_CODE`，默认 18，加入 `ConsoleActivity`）。正式版编译跟踪的 `BuildInfo.java`（`CONSOLE=false`、`3.3`）并排除 `ConsoleActivity.java`/`ConsoleGate.java`；`Main` 只经 `ConsoleEntry` 反射到达门禁，正式版代码不得直接链接 `ConsoleGate`。
+- `BETA=1` 会写 `build/gen/BuildInfo.java`（`CONSOLE=true`、`VERSION=$BETA_VERSION`，默认 `3.2.1-console`）并生成 `build/AndroidManifest.xml`（versionCode `$BETA_CODE`，默认 18，加入 `ConsoleActivity`）。正式版编译跟踪的 `BuildInfo.java`（`CONSOLE=false`、`3.3.5`）并排除 `ConsoleActivity.java`/`ConsoleGate.java`；`Main` 只经 `ConsoleEntry` 反射到达门禁，正式版代码不得直接链接 `ConsoleGate`。
 - 保持 LogBox 可选中、可复制：不要删 `setTextIsSelectable(true)`；自动滚动必须只在接近底部时触发。
 
 ## 设备测试检查表
 
 1. 确认 Shizuku 以 shell 模式运行：
    `ps -A -o UID,LABEL,ARGS | grep shizuku_plus_server` → `2000 u:r:shell:s0`。
-2. 安装：`adb install -r release/o3root2-v3.3.apk`；MIUI 若报
+2. 安装：`adb install -r release/o3root2-v3.3.5.apk`；MIUI 若报
    `INSTALL_FAILED_USER_RESTRICTED`，允许“USB 安装”或用 root 执行
    `pm install -r -d`。
 3. 打开 App，授予 Shizuku 权限，点 Continue；等待 20–120 秒。
 4. 成功标记：`★ UIDNOW uid=0`、`KSU_INSMOD_OUT:[rc=0]`、
    `★ KSU_MODULE LIVE`、管理器在前台（`am start` 日志 + `top ->`）。
+   O1 上没有 `KSU_MODULE LIVE`、也没有管理器：成功标志是 `★ UIDNOW uid=0`
+   加上 `ROOTD`/`@o3p_rootd` 行（见 `docs/TESTING_O1.md`）。
 5. 健康检查：`getenforce` = Enforcing（v3；旧的脏写路径会停在 Permissive）、`ping <gateway>`、
    `nc 223.5.5.5 443`、`cat /proc/sys/kernel/random/boot_id` 未变。
 5.5 若本轮失败需重跑：先确认 `shizuku_plus_server` 仍是 `2000 u:r:shell:s0`。
@@ -175,12 +208,15 @@ root 请求后才出现。
    transition，会拒绝 exec 载荷 —— 需重启 Shizuku server（或重启设备）回到
    shell 模式后再点 Continue。
 6. 回滚：重启；可选 `rm -f /data/local/tmp/o3p*` 并卸载 App。
-7. 测试版控制台（仅测试构建）：安装测试 APK（`release/beta/o3root2-v3.2.1-console.apk` 或 `release/test/o3root2-v3.3.4-o1-test.apk`，versionCode 均高于正式版 17，可直接升级）；先跑一次载荷让 rootd 在跑，长按版本行并通过三道确认；`id` 必须显示 `uid=0`。正式版做同样的长按必须没有控制台入口。
+7. 测试版控制台（仅测试构建）：安装测试 APK（`release/test/o3root2-v3.3.5-o1-test.apk`，versionCode 26 高于正式版 25，可直接升级；旧 `release/beta/o3root2-v3.2.1-console.apk` 为 versionCode 18，需 `adb install -r -d` 降级安装）；先跑一次载荷让 rootd 在跑，长按版本行并通过三道确认；`id` 必须显示 `uid=0`。正式版做同样的长按必须没有控制台入口。
 8. O1（`dijun` / `jinghu` / `violin`）：按 `docs/TESTING_O1.md` 操作。已分析内核打印
    `固件门禁通过（O1 实验性：<代号> / <kv>）`，同系列其他构建打印
    `固件门禁通过（O1 宽松模式：<代号> / <kv>）`；两者都应出现
    `SELINUX_PROFILE kernel=… base=0xffffffc082958630 src=env|uname`。即使失败也要导出
-   日志反馈。本机没有 O1 设备，绝不能声称已验证。
+   日志反馈。O1 上跳过 KernelSU LKM（`O3P_NOKSU=1`）：没有 `KSU_MODULE LIVE`、没有
+   管理器、也没有 `/system/bin/su`；root 来自 `@o3p_rootd`，SELinux 终态是
+   Permissive。目前只有一份社区报告（`jinghu`，issue #2），维护者未独立验证 O1，
+   `dijun`/`violin` 未测试 —— 绝不能声称维护者验证过。
 
 | 症状 | 含义 / 处理 |
 |---|---|
@@ -227,3 +263,5 @@ kallsyms 加载器装 KSU，**不打 init 补丁**；KSU 自己的 `setenforce(1
 干净），所以设备停在 Enforcing 且 Wi-Fi 正常。曾尝试“一次 reap 三次写”，连续 panic，
 现仅保留在 `O3P_D3V3` 后供分析。yingtian 冷启已验证（`KSU_CODEPATCH skip`、
 `KALLSYMS_PATCH found=225`、`KSU_MODULE LIVE`、Enforcing、`ping`/`nc` 正常、管理器已打开）。
+在 O1（v3.3.5+）上，profile 完全跳过 LKM（`O3P_NOKSU=1`），root 只经
+`@o3p_rootd` 提供；见 `docs/TESTING_O1.md`。
